@@ -1,0 +1,14 @@
+# Added by code-review-graph
+.code-review-graph/
+node_modules/
+**/node_modules/**
+dist/
+**/dist/**
+api/dist/
+frontend/dist/
+worker/dist/
+build/
+.next/
+coverage/
+*.min.js
+*.bundle.js

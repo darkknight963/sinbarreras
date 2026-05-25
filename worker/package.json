@@ -1,0 +1,29 @@
+{
+  "name": "peru-accessibility-worker",
+  "version": "1.0.0",
+  "description": "Distributed worker for rendering and analyzing web accessibility",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.587.0",
+    "accessibility-checker": "^3.1.70",
+    "axe-core": "^4.9.1",
+    "bullmq": "^5.8.3",
+    "dotenv": "^16.4.5",
+    "lighthouse": "^12.8.2",
+    "pa11y": "^9.0.1",
+    "pg": "^8.11.5",
+    "playwright": "1.60.0",
+    "puppeteer-core": "^24.16.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5"
+  }
+}
