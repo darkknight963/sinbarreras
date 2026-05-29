@@ -1,0 +1,224 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Modal Component > should render modal overlay 1`] = `
+<div
+  class="fixed inset-0 report-modal-overlay flex items-center justify-center p-4"
+>
+  <div
+    class="report-modal"
+  >
+    <div
+      class="flex justify-between items-center mb-4"
+    >
+      <h3
+        class="text-xl font-bold text-gob-dark"
+      >
+        Test Modal
+      </h3>
+    </div>
+    <div>
+      Modal Content
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal when open 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    >
+      Test Modal
+    </h3>
+  </div>
+  <div>
+    Modal Content
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with border and shadow 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    >
+      Test Modal
+    </h3>
+  </div>
+  <div>
+    Modal Content
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with children content 1`] = `
+<div>
+  Modal Content
+</div>
+`;
+
+exports[`Modal Component > should render modal with close button 1`] = `
+<button
+  class="text-slate-400 hover:text-gob-dark transition-colors"
+>
+  <svg
+    aria-hidden="true"
+    class="lucide lucide-x h-5 w-5"
+    fill="none"
+    height="24"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="2"
+    viewBox="0 0 24 24"
+    width="24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M18 6 6 18"
+    />
+    <path
+      d="m6 6 12 12"
+    />
+  </svg>
+</button>
+`;
+
+exports[`Modal Component > should render modal with correct container styling 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    >
+      Test Modal
+    </h3>
+  </div>
+  <div>
+    Modal Content
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with correct padding 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    >
+      Test Modal
+    </h3>
+  </div>
+  <div>
+    Modal Content
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with correct z-index layering 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    >
+      Test Modal
+    </h3>
+  </div>
+  <div>
+    Modal Content
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with entry animation 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    >
+      Test Modal
+    </h3>
+  </div>
+  <div>
+    Modal Content
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with form content 1`] = `
+<button
+  type="submit"
+>
+  Create
+</button>
+`;
+
+exports[`Modal Component > should render modal with multiple children 1`] = `
+<div>
+  First Child
+</div>
+`;
+
+exports[`Modal Component > should render modal with overlay backdrop blur 1`] = `
+<div
+  class="fixed inset-0 report-modal-overlay flex items-center justify-center p-4"
+>
+  <div
+    class="report-modal"
+  >
+    <div
+      class="flex justify-between items-center mb-4"
+    >
+      <h3
+        class="text-xl font-bold text-gob-dark"
+      >
+        Test Modal
+      </h3>
+    </div>
+    <div>
+      Modal Content
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Modal Component > should render modal with title 1`] = `
+<h3
+  class="text-xl font-bold text-gob-dark"
+>
+  Test Modal
+</h3>
+`;
+
+exports[`Modal Component > should render modal with title styling 1`] = `
+<h3
+  class="text-xl font-bold text-gob-dark"
+>
+  Test Modal
+</h3>
+`;

@@ -1,0 +1,145 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Badge Components > SeverityChip > should render high severity chip 1`] = `
+<span
+  class="report-severity-chip report-sev-high"
+>
+  HIGH
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render high severity chip with correct styling 1`] = `
+<span
+  class="report-severity-chip report-sev-high"
+>
+  HIGH
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render high severity chip with text content 1`] = `
+<span
+  class="report-severity-chip report-sev-high"
+>
+  HIGH SEVERITY
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render low severity chip 1`] = `
+<span
+  class="report-severity-chip report-sev-low"
+>
+  LOW
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render low severity chip with correct styling 1`] = `
+<span
+  class="report-severity-chip report-sev-low"
+>
+  LOW
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render low severity chip with text content 1`] = `
+<span
+  class="report-severity-chip report-sev-low"
+>
+  LOW SEVERITY
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render medium severity chip 1`] = `
+<span
+  class="report-severity-chip report-sev-medium"
+>
+  MEDIUM
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render medium severity chip with correct styling 1`] = `
+<span
+  class="report-severity-chip report-sev-medium"
+>
+  MEDIUM
+</span>
+`;
+
+exports[`Badge Components > SeverityChip > should render medium severity chip with text content 1`] = `
+<span
+  class="report-severity-chip report-sev-medium"
+>
+  MEDIUM SEVERITY
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render approved status badge 1`] = `
+<span
+  class="report-status-badge report-status-approved"
+>
+  APPROVED
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render approved status badge with correct styling 1`] = `
+<span
+  class="report-status-badge report-status-approved"
+>
+  Approved
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render approved status badge with text content 1`] = `
+<span
+  class="report-status-badge report-status-approved"
+>
+  Approved
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render failed status badge 1`] = `
+<span
+  class="report-status-badge report-status-failed"
+>
+  FAILED
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render failed status badge with correct styling 1`] = `
+<span
+  class="report-status-badge report-status-failed"
+>
+  Failed
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render failed status badge with text content 1`] = `
+<span
+  class="report-status-badge report-status-failed"
+>
+  Failed
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render pending status badge 1`] = `
+<span
+  class="report-status-badge report-status-pending"
+>
+  PENDING
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render pending status badge with correct styling 1`] = `
+<span
+  class="report-status-badge report-status-pending"
+>
+  Pending
+</span>
+`;
+
+exports[`Badge Components > StatusBadge > should render pending status badge with text content 1`] = `
+<span
+  class="report-status-badge report-status-pending"
+>
+  Pending
+</span>
+`;

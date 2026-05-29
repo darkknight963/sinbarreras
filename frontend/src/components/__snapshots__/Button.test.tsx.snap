@@ -1,0 +1,123 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Button Components > ActionButton > should render action button in disabled state 1`] = `
+<button
+  class="report-action-btn  "
+  disabled=""
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render action button with active state styling 1`] = `
+<button
+  class="report-action-btn  "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render action button with custom className 1`] = `
+<button
+  class="report-action-btn  custom-class"
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render action button with green variant 1`] = `
+<button
+  class="report-action-btn report-action-btn-green "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render action button with hover state styling 1`] = `
+<button
+  class="report-action-btn  "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render action button with primary variant 1`] = `
+<button
+  class="report-action-btn  "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render action button with text content 1`] = `
+<button
+  class="report-action-btn  "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render green action button with correct styling 1`] = `
+<button
+  class="report-action-btn report-action-btn-green "
+>
+  Success
+</button>
+`;
+
+exports[`Button Components > ActionButton > should render primary action button with correct styling 1`] = `
+<button
+  class="report-action-btn  "
+>
+  Primary
+</button>
+`;
+
+exports[`Button Components > GhostButton > should render ghost button in disabled state 1`] = `
+<button
+  class="report-ghost-btn "
+  disabled=""
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > GhostButton > should render ghost button with base state 1`] = `
+<button
+  class="report-ghost-btn "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > GhostButton > should render ghost button with correct styling 1`] = `
+<button
+  class="report-ghost-btn "
+>
+  Secondary
+</button>
+`;
+
+exports[`Button Components > GhostButton > should render ghost button with custom className 1`] = `
+<button
+  class="report-ghost-btn custom-class"
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > GhostButton > should render ghost button with hover state styling 1`] = `
+<button
+  class="report-ghost-btn "
+>
+  Click Me
+</button>
+`;
+
+exports[`Button Components > GhostButton > should render ghost button with text content 1`] = `
+<button
+  class="report-ghost-btn "
+>
+  Click Me
+</button>
+`;

@@ -1,0 +1,880 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Visual Regression Tests - Header Component > should maintain gradient background across all breakpoints > header-desktop 1`] = `
+<header
+  class="sticky top-0 z-50 px-8 py-4 flex items-center justify-between"
+>
+  <div
+    class="flex items-center space-x-3"
+  >
+    <div
+      class="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-shield h-6 w-6 text-white"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+        />
+      </svg>
+    </div>
+    <div>
+      <h1
+        class="font-bold text-lg tracking-wide text-white"
+      >
+        Plataforma de Accesibilidad Web
+      </h1>
+      <p
+        class="text-xs text-white/70"
+      >
+        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+      </p>
+    </div>
+  </div>
+  <div
+    class="flex items-center space-x-4"
+  >
+    <div
+      class="header-badge"
+    >
+      <span
+        class="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"
+      />
+      <span>
+        Normativa Peruana 2026
+      </span>
+    </div>
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-settings h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
+    </svg>
+  </div>
+</header>
+`;
+
+exports[`Visual Regression Tests - Header Component > should maintain gradient background across all breakpoints > header-mobile 1`] = `
+<header
+  class="sticky top-0 z-50 px-8 py-4 flex items-center justify-between"
+>
+  <div
+    class="flex items-center space-x-3"
+  >
+    <div
+      class="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-shield h-6 w-6 text-white"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+        />
+      </svg>
+    </div>
+    <div>
+      <h1
+        class="font-bold text-lg tracking-wide text-white"
+      >
+        Plataforma de Accesibilidad Web
+      </h1>
+      <p
+        class="text-xs text-white/70"
+      >
+        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+      </p>
+    </div>
+  </div>
+  <div
+    class="flex items-center space-x-4"
+  >
+    <div
+      class="header-badge"
+    >
+      <span
+        class="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"
+      />
+      <span>
+        Normativa Peruana 2026
+      </span>
+    </div>
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-settings h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
+    </svg>
+  </div>
+</header>
+`;
+
+exports[`Visual Regression Tests - Header Component > should maintain gradient background across all breakpoints > header-tablet 1`] = `
+<header
+  class="sticky top-0 z-50 px-8 py-4 flex items-center justify-between"
+>
+  <div
+    class="flex items-center space-x-3"
+  >
+    <div
+      class="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-shield h-6 w-6 text-white"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+        />
+      </svg>
+    </div>
+    <div>
+      <h1
+        class="font-bold text-lg tracking-wide text-white"
+      >
+        Plataforma de Accesibilidad Web
+      </h1>
+      <p
+        class="text-xs text-white/70"
+      >
+        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+      </p>
+    </div>
+  </div>
+  <div
+    class="flex items-center space-x-4"
+  >
+    <div
+      class="header-badge"
+    >
+      <span
+        class="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"
+      />
+      <span>
+        Normativa Peruana 2026
+      </span>
+    </div>
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-settings h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
+    </svg>
+  </div>
+</header>
+`;
+
+exports[`Visual Regression Tests - Header Component > should render header correctly on desktop viewport 1`] = `
+<header
+  class="sticky top-0 z-50 px-8 py-4 flex items-center justify-between"
+>
+  <div
+    class="flex items-center space-x-3"
+  >
+    <div
+      class="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-shield h-6 w-6 text-white"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+        />
+      </svg>
+    </div>
+    <div>
+      <h1
+        class="font-bold text-lg tracking-wide text-white"
+      >
+        Plataforma de Accesibilidad Web
+      </h1>
+      <p
+        class="text-xs text-white/70"
+      >
+        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+      </p>
+    </div>
+  </div>
+  <div
+    class="flex items-center space-x-4"
+  >
+    <div
+      class="header-badge"
+    >
+      <span
+        class="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"
+      />
+      <span>
+        Normativa Peruana 2026
+      </span>
+    </div>
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-settings h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
+    </svg>
+  </div>
+</header>
+`;
+
+exports[`Visual Regression Tests - Header Component > should render header correctly on mobile viewport 1`] = `
+<header
+  class="sticky top-0 z-50 px-8 py-4 flex items-center justify-between"
+>
+  <div
+    class="flex items-center space-x-3"
+  >
+    <div
+      class="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-shield h-6 w-6 text-white"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+        />
+      </svg>
+    </div>
+    <div>
+      <h1
+        class="font-bold text-lg tracking-wide text-white"
+      >
+        Plataforma de Accesibilidad Web
+      </h1>
+      <p
+        class="text-xs text-white/70"
+      >
+        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+      </p>
+    </div>
+  </div>
+  <div
+    class="flex items-center space-x-4"
+  >
+    <div
+      class="header-badge"
+    >
+      <span
+        class="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"
+      />
+      <span>
+        Normativa Peruana 2026
+      </span>
+    </div>
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-settings h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
+    </svg>
+  </div>
+</header>
+`;
+
+exports[`Visual Regression Tests - Header Component > should render header correctly on tablet viewport 1`] = `
+<header
+  class="sticky top-0 z-50 px-8 py-4 flex items-center justify-between"
+>
+  <div
+    class="flex items-center space-x-3"
+  >
+    <div
+      class="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-shield h-6 w-6 text-white"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+        />
+      </svg>
+    </div>
+    <div>
+      <h1
+        class="font-bold text-lg tracking-wide text-white"
+      >
+        Plataforma de Accesibilidad Web
+      </h1>
+      <p
+        class="text-xs text-white/70"
+      >
+        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+      </p>
+    </div>
+  </div>
+  <div
+    class="flex items-center space-x-4"
+  >
+    <div
+      class="header-badge"
+    >
+      <span
+        class="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"
+      />
+      <span>
+        Normativa Peruana 2026
+      </span>
+    </div>
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-settings h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+      />
+    </svg>
+  </div>
+</header>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should maintain modal styling across all breakpoints > modal-desktop 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    />
+    <button
+      class="text-slate-400 hover:text-gob-dark transition-colors"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-x h-5 w-5"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <h2>
+    Test Modal
+  </h2>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should maintain modal styling across all breakpoints > modal-mobile 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    />
+    <button
+      class="text-slate-400 hover:text-gob-dark transition-colors"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-x h-5 w-5"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <h2>
+    Test Modal
+  </h2>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should maintain modal styling across all breakpoints > modal-tablet 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    />
+    <button
+      class="text-slate-400 hover:text-gob-dark transition-colors"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-x h-5 w-5"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <h2>
+    Test Modal
+  </h2>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should render modal correctly on desktop viewport 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    />
+    <button
+      class="text-slate-400 hover:text-gob-dark transition-colors"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-x h-5 w-5"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <h2>
+    Test Modal
+  </h2>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should render modal correctly on mobile viewport 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    />
+    <button
+      class="text-slate-400 hover:text-gob-dark transition-colors"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-x h-5 w-5"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <h2>
+    Test Modal
+  </h2>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should render modal correctly on tablet viewport 1`] = `
+<div
+  class="report-modal"
+>
+  <div
+    class="flex justify-between items-center mb-4"
+  >
+    <h3
+      class="text-xl font-bold text-gob-dark"
+    />
+    <button
+      class="text-slate-400 hover:text-gob-dark transition-colors"
+    >
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-x h-5 w-5"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M18 6 6 18"
+        />
+        <path
+          d="m6 6 12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <h2>
+    Test Modal
+  </h2>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should render modal overlay correctly on all breakpoints > modal-overlay-desktop 1`] = `
+<div
+  class="fixed inset-0 report-modal-overlay flex items-center justify-center p-4"
+>
+  <div
+    class="report-modal"
+  >
+    <div
+      class="flex justify-between items-center mb-4"
+    >
+      <h3
+        class="text-xl font-bold text-gob-dark"
+      />
+      <button
+        class="text-slate-400 hover:text-gob-dark transition-colors"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-x h-5 w-5"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M18 6 6 18"
+          />
+          <path
+            d="m6 6 12 12"
+          />
+        </svg>
+      </button>
+    </div>
+    <h2>
+      Test Modal
+    </h2>
+  </div>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should render modal overlay correctly on all breakpoints > modal-overlay-mobile 1`] = `
+<div
+  class="fixed inset-0 report-modal-overlay flex items-center justify-center p-4"
+>
+  <div
+    class="report-modal"
+  >
+    <div
+      class="flex justify-between items-center mb-4"
+    >
+      <h3
+        class="text-xl font-bold text-gob-dark"
+      />
+      <button
+        class="text-slate-400 hover:text-gob-dark transition-colors"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-x h-5 w-5"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M18 6 6 18"
+          />
+          <path
+            d="m6 6 12 12"
+          />
+        </svg>
+      </button>
+    </div>
+    <h2>
+      Test Modal
+    </h2>
+  </div>
+</div>
+`;
+
+exports[`Visual Regression Tests - Modal Component > should render modal overlay correctly on all breakpoints > modal-overlay-tablet 1`] = `
+<div
+  class="fixed inset-0 report-modal-overlay flex items-center justify-center p-4"
+>
+  <div
+    class="report-modal"
+  >
+    <div
+      class="flex justify-between items-center mb-4"
+    >
+      <h3
+        class="text-xl font-bold text-gob-dark"
+      />
+      <button
+        class="text-slate-400 hover:text-gob-dark transition-colors"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-x h-5 w-5"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M18 6 6 18"
+          />
+          <path
+            d="m6 6 12 12"
+          />
+        </svg>
+      </button>
+    </div>
+    <h2>
+      Test Modal
+    </h2>
+  </div>
+</div>
+`;

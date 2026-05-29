@@ -336,7 +336,7 @@ async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
 }
 
 async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
-    const checks = await page.evaluate(() => {
+  const checks = await page.evaluate(() => {
     const findings: Array<{ ruleId: string; description: string; selector: string; html: string; wcagCriterion?: string; wcagLevel?: 'A' | 'AA' | 'AAA'; category: FindingCategory }> = [];
 
     const getSelector = (el: any): string => {
@@ -664,7 +664,7 @@ export async function scanUrl(url: string, options: ScanOptions = {}) {
         await fn(window, document);
       }, options.preNavigationScript);
       await page.waitForTimeout(2000);
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('networkidle').catch(() => { });
       await handleCommonOverlays(page);
     }
 

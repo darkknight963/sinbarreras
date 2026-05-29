@@ -1,0 +1,132 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Card Components > ReportCardEntity > should render card entity with base state 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Test Project
+    </h3>
+    <p
+      class="text-slate-500 text-sm mb-4"
+    >
+      Test Description
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportCardEntity > should render card entity with border, shadow, and padding 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Test Project
+    </h3>
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportCardEntity > should render card entity with children 1`] = `
+<div>
+  Child Content
+</div>
+`;
+
+exports[`Card Components > ReportCardEntity > should render card entity with description 1`] = `
+<p
+  class="text-slate-500 text-sm mb-4"
+>
+  Test Description
+</p>
+`;
+
+exports[`Card Components > ReportCardEntity > should render card entity with hover state styling 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Test Project
+    </h3>
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportCardEntity > should render card entity with title 1`] = `
+<h3
+  class="font-bold text-lg text-gob-dark mb-1"
+>
+  Test Project
+</h3>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with base state 1`] = `
+<div
+  class="report-panel  "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with border, shadow, and padding 1`] = `
+<div
+  class="report-panel  "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with children 1`] = `
+<div>
+  Panel Content
+</div>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with custom className 1`] = `
+<div
+  class="report-panel  custom-class"
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with hover state styling 1`] = `
+<div
+  class="report-panel  "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with multiple children 1`] = `
+<div>
+  First Child
+</div>
+`;
+
+exports[`Card Components > ReportPanel > should render panel with spacious variant 1`] = `
+<div
+  class="report-panel report-panel-spacious "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;

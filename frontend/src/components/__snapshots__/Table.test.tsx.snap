@@ -1,0 +1,296 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Table Component > should handle row hover events 1`] = `
+<table
+  class="report-table w-full"
+>
+  <thead>
+    <tr>
+      <th>
+        Name
+      </th>
+      <th>
+        Status
+      </th>
+      <th>
+        Score
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr
+      class="report-row-hover"
+    >
+      <td>
+        Project 1
+      </td>
+      <td>
+        Active
+      </td>
+      <td>
+        95
+      </td>
+    </tr>
+    <tr
+      class="report-row-hover"
+    >
+      <td>
+        Project 2
+      </td>
+      <td>
+        Pending
+      </td>
+      <td>
+        87
+      </td>
+    </tr>
+    <tr
+      class="report-row-hover"
+    >
+      <td>
+        Project 3
+      </td>
+      <td>
+        Failed
+      </td>
+      <td>
+        42
+      </td>
+    </tr>
+  </tbody>
+</table>
+`;
+
+exports[`Table Component > should render table cells with correct content 1`] = `
+<td>
+  Project 1
+</td>
+`;
+
+exports[`Table Component > should render table cells with correct styling 1`] = `
+<td>
+  Project 1
+</td>
+`;
+
+exports[`Table Component > should render table header with correct columns 1`] = `
+<th>
+  Name
+</th>
+`;
+
+exports[`Table Component > should render table header with correct styling 1`] = `
+<th>
+  Name
+</th>
+`;
+
+exports[`Table Component > should render table rows 1`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    95
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table with alternating row backgrounds 1`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    95
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table with alternating row backgrounds 2`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 2
+  </td>
+  <td>
+    Pending
+  </td>
+  <td>
+    87
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table with empty rows 1`] = `
+<table
+  class="report-table w-full"
+>
+  <thead>
+    <tr>
+      <th>
+        Name
+      </th>
+      <th>
+        Status
+      </th>
+      <th>
+        Score
+      </th>
+    </tr>
+  </thead>
+  <tbody />
+</table>
+`;
+
+exports[`Table Component > should render table with header 1`] = `
+<table
+  class="report-table w-full"
+>
+  <thead>
+    <tr>
+      <th>
+        Name
+      </th>
+      <th>
+        Status
+      </th>
+      <th>
+        Score
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr
+      class="report-row-hover"
+    >
+      <td>
+        Project 1
+      </td>
+      <td>
+        Active
+      </td>
+      <td>
+        95
+      </td>
+    </tr>
+    <tr
+      class="report-row-hover"
+    >
+      <td>
+        Project 2
+      </td>
+      <td>
+        Pending
+      </td>
+      <td>
+        87
+      </td>
+    </tr>
+    <tr
+      class="report-row-hover"
+    >
+      <td>
+        Project 3
+      </td>
+      <td>
+        Failed
+      </td>
+      <td>
+        42
+      </td>
+    </tr>
+  </tbody>
+</table>
+`;
+
+exports[`Table Component > should render table with hoverable rows 1`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    95
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table with many rows 1`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    90
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table with row hover state styling 1`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    95
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table with single row 1`] = `
+<tr
+  class="report-row-hover"
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    95
+  </td>
+</tr>
+`;
+
+exports[`Table Component > should render table without hoverable rows 1`] = `
+<tr
+  class=""
+>
+  <td>
+    Project 1
+  </td>
+  <td>
+    Active
+  </td>
+  <td>
+    95
+  </td>
+</tr>
+`;

@@ -1,0 +1,1422 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Accessibility on Desktop > should maintain color contrast on desktop 1`] = `
+<div>
+  <div>
+    <span
+      class="report-sev-high"
+    >
+      HIGH
+    </span>
+    <span
+      class="report-sev-medium"
+    >
+      MEDIUM
+    </span>
+    <span
+      class="report-sev-low"
+    >
+      LOW
+    </span>
+    <span
+      class="report-status-approved"
+    >
+      APPROVED
+    </span>
+    <span
+      class="report-status-failed"
+    >
+      FAILED
+    </span>
+    <span
+      class="report-status-pending"
+    >
+      PENDING
+    </span>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Accessibility on Desktop > should maintain focus visibility on desktop 1`] = `
+<button
+  class="report-action-btn"
+>
+  Action
+</button>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Accessibility on Desktop > should maintain keyboard navigation on desktop 1`] = `
+<div>
+  <div
+    class="report-sidebar"
+  >
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 1
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 2
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 3
+    </a>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Accessibility on Desktop > should maintain semantic structure on desktop 1`] = `
+<div>
+  <div
+    class="report-shell"
+  >
+    <aside
+      class="report-sidebar"
+    >
+      <nav>
+        <a
+          class="report-side-link"
+          href="#"
+        >
+          Link 1
+        </a>
+        <a
+          class="report-side-link"
+          href="#"
+        >
+          Link 2
+        </a>
+      </nav>
+    </aside>
+    <main>
+      <article
+        class="report-panel"
+      >
+        <h1
+          class="report-title"
+        >
+          Title
+        </h1>
+        <p>
+          Content
+        </p>
+      </article>
+    </main>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Component Reflow on Desktop > should display card grid with multiple columns on desktop 1`] = `
+<div>
+  <div
+    class="report-shell"
+  >
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 1
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 2
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 3
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 4
+        </h3>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Component Reflow on Desktop > should display full modal width on desktop 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Component Reflow on Desktop > should display full typography scale on desktop 1`] = `
+<div>
+  <div>
+    <h1
+      class="report-title"
+    >
+      Title
+    </h1>
+    <h2
+      class="report-section-title"
+    >
+      Section
+    </h2>
+    <p>
+      Body text
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Full Layout with Sidebar > should render multiple panels alongside sidebar on desktop 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 1
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 2
+    </a>
+  </div>
+  <div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 1
+      </div>
+    </div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 2
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Full Layout with Sidebar > should render report-shell with flex-direction row on desktop 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    Panel
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Full Layout with Sidebar > should render report-shell with full gap on desktop 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    Panel
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Full Layout with Sidebar > should render report-sidebar with full width on desktop 1`] = `
+<div
+  class="report-sidebar"
+>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link 1
+  </a>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link 2
+  </a>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link 3
+  </a>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Full Layout with Sidebar > should render report-sidebar with sticky positioning on desktop 1`] = `
+<div
+  class="report-sidebar"
+>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link
+  </a>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Interactive States on Desktop > should render button with hover state on desktop 1`] = `
+<button
+  class="report-action-btn"
+>
+  Action Button
+</button>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Interactive States on Desktop > should render card entity with hover state on desktop 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Test Card
+    </h3>
+    <p
+      class="text-slate-500 text-sm mb-4"
+    >
+      Card description
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Interactive States on Desktop > should render panel with hover state on desktop 1`] = `
+<div
+  class="report-panel  "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Interactive States on Desktop > should render sidebar link with hover state on desktop 1`] = `
+<a
+  class="report-side-link"
+  href="#"
+>
+  Navigation Link
+</a>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should maintain consistent layout when loading content 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    Updated Content
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should maintain modal position when content changes 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    This is a much longer content that spans multiple lines and should not cause the modal to shift or change its position on the screen
+  </p>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should maintain panel width consistency on desktop 1`] = `
+<div>
+  <div
+    class="report-shell"
+  >
+    <div
+      class="report-sidebar"
+    >
+      Sidebar
+    </div>
+    <div>
+      <div
+        class="report-panel  "
+      >
+        <div>
+          Short content
+        </div>
+      </div>
+      <div
+        class="report-panel  "
+      >
+        <div>
+          This is a much longer content that spans multiple lines and should not cause layout shifts or changes to the panel width
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should maintain table layout consistency on desktop 1`] = `
+<table
+  class="report-table"
+>
+  <thead>
+    <tr>
+      <th>
+        Column 1
+      </th>
+      <th>
+        Column 2
+      </th>
+      <th>
+        Column 3
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        Short
+      </td>
+      <td>
+        Medium length content
+      </td>
+      <td>
+        This is a very long content that spans multiple lines
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Data 1
+      </td>
+      <td>
+        Data 2
+      </td>
+      <td>
+        Data 3
+      </td>
+    </tr>
+  </tbody>
+</table>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should not shift layout when adding/removing sidebar links 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 1
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 2
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Link 3
+    </a>
+  </div>
+  <div
+    class="report-panel"
+  >
+    Content
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should not shift layout when toggling card hover state 1`] = `
+<div>
+  <div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 1
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 2
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 3
+        </h3>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render header title with full font-size on desktop 1`] = `
+<h1>
+  Plataforma de Accesibilidad Web
+</h1>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render header with full padding on desktop 1`] = `
+<header
+  class="sticky"
+>
+  <h1>
+    Plataforma de Accesibilidad Web
+  </h1>
+  <p>
+    Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+  </p>
+  <div
+    class="header-badge"
+  >
+    Normativa Peruana 2026
+  </div>
+</header>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render main container with full padding on desktop 1`] = `
+<main
+  class="max-w-7xl"
+>
+  <div
+    class="report-panel"
+  >
+    <h1
+      class="report-title"
+    >
+      Main Content
+    </h1>
+    <p>
+      This is the main content area with optimal spacing.
+    </p>
+  </div>
+</main>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render report-modal with full width on desktop 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    Modal Content
+  </p>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render report-section-title with full size on desktop 1`] = `
+<div
+  class="report-section-title"
+>
+  Section Title
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render report-title with full size on desktop 1`] = `
+<div
+  class="report-title"
+>
+  Test Title
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render sidebar links with proper spacing on desktop 1`] = `
+<div>
+  <div
+    class="report-sidebar"
+  >
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Overview
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Details
+    </a>
+    <a
+      class="report-side-link"
+      href="#"
+    >
+      Settings
+    </a>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render table with optimal spacing on desktop 1`] = `
+<table
+  class="report-table"
+>
+  <thead>
+    <tr>
+      <th>
+        Header 1
+      </th>
+      <th>
+        Header 2
+      </th>
+      <th>
+        Header 3
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        Cell 1
+      </td>
+      <td>
+        Cell 2
+      </td>
+      <td>
+        Cell 3
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Cell 4
+      </td>
+      <td>
+        Cell 5
+      </td>
+      <td>
+        Cell 6
+      </td>
+    </tr>
+  </tbody>
+</table>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Report Panel Padding (24px) > should render multiple panels with consistent 24px padding 1`] = `
+<div>
+  <div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 1
+      </div>
+    </div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 2
+      </div>
+    </div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 3
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Report Panel Padding (24px) > should render report-card-entity with 20px padding on desktop 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Test Card
+    </h3>
+    <p
+      class="text-slate-500 text-sm mb-4"
+    >
+      Card description
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Report Panel Padding (24px) > should render report-header-panel with 24px padding on desktop 1`] = `
+<div
+  class="report-header-panel"
+>
+  <h1>
+    Header Panel
+  </h1>
+  <p>
+    Subtitle
+  </p>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Report Panel Padding (24px) > should render report-panel with 24px padding on desktop 1`] = `
+<div
+  class="report-panel  "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Report Panel Padding (24px) > should render spacious panel with increased padding on desktop 1`] = `
+<div
+  class="report-panel report-panel-spacious "
+>
+  <div>
+    Spacious Panel Content
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Spacing Optimization on Desktop > should maintain full gap between shell elements on desktop 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    Panel
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Spacing Optimization on Desktop > should maintain full padding in panels on desktop 1`] = `
+<div>
+  <div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Content 1
+      </div>
+    </div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Content 2
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Spacing Optimization on Desktop > should maintain optimal card entity spacing on desktop 1`] = `
+<div>
+  <div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 1
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 2
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 3
+        </h3>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Desktop Breakpoint Tests (≥ 1024px) > Spacing Optimization on Desktop > should maintain optimal table spacing on desktop 1`] = `
+<table
+  class="report-table"
+>
+  <thead>
+    <tr>
+      <th>
+        Header 1
+      </th>
+      <th>
+        Header 2
+      </th>
+      <th>
+        Header 3
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        Cell 1
+      </td>
+      <td>
+        Cell 2
+      </td>
+      <td>
+        Cell 3
+      </td>
+    </tr>
+  </tbody>
+</table>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Accessibility on Mobile > should maintain color contrast on mobile 1`] = `
+<div>
+  <div>
+    <span
+      class="report-sev-high"
+    >
+      HIGH
+    </span>
+    <span
+      class="report-sev-medium"
+    >
+      MEDIUM
+    </span>
+    <span
+      class="report-sev-low"
+    >
+      LOW
+    </span>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Accessibility on Mobile > should maintain focus visibility on mobile 1`] = `
+<button
+  class="report-action-btn"
+>
+  Action
+</button>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Accessibility on Mobile > should maintain semantic structure on mobile 1`] = `
+<div>
+  <div
+    class="report-shell"
+  >
+    <aside
+      class="report-sidebar"
+    >
+      <nav>
+        <a
+          class="report-side-link"
+          href="#"
+        >
+          Link
+        </a>
+      </nav>
+    </aside>
+    <main>
+      <article
+        class="report-panel"
+      >
+        <h1
+          class="report-title"
+        >
+          Title
+        </h1>
+      </article>
+    </main>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Component Reflow on Mobile > should adapt modal width on mobile 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    Modal content
+  </p>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Component Reflow on Mobile > should reflow card grid to single column on mobile 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-card-entity"
+  >
+    <div>
+      <h3
+        class="font-bold text-lg text-gob-dark mb-1"
+      >
+        Card 1
+      </h3>
+    </div>
+  </div>
+  <div
+    class="report-card-entity"
+  >
+    <div>
+      <h3
+        class="font-bold text-lg text-gob-dark mb-1"
+      >
+        Card 2
+      </h3>
+    </div>
+  </div>
+  <div
+    class="report-card-entity"
+  >
+    <div>
+      <h3
+        class="font-bold text-lg text-gob-dark mb-1"
+      >
+        Card 3
+      </h3>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Component Reflow on Mobile > should scale typography on mobile 1`] = `
+<div>
+  <div>
+    <h1
+      class="report-title"
+    >
+      Title
+    </h1>
+    <h2
+      class="report-section-title"
+    >
+      Section
+    </h2>
+    <p>
+      Body text
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Header Responsive Behavior > should render header badge on mobile 1`] = `
+<div
+  class="header-badge"
+>
+  Normativa Peruana 2026
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Header Responsive Behavior > should render header title with reduced font-size on mobile 1`] = `
+<h1>
+  Plataforma de Accesibilidad Web
+</h1>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Header Responsive Behavior > should render header with reduced padding on mobile 1`] = `
+<header
+  class="sticky"
+>
+  <h1>
+    Platform Title
+  </h1>
+  <p>
+    Subtitle
+  </p>
+</header>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > No Horizontal Overflow > should not have horizontal overflow on mobile viewport 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    <h1
+      class="report-title"
+    >
+      Long Title That Should Not Overflow
+    </h1>
+    <p>
+      Content
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > No Horizontal Overflow > should render card entity without horizontal overflow on mobile 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Very Long Card Title That Should Not Overflow On Mobile
+    </h3>
+    <p
+      class="text-slate-500 text-sm mb-4"
+    >
+      This is a long description that should wrap properly
+    </p>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > No Horizontal Overflow > should render main container with proper padding on mobile 1`] = `
+<main
+  class="max-w-7xl"
+>
+  <div
+    class="report-panel"
+  >
+    <h1
+      class="report-title"
+    >
+      Main Content
+    </h1>
+  </div>
+</main>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > No Horizontal Overflow > should render modal without horizontal overflow on mobile 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title That Is Very Long And Should Not Overflow
+  </h3>
+  <p>
+    Modal content goes here
+  </p>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Modal Styling > should render modal with animation on mobile 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    Modal Content
+  </p>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Modal Styling > should render report-modal with 16px margins on mobile 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    Modal Content
+  </p>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Modal Styling > should render report-modal with 20px padding on mobile 1`] = `
+<div
+  class="report-modal"
+>
+  <h3>
+    Modal Title
+  </h3>
+  <p>
+    Modal Content
+  </p>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Modal Styling > should render report-modal-overlay on mobile 1`] = `
+<div
+  class="report-modal-overlay"
+>
+  <div
+    class="report-modal"
+  >
+    <h3>
+      Modal Title
+    </h3>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Panel Padding > should render multiple panels with consistent 16px padding 1`] = `
+<div>
+  <div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 1
+      </div>
+    </div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Panel 2
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Panel Padding > should render report-card-entity with 16px padding on mobile 1`] = `
+<div
+  class="report-card-entity"
+>
+  <div>
+    <h3
+      class="font-bold text-lg text-gob-dark mb-1"
+    >
+      Test Card
+    </h3>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Panel Padding > should render report-header-panel with 16px padding on mobile 1`] = `
+<div
+  class="report-header-panel"
+>
+  <h1>
+    Header Panel
+  </h1>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Panel Padding > should render report-panel with 16px padding on mobile 1`] = `
+<div
+  class="report-panel  "
+>
+  <div>
+    Panel Content
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Shell Layout > should render report-shell with flex-direction column on mobile 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    Panel
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Shell Layout > should render report-shell with reduced gap on mobile 1`] = `
+<div
+  class="report-shell"
+>
+  <div>
+    Content 1
+  </div>
+  <div>
+    Content 2
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Shell Layout > should render report-shell with reduced padding on mobile 1`] = `
+<div
+  class="report-shell"
+>
+  <div>
+    Content
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Title Font Size > should render report-section-title with reduced size on mobile 1`] = `
+<div
+  class="report-section-title"
+>
+  Section Title
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Title Font Size > should render report-title with 1.35rem font-size on mobile 1`] = `
+<div
+  class="report-title"
+>
+  Test Title
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Report Title Font Size > should render report-title without overflow on mobile 1`] = `
+<div
+  class="report-title"
+>
+  This is a very long title that should not overflow on mobile devices
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Sidebar Responsive Behavior > should render report-side-link with proper styling on mobile 1`] = `
+<a
+  class="report-side-link"
+  href="#"
+>
+  Navigation Link
+</a>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Sidebar Responsive Behavior > should render report-sidebar with full width on mobile 1`] = `
+<div
+  class="report-sidebar"
+>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link 1
+  </a>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link 2
+  </a>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Sidebar Responsive Behavior > should render report-sidebar with static positioning on mobile 1`] = `
+<div
+  class="report-sidebar"
+>
+  <a
+    class="report-side-link"
+    href="#"
+  >
+    Link
+  </a>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Spacing Optimization on Mobile > should optimize card entity spacing on mobile 1`] = `
+<div>
+  <div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 1
+        </h3>
+      </div>
+    </div>
+    <div
+      class="report-card-entity"
+    >
+      <div>
+        <h3
+          class="font-bold text-lg text-gob-dark mb-1"
+        >
+          Card 2
+        </h3>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Spacing Optimization on Mobile > should reduce gap between shell elements on mobile 1`] = `
+<div
+  class="report-shell"
+>
+  <div
+    class="report-sidebar"
+  >
+    Sidebar
+  </div>
+  <div
+    class="report-panel"
+  >
+    Panel
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Spacing Optimization on Mobile > should reduce padding in panels on mobile 1`] = `
+<div>
+  <div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Content 1
+      </div>
+    </div>
+    <div
+      class="report-panel  "
+    >
+      <div>
+        Content 2
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Table Responsive Behavior > should render report-table with reduced font-size on mobile 1`] = `
+<table
+  class="report-table"
+>
+  <thead>
+    <tr>
+      <th>
+        Header 1
+      </th>
+      <th>
+        Header 2
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        Cell 1
+      </td>
+      <td>
+        Cell 2
+      </td>
+    </tr>
+  </tbody>
+</table>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Table Responsive Behavior > should render table cells with reduced padding on mobile 1`] = `
+<td>
+  Cell Content
+</td>
+`;
+
+exports[`Mobile Breakpoint Tests (< 768px) > Table Responsive Behavior > should render table header with reduced padding on mobile 1`] = `
+<th>
+  Header
+</th>
+`;

@@ -1,0 +1,198 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Sidebar Component > should render all sidebar links 1`] = `
+<a
+  class="report-side-link "
+  href="#score"
+>
+  Score General
+</a>
+`;
+
+exports[`Sidebar Component > should render sidebar container 1`] = `
+<aside
+  class="report-sidebar"
+>
+  <div
+    class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4"
+  >
+    Navegación Informe
+  </div>
+  <nav
+    class="space-y-1"
+  >
+    <a
+      class="report-side-link "
+      href="#score"
+    >
+      Score General
+    </a>
+    <a
+      class="report-side-link "
+      href="#pages"
+    >
+      Páginas Auditadas
+    </a>
+    <a
+      class="report-side-link "
+      href="#violations"
+    >
+      Violaciones
+    </a>
+  </nav>
+</aside>
+`;
+
+exports[`Sidebar Component > should render sidebar link with hover state styling 1`] = `
+<a
+  class="report-side-link "
+  href="#score"
+>
+  Score General
+</a>
+`;
+
+exports[`Sidebar Component > should render sidebar links with correct styling 1`] = `
+<a
+  class="report-side-link "
+  href="#score"
+>
+  Score General
+</a>
+`;
+
+exports[`Sidebar Component > should render sidebar with active link state 1`] = `
+<a
+  class="report-side-link active"
+  href="#"
+>
+  Score General
+</a>
+`;
+
+exports[`Sidebar Component > should render sidebar with correct border and shadow 1`] = `
+<aside
+  class="report-sidebar"
+>
+  <div
+    class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4"
+  >
+    Navegación Informe
+  </div>
+  <nav
+    class="space-y-1"
+  >
+    <a
+      class="report-side-link "
+      href="#score"
+    >
+      Score General
+    </a>
+    <a
+      class="report-side-link "
+      href="#pages"
+    >
+      Páginas Auditadas
+    </a>
+    <a
+      class="report-side-link "
+      href="#violations"
+    >
+      Violaciones
+    </a>
+  </nav>
+</aside>
+`;
+
+exports[`Sidebar Component > should render sidebar with correct padding 1`] = `
+<aside
+  class="report-sidebar"
+>
+  <div
+    class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4"
+  >
+    Navegación Informe
+  </div>
+  <nav
+    class="space-y-1"
+  >
+    <a
+      class="report-side-link "
+      href="#score"
+    >
+      Score General
+    </a>
+    <a
+      class="report-side-link "
+      href="#pages"
+    >
+      Páginas Auditadas
+    </a>
+    <a
+      class="report-side-link "
+      href="#violations"
+    >
+      Violaciones
+    </a>
+  </nav>
+</aside>
+`;
+
+exports[`Sidebar Component > should render sidebar with custom title 1`] = `
+<div
+  class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4"
+>
+  Custom Title
+</div>
+`;
+
+exports[`Sidebar Component > should render sidebar with default title 1`] = `
+<div
+  class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4"
+>
+  Navegación Informe
+</div>
+`;
+
+exports[`Sidebar Component > should render sidebar with multiple links 1`] = `
+<a
+  class="report-side-link "
+  href="#"
+>
+  Link 1
+</a>
+`;
+
+exports[`Sidebar Component > should render sidebar with sticky positioning 1`] = `
+<aside
+  class="report-sidebar"
+>
+  <div
+    class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4"
+  >
+    Navegación Informe
+  </div>
+  <nav
+    class="space-y-1"
+  >
+    <a
+      class="report-side-link "
+      href="#score"
+    >
+      Score General
+    </a>
+    <a
+      class="report-side-link "
+      href="#pages"
+    >
+      Páginas Auditadas
+    </a>
+    <a
+      class="report-side-link "
+      href="#violations"
+    >
+      Violaciones
+    </a>
+  </nav>
+</aside>
+`;

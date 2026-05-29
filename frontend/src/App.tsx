@@ -20,8 +20,28 @@ import {
   TableProperties
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL } from './config';
 
-const API_BASE_URL = 'http://localhost:3000';
+let runtimeApiBaseUrl = API_BASE_URL;
+
+const apiUrl = (path: string) => `${runtimeApiBaseUrl}${path}`;
+
+const fetchWithFallback = async (path: string, init?: RequestInit) => {
+  const first = await fetch(apiUrl(path), init);
+
+  // If /api is unavailable in current runtime (common on plain localhost),
+  // switch once to the direct backend URL and retry.
+  if (
+    first.status === 404 &&
+    runtimeApiBaseUrl === '/api' &&
+    window.location.hostname === 'localhost'
+  ) {
+    runtimeApiBaseUrl = API_FALLBACK_BASE_URL;
+    return fetch(apiUrl(path), init);
+  }
+
+  return first;
+};
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -52,12 +72,21 @@ export default function App() {
   
   // Realtime scan progress state
   const [scanProgress, setScanProgress] = useState<Record<string, number>>({});
+  const [appError, setAppError] = useState<string | null>(null);
+
+  const handleApiError = (context: string, err: unknown) => {
+    console.error(context, err);
+    setAppError(`${context}. Verifique la conexión con la API e intente nuevamente.`);
+  };
 
   useEffect(() => {
     fetchProjects();
 
     // Setup Socket.io for real-time progress
-    const socket = io(API_BASE_URL);
+    const socket = io(SOCKET_URL, {
+      path: SOCKET_PATH,
+      transports: ['websocket', 'polling'],
+    });
     
     socket.on('scan-progress', ({ scanId, progress }) => {
       console.log(`Scan ${scanId} progress: ${progress}%`);
@@ -79,31 +108,37 @@ export default function App() {
     return () => {
       socket.disconnect();
     };
-  }, [currentProject]);
+  }, []);
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/projects`);
+      setAppError(null);
+      const res = await fetchWithFallback('/projects');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setProjects(data);
     } catch (err) {
-      console.error('Error fetching projects:', err);
+      handleApiError('No se pudieron cargar los proyectos', err);
     }
   };
 
   const fetchProjectDetails = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/projects/${id}`);
+      setAppError(null);
+      const res = await fetchWithFallback(`/projects/${id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCurrentProject(data);
     } catch (err) {
-      console.error('Error fetching project details:', err);
+      handleApiError('No se pudo cargar el detalle del proyecto', err);
     }
   };
 
   const fetchScanDetails = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/scans/${id}`);
+      setAppError(null);
+      const res = await fetchWithFallback(`/scans/${id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCurrentScan(data);
       if (data.urlResults && data.urlResults.length > 0) {
@@ -114,14 +149,15 @@ export default function App() {
         });
       }
     } catch (err) {
-      console.error('Error fetching scan details:', err);
+      handleApiError('No se pudo cargar el detalle del escaneo', err);
     }
   };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_BASE_URL}/projects`, {
+      setAppError(null);
+      const res = await fetchWithFallback('/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -136,9 +172,11 @@ export default function App() {
         setNewProjectName('');
         setNewProjectDomain('');
         fetchProjects();
+      } else {
+        throw new Error(`HTTP ${res.status}`);
       }
     } catch (err) {
-      console.error('Error creating project:', err);
+      handleApiError('No se pudo crear el proyecto', err);
     }
   };
 
@@ -153,7 +191,8 @@ export default function App() {
       .filter(url => url.length > 0);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/scans`, {
+      setAppError(null);
+      const res = await fetchWithFallback('/scans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -170,16 +209,19 @@ export default function App() {
         setPreNavigationScript('');
         // Refresh project details
         setTimeout(() => fetchProjectDetails(currentProject.id), 500);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
       }
     } catch (err) {
-      console.error('Error triggering scan:', err);
+      handleApiError('No se pudo iniciar el escaneo', err);
     }
   };
 
   const handleManualVerificationUpdate = async (verificationId: string, status: string) => {
     if (!selectedUrlResult) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/url-results/${selectedUrlResult.id}/manual-verification`, {
+      setAppError(null);
+      const res = await fetchWithFallback(`/url-results/${selectedUrlResult.id}/manual-verification`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verificationId, status })
@@ -189,9 +231,11 @@ export default function App() {
         setSelectedUrlResult(updatedResult);
         // also refresh current scan to update global UI state
         if (currentScan) fetchScanDetails(currentScan.id);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
       }
     } catch (err) {
-      console.error('Error updating manual verification:', err);
+      handleApiError('No se pudo actualizar la verificación manual', err);
     }
   };
 
@@ -213,13 +257,13 @@ export default function App() {
       let filename = '';
 
       if (kind === 'pdf-executive') {
-        endpoint = `${API_BASE_URL}/reports/${currentScan.id}/pdf?type=executive`;
+        endpoint = `${runtimeApiBaseUrl}/reports/${currentScan.id}/pdf?type=executive`;
         filename = `reporte-ejecutivo-${currentScan.id}.pdf`;
       } else if (kind === 'pdf-technical') {
-        endpoint = `${API_BASE_URL}/reports/${currentScan.id}/pdf?type=technical`;
+        endpoint = `${runtimeApiBaseUrl}/reports/${currentScan.id}/pdf?type=technical`;
         filename = `reporte-tecnico-${currentScan.id}.pdf`;
       } else {
-        endpoint = `${API_BASE_URL}/reports/${currentScan.id}/excel`;
+        endpoint = `${runtimeApiBaseUrl}/reports/${currentScan.id}/excel`;
         filename = `reporte-accesibilidad-${currentScan.id}.xlsx`;
       }
 
@@ -228,7 +272,7 @@ export default function App() {
       const blob = await res.blob();
       downloadFile(blob, filename);
     } catch (err) {
-      console.error('Error exporting report:', err);
+      handleApiError('No se pudo exportar el reporte', err);
       window.alert('No se pudo exportar el reporte. Intente nuevamente.');
     }
   };
@@ -268,8 +312,14 @@ export default function App() {
     return `Criterio ${n.toString().padStart(2, '0')} — WCAG 2.2`;
   });
 
+  useEffect(() => {
+    const section = view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle del Proyecto' : 'Informe de Escaneo';
+    document.title = `Plataforma de Accesibilidad Web | ${section}`;
+  }, [view]);
+
   return (
     <div className="min-h-screen text-slate-900 font-sans">
+      <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 px-8 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -283,15 +333,25 @@ export default function App() {
         </div>
         
         <div className="flex items-center space-x-4">
-          <div className="px-3 py-1 bg-white/10 backdrop-blur text-white/90 border border-white/20 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center space-x-1">
+          <div className="header-badge">
             <span className="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"></span>
             <span>Normativa Peruana 2026</span>
           </div>
-          <Settings className="h-5 w-5 text-white/60 hover:text-white cursor-pointer transition-colors" />
+          <button type="button" aria-label="Abrir configuración" className="report-icon-btn">
+            <Settings className="h-5 w-5 text-white/70 hover:text-white transition-colors" aria-hidden="true" />
+          </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6">
+      <main id="main-content" className="max-w-7xl mx-auto p-6" tabIndex={-1}>
+        <p className="visually-hidden" aria-live="polite">
+          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : 'Informe de escaneo'}
+        </p>
+        {appError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+            {appError}
+          </div>
+        )}
         {/* VIEW: PROJECTS OVERVIEW */}
         {view === 'projects' && (
           <div className="space-y-6 report-surface">
@@ -320,7 +380,8 @@ export default function App() {
               ) : projects.map(p => {
                 const lastScan = p.scans && p.scans.length > 0 ? p.scans[p.scans.length - 1] : null;
                 return (
-                  <div 
+                  <button
+                    type="button"
                     key={p.id}
                     onClick={() => {
                       setCurrentProject(p);
@@ -328,6 +389,7 @@ export default function App() {
                       setView('project');
                     }}
                     className="report-card-entity"
+                    aria-label={`Ver detalles del proyecto ${p.name}`}
                   >
                     <div>
                       <div className="flex justify-between items-start mb-4">
@@ -357,17 +419,17 @@ export default function App() {
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
 
             {/* Modal Create Project */}
             {showCreateProject && (
-              <div className="fixed inset-0 bg-gob-dark/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="report-modal">
+              <div className="fixed inset-0 report-modal-overlay flex items-center justify-center p-4" role="presentation">
+                <div className="report-modal" role="dialog" aria-modal="true" aria-labelledby="create-project-title">
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xl font-bold text-gob-dark">Añadir Proyecto</h3>
+                    <h3 id="create-project-title" className="text-xl font-bold text-gob-dark">Añadir Proyecto</h3>
                     <X className="h-5 w-5 cursor-pointer text-slate-400 hover:text-gob-dark transition-colors" onClick={() => setShowCreateProject(false)} />
                   </div>
                   <form onSubmit={handleCreateProject} className="space-y-4">
@@ -554,10 +616,10 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
 
             {/* Modal Trigger New Scan */}
             {showNewScan && (
-              <div className="fixed inset-0 bg-gob-dark/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="report-modal max-w-lg w-full space-y-6">
+              <div className="fixed inset-0 report-modal-overlay flex items-center justify-center p-4" role="presentation">
+                <div className="report-modal max-w-lg w-full space-y-6" role="dialog" aria-modal="true" aria-labelledby="new-scan-title">
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xl font-bold text-gob-dark">Lanzar Auditoría</h3>
+                    <h3 id="new-scan-title" className="text-xl font-bold text-gob-dark">Lanzar Auditoría</h3>
                     <X className="h-5 w-5 cursor-pointer text-slate-400 hover:text-gob-dark transition-colors" onClick={() => setShowNewScan(false)} />
                   </div>
                   <form onSubmit={handleTriggerScan} className="space-y-4">
@@ -776,7 +838,7 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full report-table report-table-spacious">
+                      <table className="w-full report-table report-table-spacious" aria-label="Tabla de violaciones de accesibilidad">
                         <thead>
                           <tr>
                             <th>Criterio</th>
@@ -845,6 +907,10 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
     </div>
   );
 }
+
+
+
+
 
 
 
