@@ -185,7 +185,7 @@ export class ComplianceController {
   }
 
   /**
-   * Task 4.2 — Full WCAG 2.2 Criteria Checklist (83 criteria)
+   * Task 4.2 — Full WCAG 2.2 Criteria Checklist (86 criteria)
    * Returns the complete checklist following Anexo 1 of the Resolution.
    *
    * GET /compliance/wcag-checklist
@@ -195,7 +195,7 @@ export class ComplianceController {
     return {
       standard: 'WCAG 2.2',
       resolution: 'Resolución N° 001-2025-PCM/SGTD — Anexo 1',
-      totalCriteria: 83,
+      totalCriteria: 86,
       principles: [
         {
           id: 1,

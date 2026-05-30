@@ -1,27 +1,26 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { 
   Shield, 
   Plus, 
-  AlertTriangle, 
   CheckCircle, 
   Clock, 
   Download, 
   ArrowLeft,
   Settings,
-  Check,
   X,
   RefreshCw,
   Lock,
   Globe,
   FileText,
   Gauge,
-  ListChecks,
   TableProperties,
-  Building2
+  Building2,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL } from './config';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, isLocalRuntimeHost } from './config';
 
 let runtimeApiBaseUrl = API_BASE_URL;
 
@@ -35,7 +34,7 @@ const fetchWithFallback = async (path: string, init?: RequestInit) => {
   if (
     first.status === 404 &&
     runtimeApiBaseUrl === '/api' &&
-    window.location.hostname === 'localhost'
+    isLocalRuntimeHost(window.location.hostname)
   ) {
     runtimeApiBaseUrl = API_FALLBACK_BASE_URL;
     return fetch(apiUrl(path), init);
@@ -47,6 +46,7 @@ const fetchWithFallback = async (path: string, init?: RequestInit) => {
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const currentProjectRef = useRef<Project | null>(null);
   const [currentScan, setCurrentScan] = useState<Scan | null>(null);
   const [selectedUrlResult, setSelectedUrlResult] = useState<UrlResult | null>(null);
   
@@ -54,26 +54,37 @@ export default function App() {
   
   // Modals / Forms
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showNewScan, setShowNewScan] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectDomain, setNewProjectDomain] = useState('');
   const [newProjectVo, setNewProjectVo] = useState(4); // default Media
   const [newProjectEntityType, setNewProjectEntityType] = useState('Sector privado');
+  const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectVo, setEditProjectVo] = useState(4);
+  const [editProjectEntityType, setEditProjectEntityType] = useState('Sector privado');
   
   const [newScanUrls, setNewScanUrls] = useState('');
   const [newScanMode, setNewScanMode] = useState<'rápido' | 'estándar' | 'profundo'>('estándar');
   const [newScanUx, setNewScanUx] = useState(4); // default Media
   const [preNavigationScript, setPreNavigationScript] = useState('');
 
-  // Filters for violations
-  const [filterRole, setFilterRole] = useState<string>('todos');
-  const [filterLevel] = useState<string>('todos');
-  const [filterSeverity, setFilterSeverity] = useState<string>('todos');
-  const [expandedViolationIndex, setExpandedViolationIndex] = useState<number | null>(null);
+  // Filters for the unified WCAG criteria table
+  const [criterionApplicabilityFilter, setCriterionApplicabilityFilter] = useState<string>('todos');
+  const [criterionResultFilter, setCriterionResultFilter] = useState<string>('todos');
+  const [criterionLevelFilter, setCriterionLevelFilter] = useState<string>('todos');
+  const [criterionRoleFilter, setCriterionRoleFilter] = useState<string>('todos');
+  const [criterionSeverityFilter, setCriterionSeverityFilter] = useState<string>('todos');
+  const [criterionViewMode, setCriterionViewMode] = useState<'normal' | 'principles'>('normal');
+  const [expandedCriterionId, setExpandedCriterionId] = useState<string | null>(null);
+  const [updatingCriterionId, setUpdatingCriterionId] = useState<string | null>(null);
   
   // Realtime scan progress state
   const [scanProgress, setScanProgress] = useState<Record<string, number>>({});
   const [appError, setAppError] = useState<string | null>(null);
+
+  useEffect(() => {
+    currentProjectRef.current = currentProject;
+  }, [currentProject]);
 
   const handleApiError = (context: string, err: unknown) => {
     console.error(context, err);
@@ -102,7 +113,7 @@ export default function App() {
         return next;
       });
       // Refresh current project or scan if active
-      if (currentProject) fetchProjectDetails(currentProject.id);
+      if (currentProjectRef.current) fetchProjectDetails(currentProjectRef.current.id);
       fetchProjects();
     });
 
@@ -117,7 +128,7 @@ export default function App() {
       const res = await fetchWithFallback('/projects');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setProjects(data);
+      setProjects([...data].sort((a: Project, b: Project) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (err) {
       handleApiError('No se pudieron cargar los proyectos', err);
     }
@@ -163,7 +174,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newProjectName,
-          domain: newProjectDomain,
+          domain: null,
           vo: newProjectVo,
           entityType: newProjectEntityType
         })
@@ -171,7 +182,6 @@ export default function App() {
       if (res.ok) {
         setShowCreateProject(false);
         setNewProjectName('');
-        setNewProjectDomain('');
         fetchProjects();
       } else {
         throw new Error(`HTTP ${res.status}`);
@@ -218,7 +228,86 @@ export default function App() {
     }
   };
 
-  const handleManualVerificationUpdate = async (verificationId: string, status: string) => {
+  const handleDeleteProject = async (project: Project, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const confirmed = window.confirm(`¿Eliminar el proyecto "${project.name}" y todos sus análisis?`);
+    if (!confirmed) return;
+
+    try {
+      setAppError(null);
+      const res = await fetchWithFallback(`/projects/${project.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      if (currentProject?.id === project.id) {
+        setCurrentProject(null);
+        setCurrentScan(null);
+        setSelectedUrlResult(null);
+        setView('projects');
+      }
+      fetchProjects();
+    } catch (err) {
+      handleApiError('No se pudo eliminar el proyecto', err);
+    }
+  };
+
+  const openEditProject = (project: Project, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setEditingProject(project);
+    setEditProjectName(project.name);
+    setEditProjectVo(project.vo);
+    setEditProjectEntityType(project.entityType);
+  };
+
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+
+    try {
+      setAppError(null);
+      const res = await fetchWithFallback(`/projects/${editingProject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editProjectName,
+          vo: editProjectVo,
+          entityType: editProjectEntityType,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const updated = await res.json();
+      setEditingProject(null);
+      if (currentProject?.id === updated.id) {
+        setCurrentProject(updated);
+      }
+      fetchProjects();
+    } catch (err) {
+      handleApiError('No se pudo actualizar el proyecto', err);
+    }
+  };
+
+  const handleDeleteScan = async (scan: Scan, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const confirmed = window.confirm(`¿Eliminar este análisis ${scan.scanMode} del historial?`);
+    if (!confirmed) return;
+
+    try {
+      setAppError(null);
+      const res = await fetchWithFallback(`/scans/${scan.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      if (currentScan?.id === scan.id) {
+        setCurrentScan(null);
+        setSelectedUrlResult(null);
+      }
+      if (currentProject) fetchProjectDetails(currentProject.id);
+      fetchProjects();
+    } catch (err) {
+      handleApiError('No se pudo eliminar el análisis', err);
+    }
+  };
+
+  const handleManualVerificationUpdate = async (verificationId: string, status: 'pending' | 'approved' | 'failed' | 'not_applicable') => {
     if (!selectedUrlResult) return;
     try {
       setAppError(null);
@@ -237,6 +326,30 @@ export default function App() {
       }
     } catch (err) {
       handleApiError('No se pudo actualizar la verificación manual', err);
+    }
+  };
+
+  const handleApplicabilityUpdate = async (criterionId: string, estado: 'aplica' | 'no_aplica') => {
+    if (!selectedUrlResult) return;
+
+    try {
+      setAppError(null);
+      setUpdatingCriterionId(criterionId);
+      const res = await fetchWithFallback(`/url-results/${selectedUrlResult.id}/applicability`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ criterionId, estado }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const updatedResult = await res.json();
+      setSelectedUrlResult(updatedResult);
+      if (currentScan) fetchScanDetails(currentScan.id);
+    } catch (err) {
+      handleApiError('No se pudo actualizar la aplicabilidad del criterio', err);
+    } finally {
+      setUpdatingCriterionId(null);
     }
   };
 
@@ -297,6 +410,7 @@ export default function App() {
     score: number | null | undefined,
     label = 'Score',
     size: 'compact' | 'large' = 'compact',
+    showCaption = true,
   ) => {
     const meta = getScoreMeta(score);
     return (
@@ -308,9 +422,14 @@ export default function App() {
         <div className="report-score-track" aria-label={`${label}: ${meta.value} de 100`}>
           <div className="report-score-fill" style={{ width: `${meta.value}%` }} />
         </div>
-        <span className="report-score-caption">{meta.label}</span>
+        {showCaption && <span className="report-score-caption">{meta.label}</span>}
       </div>
     );
+  };
+
+  const openInspectionUrl = (url: string) => {
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    window.open(normalized, '_blank', 'noopener,noreferrer');
   };
 
   const renderStatusBadge = (status: string) => {
@@ -330,29 +449,107 @@ export default function App() {
     );
   };
 
-  // Helper to determine Sello de Accesibilidad eligibility
-  const checkSelloEligibility = (scan: Scan | null) => {
-    if (!scan || !scan.globalScore) return { eligible: false, message: 'Falta completar el análisis' };
-    
-    // Sello conditions:
-    // 1. WCAG compliance score >= 90
-    // 2. All critical violations solved (score penalty depends on this)
-    // 3. Manual validations approved (no pending status)
-    const hasPendingManual = scan.urlResults?.some(ur => 
-      ur.manualVerifications?.some(mv => mv.status === 'pending')
-    );
-
-    if (scan.globalScore < 90) {
-      return { eligible: false, message: 'Puntaje de accesibilidad menor a 90' };
-    }
-    if (hasPendingManual) {
-      return { eligible: false, message: 'Requiere completar las verificaciones manuales' };
-    }
-    
-    return { eligible: true, message: '¡Cumple con las condiciones para el Sello!' };
+  const getFindingStatusLabel = (violation: UrlResult['violations'][number]) => {
+    const status = violation.findingStatus || violation.status || 'confirmed';
+    if (violation.statusLabel) return violation.statusLabel;
+    if (status === 'not_evaluated') return 'No evaluado';
+    if (status === 'not_applicable') return 'No aplicable';
+    if (status === 'needs_review') return 'Requiere revisión';
+    return 'Confirmado';
   };
 
-  const checklist83 = Array.from({ length: 83 }, (_, i) => {
+  const getFindingStatusClass = (violation: UrlResult['violations'][number]) => {
+    const status = violation.findingStatus || violation.status || 'confirmed';
+    if (status === 'confirmed') return 'report-status-approved';
+    if (status === 'not_evaluated') return 'report-status-pending';
+    if (status === 'not_applicable') return 'report-status-pending';
+    return 'report-status-pending';
+  };
+
+  const getApplicabilityRows = (urlResult: UrlResult) => {
+    const violationsByCriterion = new Map<string, UrlResult['violations']>();
+    for (const violation of urlResult.violations || []) {
+      const current = violationsByCriterion.get(violation.criterion) || [];
+      current.push(violation);
+      violationsByCriterion.set(violation.criterion, current);
+    }
+
+    const manualByCriterion = new Map<string, UrlResult['manualVerifications']>();
+    for (const verification of urlResult.manualVerifications || []) {
+      const current = manualByCriterion.get(verification.criterion) || [];
+      current.push(verification);
+      manualByCriterion.set(verification.criterion, current);
+    }
+
+    return (urlResult.applicability?.criteria || []).map((criterion) => {
+      const findings = violationsByCriterion.get(criterion.id) || [];
+      const confirmedFindings = findings.filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed');
+      const manualVerifications = manualByCriterion.get(criterion.id) || [];
+      const hasManualFailure = manualVerifications.some((verification) => verification.status === 'failed');
+      const hasManualNotApplicable = manualVerifications.some((verification) => verification.status === 'not_applicable');
+      return {
+        ...criterion,
+        findings,
+        manualVerifications,
+        primaryFinding: confirmedFindings[0] || findings[0],
+        uiStatus: criterion.estado === 'no_aplica' || hasManualNotApplicable ? 'na' : confirmedFindings.length > 0 || hasManualFailure ? 'falla' : 'cumple',
+      };
+    });
+  };
+
+  const getManualStatusLabel = (status: string) => {
+    if (status === 'approved') return 'Cumple';
+    if (status === 'failed') return 'No cumple';
+    if (status === 'not_applicable') return 'No aplica';
+    return 'Pendiente';
+  };
+
+  const getApplicabilityStatusLabel = (status: string) => {
+    if (status === 'cumple') return 'Cumple';
+    if (status === 'falla') return 'Falla';
+    if (status === 'na') return 'N/A';
+    return 'Sin hallazgos';
+  };
+
+  const getApplicabilityStatusClass = (status: string) => {
+    if (status === 'cumple') return 'report-status-approved';
+    if (status === 'falla') return 'report-status-failed';
+    return 'report-status-pending';
+  };
+
+  const getWcagPrinciple = (criterionId: string) => {
+    const principle = criterionId?.split('.')[0];
+    if (principle === '1') return { id: '1', title: 'Perceptible', description: 'Información y componentes presentados de forma que puedan percibirse.' };
+    if (principle === '2') return { id: '2', title: 'Operable', description: 'Interfaz y navegación utilizables por teclado, tiempo y mecanismos previsibles.' };
+    if (principle === '3') return { id: '3', title: 'Comprensible', description: 'Contenido e interacción entendibles para las personas usuarias.' };
+    if (principle === '4') return { id: '4', title: 'Robusto', description: 'Contenido compatible con tecnologías de asistencia y agentes de usuario.' };
+    return { id: 'otros', title: 'Otros criterios', description: 'Validaciones complementarias o referencias fuera de los cuatro principios WCAG.' };
+  };
+
+  const getWcagGuideline = (criterionId: string) => {
+    const guidelineId = criterionId?.split('.').slice(0, 2).join('.');
+    const guidelines: Record<string, { title: string; description: string }> = {
+      '1.1': { title: 'Alternativas textuales', description: 'Alternativas para contenido no textual.' },
+      '1.2': { title: 'Medios temporales', description: 'Alternativas, subtítulos y descripciones para audio y video.' },
+      '1.3': { title: 'Adaptable', description: 'Contenido presentable de distintas formas sin perder información.' },
+      '1.4': { title: 'Distinguible', description: 'Separación visual y auditiva suficiente para percibir el contenido.' },
+      '2.1': { title: 'Accesible por teclado', description: 'Funcionalidad disponible desde teclado sin bloqueos.' },
+      '2.2': { title: 'Tiempo suficiente', description: 'Tiempo adecuado para leer, operar y completar tareas.' },
+      '2.3': { title: 'Convulsiones y reacciones físicas', description: 'Prevención de destellos y animaciones que causen reacciones.' },
+      '2.4': { title: 'Navegable', description: 'Mecanismos para encontrar contenido, ubicarse y navegar.' },
+      '2.5': { title: 'Modalidades de entrada', description: 'Interacción accesible por puntero, gestos, movimiento y otros mecanismos.' },
+      '3.1': { title: 'Legible', description: 'Texto comprensible, idioma identificado y apoyo para lectura.' },
+      '3.2': { title: 'Predecible', description: 'Comportamientos consistentes y cambios de contexto controlados.' },
+      '3.3': { title: 'Asistencia en la entrada', description: 'Ayuda para prevenir, identificar y corregir errores.' },
+      '4.1': { title: 'Compatible', description: 'Compatibilidad con tecnologías de asistencia y agentes de usuario.' },
+    };
+    const guideline = guidelines[guidelineId];
+    return guideline
+      ? { id: guidelineId, ...guideline }
+      : { id: 'otros', title: 'Pauta no clasificada', description: 'Criterios complementarios sin pauta WCAG específica.' };
+  };
+
+  const checklist86 = Array.from({ length: 86 }, (_, i) => {
     const n = i + 1;
     return `Criterio ${n.toString().padStart(2, '0')} — WCAG 2.2`;
   });
@@ -373,6 +570,47 @@ export default function App() {
     : 0;
   const projectsAtRisk = latestScans.filter((scan) => (scan.globalScore ?? 0) < 50).length;
   const runningAnalyses = latestScans.filter((scan) => scan.status === 'running' || scan.status === 'pending').length;
+  const parsedNewScanUrls = newScanUrls
+    .split(/[\n,]+/)
+    .map(url => url.trim())
+    .filter(Boolean);
+  const applicabilityRows = selectedUrlResult ? getApplicabilityRows(selectedUrlResult) : [];
+  const filteredApplicabilityRows = applicabilityRows.filter((row) => {
+    if (criterionApplicabilityFilter !== 'todos' && row.estado !== criterionApplicabilityFilter) return false;
+    if (criterionResultFilter !== 'todos' && row.uiStatus !== criterionResultFilter) return false;
+    if (criterionLevelFilter !== 'todos' && row.nivel !== criterionLevelFilter) return false;
+    if (criterionRoleFilter !== 'todos' && !row.findings.some((finding) => finding.role === criterionRoleFilter)) return false;
+    if (
+      criterionSeverityFilter !== 'todos' &&
+      !row.findings.some((finding) => finding.severity?.normalize('NFD').replace(/[\u0300-\u036f]/g, '') === criterionSeverityFilter)
+    ) return false;
+    return true;
+  });
+  const groupedApplicabilityRows = filteredApplicabilityRows.reduce<Array<
+    | { kind: 'principle'; key: string; title: string; description: string; count: number }
+    | { kind: 'guideline'; key: string; title: string; description: string; count: number }
+    | { kind: 'row'; key: string; row: (typeof filteredApplicabilityRows)[number] }
+  >>((items, row) => {
+    if (criterionViewMode === 'principles') {
+      const principle = getWcagPrinciple(row.id);
+      const guideline = getWcagGuideline(row.id);
+      const currentPrinciple = items.find((item) => item.kind === 'principle' && item.key === principle.id);
+      if (currentPrinciple && currentPrinciple.kind === 'principle') {
+        currentPrinciple.count += 1;
+      } else {
+        items.push({ kind: 'principle', key: principle.id, title: principle.title, description: principle.description, count: 1 });
+      }
+      const currentGuideline = items.find((item) => item.kind === 'guideline' && item.key === guideline.id);
+      if (currentGuideline && currentGuideline.kind === 'guideline') {
+        currentGuideline.count += 1;
+      } else {
+        items.push({ kind: 'guideline', key: guideline.id, title: guideline.title, description: guideline.description, count: 1 });
+      }
+    }
+    items.push({ kind: 'row', key: row.id, row });
+    return items;
+  }, []);
+  const applicabilitySummary = selectedUrlResult?.applicability?.summary;
 
   return (
     <div className="min-h-screen text-slate-900 font-sans">
@@ -401,7 +639,11 @@ export default function App() {
         </div>
       </header>
 
-      <main id="main-content" className="max-w-7xl mx-auto p-6" tabIndex={-1}>
+      <main
+        id="main-content"
+        className={`app-main-content ${view === 'scan' ? 'report-page-main' : view === 'projects' ? 'projects-page-main' : view === 'project' ? 'project-detail-page-main' : 'max-w-7xl'} mx-auto p-6`}
+        tabIndex={-1}
+      >
         <p className="visually-hidden" aria-live="polite">
           Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : 'Informe de escaneo'}
         </p>
@@ -412,8 +654,8 @@ export default function App() {
         )}
         {/* VIEW: PROJECTS OVERVIEW */}
         {view === 'projects' && (
-          <div className="space-y-6 report-surface">
-            <div className="flex justify-between items-center">
+          <div className="report-surface project-overview-surface">
+            <div className="project-overview-header flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold text-white">Proyectos Digitales</h2>
                 <p className="text-slate-300 text-sm">Monitorea y gestiona el cumplimiento de accesibilidad de los servicios públicos o privados.</p>
@@ -450,7 +692,7 @@ export default function App() {
             </section>
 
             {/* Grid of Projects */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="project-card-grid">
               {projects.length === 0 ? (
                 <div className="col-span-full report-empty-state">
                   <Globe className="h-12 w-12 mx-auto mb-4 text-slate-400" />
@@ -459,15 +701,25 @@ export default function App() {
                 </div>
               ) : projects.map(p => {
                 const lastScan = p.scans && p.scans.length > 0 ? p.scans[p.scans.length - 1] : null;
+                const scoreMeta = getScoreMeta(lastScan?.globalScore);
                 return (
-                  <button
-                    type="button"
+                  <div
                     key={p.id}
                     onClick={() => {
                       setCurrentProject(p);
                       fetchProjectDetails(p.id);
                       setView('project');
                     }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setCurrentProject(p);
+                        fetchProjectDetails(p.id);
+                        setView('project');
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                     className="report-card-entity"
                     aria-label={`Ver detalles del proyecto ${p.name}`}
                   >
@@ -476,25 +728,46 @@ export default function App() {
                         <div className="bg-blue-50 p-3 rounded-xl">
                           <Globe className="h-6 w-6 text-gob-blue" />
                         </div>
-                        <span className="report-entity-badge">
-                          {p.entityType}
-                        </span>
+                        <div className="project-card-actions">
+                          <span className="report-entity-badge">
+                            {p.entityType}
+                          </span>
+                          <button
+                            type="button"
+                            className="report-neutral-icon-btn"
+                            aria-label={`Editar proyecto ${p.name}`}
+                            onClick={(event) => openEditProject(p, event)}
+                          >
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="report-danger-icon-btn"
+                            aria-label={`Eliminar proyecto ${p.name}`}
+                            onClick={(event) => handleDeleteProject(p, event)}
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
-                      <h3 className="font-bold text-lg text-gob-dark mb-1 group-hover:text-gob-blue transition-colors">{p.name}</h3>
-                      <p className="text-slate-500 text-sm mb-4 break-all">{p.domain}</p>
+                      <h3 className="font-bold text-lg text-gob-dark project-card-title group-hover:text-gob-blue transition-colors">{p.name}</h3>
+                      <p className="text-slate-500 text-sm project-card-domain break-all">{p.domain || 'Sin URL principal'}</p>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-4 mt-4 space-y-4">
-                      {renderScoreMeter(lastScan?.globalScore, 'Score promedio')}
+                    <div className="project-card-meter border-t border-slate-100">
+                      {renderScoreMeter(lastScan?.globalScore, 'Score promedio', 'compact', false)}
 
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Priorización (Vp)</span>
+                      <div className="project-card-badges">
+                        <span className={`project-compliance-badge project-compliance-${scoreMeta.tone}`}>
+                          {scoreMeta.label}
+                        </span>
+                        <span className="project-vp-badge">Priorización (Vp)</span>
                         <span className={getVpCategory(lastScan?.vp || null).color}>
                           {getVpCategory(lastScan?.vp || null).label}
                         </span>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -534,18 +807,6 @@ export default function App() {
                             className="create-project-control"
                             value={newProjectName}
                             onChange={e => setNewProjectName(e.target.value)}
-                          />
-                        </div>
-                        <div className="create-project-field">
-                          <label htmlFor="new-project-domain">Dominio / URL principal</label>
-                          <input
-                            id="new-project-domain"
-                            type="text"
-                            required
-                            placeholder="https://www.munlima.gob.pe"
-                            className="create-project-control"
-                            value={newProjectDomain}
-                            onChange={e => setNewProjectDomain(e.target.value)}
                           />
                         </div>
                       </section>
@@ -601,12 +862,99 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {editingProject && (
+              <div className="fixed inset-0 report-modal-overlay flex items-center justify-center p-4" role="presentation">
+                <div className="report-modal create-project-modal" role="dialog" aria-modal="true" aria-labelledby="edit-project-title">
+                  <form onSubmit={handleUpdateProject}>
+                    <div className="create-project-modal-header">
+                      <div>
+                        <h3 id="edit-project-title">Editar proyecto</h3>
+                        <p>Actualiza los datos de clasificación y priorización del proyecto.</p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Cerrar modal de edición de proyecto"
+                        className="report-modal-close"
+                        onClick={() => setEditingProject(null)}
+                      >
+                        <X className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="create-project-modal-body">
+                      <section className="create-project-section">
+                        <div className="create-project-section-chip">
+                          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Datos básicos</span>
+                        </div>
+                        <div className="create-project-field">
+                          <label htmlFor="edit-project-name">Nombre del proyecto</label>
+                          <input
+                            id="edit-project-name"
+                            type="text"
+                            required
+                            className="create-project-control"
+                            value={editProjectName}
+                            onChange={e => setEditProjectName(e.target.value)}
+                          />
+                        </div>
+                      </section>
+                      <section className="create-project-section create-project-section-spaced">
+                        <div className="create-project-section-chip">
+                          <Building2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Clasificación institucional</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="create-project-field">
+                            <label htmlFor="edit-project-entity-type">Tipo de entidad</label>
+                            <div className="create-project-select-wrap">
+                              <select
+                                id="edit-project-entity-type"
+                                className="create-project-control"
+                                value={editProjectEntityType}
+                                onChange={e => setEditProjectEntityType(e.target.value)}
+                              >
+                                <option>Administración Pública Peruana</option>
+                                <option>Gobierno Regional</option>
+                                <option>Gobierno Local</option>
+                                <option>Empresa pública FONAFE</option>
+                                <option>Sector privado</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="create-project-field">
+                            <label htmlFor="edit-project-vo">Tráfico (Visitas - Vo)</label>
+                            <div className="create-project-select-wrap">
+                              <select
+                                id="edit-project-vo"
+                                className="create-project-control"
+                                value={editProjectVo}
+                                onChange={e => setEditProjectVo(parseInt(e.target.value))}
+                              >
+                                <option value="6">Alto (Vo = 6)</option>
+                                <option value="4">Medio (Vo = 4)</option>
+                                <option value="2">Bajo (Vo = 2)</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                    <div className="create-project-modal-footer">
+                      <button type="submit" className="create-project-submit">
+                        Guardar cambios
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* VIEW: PROJECT DETAILS */}
         {view === 'project' && currentProject && (
-          <div className="space-y-6 report-surface">
+          <div className="project-detail-surface report-surface">
             <div className="flex items-center space-x-3">
               <button 
                 onClick={() => setView('projects')}
@@ -621,11 +969,11 @@ export default function App() {
                     Vo = {currentProject.vo}
                   </span>
                 </div>
-                <p className="text-slate-300 text-sm">{currentProject.domain}</p>
+                <p className="text-slate-300 text-sm">{currentProject.domain || 'Sin URL principal registrada'}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="project-detail-layout">
               {/* Left column: project metrics */}
               <div className="report-panel report-panel-spacious space-y-8">
                 <h3 className="font-bold text-md text-gob-dark border-b border-slate-200 pb-3 uppercase tracking-wider text-xs">Métricas Legales</h3>
@@ -655,7 +1003,7 @@ export default function App() {
               </div>
 
               {/* Right column: list of scans */}
-              <div className="lg:col-span-2 report-panel report-panel-spacious space-y-8">
+              <div className="report-panel report-panel-spacious space-y-8">
                 <div className="flex justify-between items-center">
                   <h3 className="font-bold text-lg text-gob-dark">Historial de Análisis</h3>
                   <div className="text-xs text-slate-500">Total: {currentProject.scans?.length || 0} análisis</div>
@@ -678,9 +1026,21 @@ export default function App() {
                         className={`scan-history-item ${isRunning ? 'scan-history-running pointer-events-none' : 'hover:border-gob-blue/30 hover:shadow-md cursor-pointer'}`}
                       >
                         <div className="space-y-1">
-                          <div className="flex items-center space-x-2.5">
-                            <span className="text-sm font-semibold text-gob-dark">Análisis {scan.scanMode}</span>
-                            {renderStatusBadge(scan.status)}
+                          <div className="scan-history-title-row">
+                            <div className="flex items-center space-x-2.5">
+                              <span className="text-sm font-semibold text-gob-dark">Análisis {scan.scanMode}</span>
+                              {renderStatusBadge(scan.status)}
+                            </div>
+                            {!isRunning && (
+                              <button
+                                type="button"
+                                className="report-danger-icon-btn"
+                                aria-label={`Eliminar análisis ${scan.scanMode}`}
+                                onClick={(event) => handleDeleteScan(scan, event)}
+                              >
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              </button>
+                            )}
                           </div>
                           <div className="text-xs text-slate-500 flex items-center space-x-2">
                             <Clock className="h-3 w-3" />
@@ -743,6 +1103,25 @@ export default function App() {
                         value={newScanUrls}
                         onChange={e => setNewScanUrls(e.target.value)}
                       />
+                      {parsedNewScanUrls.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs text-slate-500">
+                            Abrir URL permite inspeccionar modales, términos o bloqueos. Las acciones en esa pestaña no se transfieren al navegador Playwright del escaneo.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {parsedNewScanUrls.map((url) => (
+                              <button
+                                key={url}
+                                type="button"
+                                className="report-ghost-btn text-xs"
+                                onClick={() => openInspectionUrl(url)}
+                              >
+                                Abrir URL
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -807,8 +1186,7 @@ export default function App() {
               {[
                 { anchor: 'score', label: 'Score General', Icon: Gauge },
                 { anchor: 'paginas', label: 'Páginas Auditadas', Icon: FileText },
-                { anchor: 'manual', label: 'Evaluación Manual', Icon: ListChecks },
-                { anchor: 'violaciones', label: 'Violaciones', Icon: TableProperties },
+                { anchor: 'criterios', label: 'Criterios y Hallazgos', Icon: TableProperties },
               ].map(({ anchor, label, Icon }) => (
                 <a key={anchor} href={`#${anchor}`} className="report-side-link">
                   <Icon className="h-4 w-4" />
@@ -817,7 +1195,7 @@ export default function App() {
               ))}
             </aside>
 
-            <div className="flex-1 space-y-6">
+            <div className="report-main-content report-section-stack">
               <section className="report-header-panel">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                   <div className="flex items-start gap-3">
@@ -844,13 +1222,13 @@ export default function App() {
                 <div className="report-peru-badge">Resolución N° 001-2025-PCM/SGTD · Estándar Oficial Perú</div>
               </section>
 
-              <section id="score" className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+              <section id="score" className="report-score-overview grid grid-cols-1 xl:grid-cols-5">
                 <div className="xl:col-span-2 report-panel">
                   <p className="report-kicker">Cumplimiento Global</p>
                   {renderScoreMeter(currentScan.globalScore, 'Score técnico', 'large')}
                 </div>
 
-                <div className="xl:col-span-3 grid md:grid-cols-2 gap-4">
+                <div className="xl:col-span-3 report-score-detail-grid grid md:grid-cols-2">
                   <div className="report-panel report-panel-spacious">
                     <p className="report-kicker">Fórmula de Priorización Peruana</p>
                     <p className="text-slate-700 font-semibold mt-1">(p = Vo({currentProject?.vo || 4}) + Ux({currentScan.ux})) / 16</p>
@@ -858,24 +1236,16 @@ export default function App() {
                     <span className={`${getVpCategory(currentScan.vp).color} mt-2`}>{getVpCategory(currentScan.vp).label}</span>
                   </div>
                   <div className="report-panel report-panel-spacious">
-                    <p className="report-kicker">Sello de Accesibilidad PCM</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      {checkSelloEligibility(currentScan).eligible ? <CheckCircle className="h-5 w-5 text-green-600" /> : <AlertTriangle className="h-5 w-5 text-yellow-600" />}
-                      <strong className="text-slate-900">{checkSelloEligibility(currentScan).eligible ? 'Elegible' : 'No Elegible'}</strong>
-                    </div>
-                    <p className="text-slate-400 text-sm mt-2">{checkSelloEligibility(currentScan).message}</p>
-                  </div>
-                  <div className="report-panel md:col-span-2">
                     <p className="report-kicker">Criterios de Verificación</p>
                     <div className="grid md:grid-cols-3 gap-3 mt-3">
-                      <div><p className="text-xs text-slate-500">Total Evaluados</p><p className="text-xl font-bold text-slate-900">83</p></div>
-                      <div><p className="text-xs text-slate-500">Estándar Aplicado</p><p className="text-xl font-bold text-slate-900">WCAG 2.2 AA/AAA</p></div>
+                      <div><p className="text-xs text-slate-500">Total de criterios</p><p className="text-xl font-bold text-slate-900">{applicabilitySummary?.totalCriteria ?? 86}</p></div>
+                      <div><p className="text-xs text-slate-500">Aplican al sitio</p><p className="text-xl font-bold text-slate-900">{applicabilitySummary?.applicableCount ?? '-'}</p></div>
                       <div><p className="text-xs text-slate-500">Páginas Auditadas</p><p className="text-xl font-bold text-slate-900">{currentScan.urlResults?.length || 0}</p></div>
                     </div>
                     <details className="mt-4 report-checklist">
-                      <summary>Ver checklist de 83 criterios</summary>
+                      <summary>Ver checklist de 86 criterios</summary>
                       <div className="report-checklist-grid">
-                        {checklist83.map((item) => (
+                        {(applicabilityRows.length > 0 ? applicabilityRows.map((row) => `${row.id} — ${row.nombre}`) : checklist86).map((item) => (
                           <span key={item} className="report-check-item">{item}</span>
                         ))}
                       </div>
@@ -896,7 +1266,7 @@ export default function App() {
                       <p className="font-mono text-xs text-slate-500 truncate text-left">{ur.url}</p>
                       <div className="mt-3 flex justify-between text-xs">
                         <span className="report-chip">Score {ur.score}</span>
-                        <span className="text-slate-400">{ur.violations?.length || 0} violaciones</span>
+                        <span className="text-slate-400">{ur.violations?.length || 0} hallazgos</span>
                       </div>
                     </button>
                   ))}
@@ -905,108 +1275,253 @@ export default function App() {
 
               {selectedUrlResult && (
                 <>
-                  <section id="manual" className="report-panel report-panel-spacious">
-                    <h3 className="report-section-title mb-3">Evaluación Semiautomática Manual</h3>
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {selectedUrlResult.manualVerifications?.length === 0 ? (
-                        <div className="col-span-full text-center py-8 text-slate-400 text-sm">No hay verificaciones manuales pendientes</div>
-                      ) : selectedUrlResult.manualVerifications?.map((mv) => (
-                        <div key={mv.id} className="report-manual-card">
-                          <div className="flex justify-between gap-2">
-                            <p className="text-sm text-gob-dark font-bold">Criterio {mv.criterion}: {mv.name}</p>
-                            <span className={`report-status-badge ${
-                              mv.status === 'approved' ? 'report-status-approved' :
-                              mv.status === 'failed' ? 'report-status-failed' :
-                              'report-status-pending'
-                            }`}>{mv.status}</span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-2">{mv.description}</p>
-                          <div className="mt-4 grid grid-cols-2 gap-2">
-                            <button onClick={() => handleManualVerificationUpdate(mv.id, 'approved')} className="report-approve-btn"><Check className="h-4 w-4" />Aprobar</button>
-                            <button onClick={() => handleManualVerificationUpdate(mv.id, 'failed')} className="report-reject-btn"><X className="h-4 w-4" />Rechazar</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                  <section id="violaciones" className="report-panel report-panel-spacious">
+                  <section id="criterios" className="report-panel report-panel-spacious">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                      <h3 className="report-section-title">Violaciones Detectadas ({selectedUrlResult.violations?.length || 0})</h3>
-                      <div className="flex flex-wrap gap-2">
-                        <select className="report-select min-w-0" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
-                          <option value="todos">Rol: Todos</option>
-                          <option value="Desarrollador">Desarrollador</option>
-                          <option value="Diseñador UX/UI">Diseñador UX/UI</option>
-                          <option value="Redactor UX">Redactor UX</option>
+                      <div>
+                        <h3 className="report-section-title">Criterios WCAG y Hallazgos</h3>
+                        <p className="text-sm text-slate-500 mt-1">
+                          {applicabilitySummary
+                            ? `Aplican ${applicabilitySummary.applicableCount} de ${applicabilitySummary.totalCriteria} criterios a este sitio. Cumple ${applicabilitySummary.passedCount}.`
+                            : 'Sin matriz de aplicabilidad para este resultado.'}
+                        </p>
+                      </div>
+                      <label className="report-view-mode-control">
+                        <span>Vista</span>
+                        <select
+                          aria-label="Cambiar vista de criterios WCAG"
+                          className="report-table-filter"
+                          value={criterionViewMode}
+                          onChange={e => setCriterionViewMode(e.target.value as 'normal' | 'principles')}
+                        >
+                          <option value="normal">Orden normal</option>
+                          <option value="principles">Por principios</option>
                         </select>
-                        <select className="report-select min-w-0" value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}>
-                          <option value="todos">Severidad: Todas</option>
-                          <option value="crítico">Alto / Crítico</option>
-                          <option value="alto">Alto</option>
-                          <option value="medio">Medio</option>
-                          <option value="bajo">Bajo</option>
-                        </select>
+                      </label>
+                    </div>
+
+                    <div className="report-applicability-summary-row">
+                      <div className="report-applicability-card">
+                        <span>Total</span>
+                        <strong>{applicabilitySummary?.totalCriteria ?? 86}</strong>
+                      </div>
+                      <div className="report-applicability-card">
+                        <span>Aplican</span>
+                        <strong>{applicabilitySummary?.applicableCount ?? 0}</strong>
+                      </div>
+                      <div className="report-applicability-card">
+                        <span>Cumplen</span>
+                        <strong>{applicabilitySummary?.passedCount ?? 0}</strong>
+                      </div>
+                      <div className="report-applicability-card">
+                        <span>Fallan</span>
+                        <strong>{applicabilitySummary?.failedCount ?? 0}</strong>
+                      </div>
+                      <div className="report-applicability-card">
+                        <span>No aplican</span>
+                        <strong>{applicabilitySummary?.notApplicableCount ?? 0}</strong>
                       </div>
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full report-table report-table-spacious" aria-label="Tabla de violaciones de accesibilidad">
+                      <table className="w-full report-table report-table-spacious" aria-label="Tabla unificada de criterios WCAG y hallazgos">
                         <thead>
                           <tr>
                             <th>Criterio</th>
-                            <th>Nivel</th>
+                            <th>
+                              <div className="report-table-header-cell">
+                                <span className="report-table-filter-label">Nivel WCAG</span>
+                                <select aria-label="Filtrar por nivel WCAG" className="report-table-filter" value={criterionLevelFilter} onChange={e => setCriterionLevelFilter(e.target.value)}>
+                                  <option value="todos">Todos</option>
+                                  <option value="A">A</option>
+                                  <option value="AA">AA</option>
+                                  <option value="AAA">AAA</option>
+                                </select>
+                              </div>
+                            </th>
+                            <th>
+                              <div className="report-table-header-cell">
+                                <span className="report-table-filter-label">Aplicabilidad</span>
+                                <select aria-label="Filtrar por aplicabilidad" className="report-table-filter" value={criterionApplicabilityFilter} onChange={e => setCriterionApplicabilityFilter(e.target.value)}>
+                                  <option value="todos">Todos</option>
+                                  <option value="aplica">Aplica</option>
+                                  <option value="no_aplica">No aplica</option>
+                                </select>
+                              </div>
+                            </th>
+                            <th>
+                              <div className="report-table-header-cell">
+                                <span className="report-table-filter-label">Resultado</span>
+                                <select aria-label="Filtrar por resultado" className="report-table-filter" value={criterionResultFilter} onChange={e => setCriterionResultFilter(e.target.value)}>
+                                  <option value="todos">Todos</option>
+                                  <option value="cumple">Cumple</option>
+                                  <option value="falla">Falla</option>
+                                  <option value="na">N/A</option>
+                                </select>
+                              </div>
+                            </th>
+                            <th>Nombre</th>
+                            <th>Razón</th>
+                            <th>Hallazgos</th>
+                            <th>
+                              <div className="report-table-header-cell">
+                                <span className="report-table-filter-label">Severidad</span>
+                                <select aria-label="Filtrar por severidad" className="report-table-filter" value={criterionSeverityFilter} onChange={e => setCriterionSeverityFilter(e.target.value)}>
+                                  <option value="todos">Todas</option>
+                                  <option value="critico">Crítico</option>
+                                  <option value="alto">Alto</option>
+                                  <option value="medio">Medio</option>
+                                  <option value="bajo">Bajo</option>
+                                </select>
+                              </div>
+                            </th>
+                            <th>Estado hallazgo</th>
+                            <th>Evaluación manual</th>
+                            <th>Vista evaluada</th>
                             <th>Descripción</th>
                             <th>Selector CSS</th>
-                            <th>Rol</th>
+                            <th>
+                              <div className="report-table-header-cell">
+                                <span className="report-table-filter-label">Rol</span>
+                                <select aria-label="Filtrar por rol" className="report-table-filter" value={criterionRoleFilter} onChange={e => setCriterionRoleFilter(e.target.value)}>
+                                  <option value="todos">Todos</option>
+                                  <option value="Desarrollador">Desarrollador</option>
+                                  <option value="Diseñador UX/UI">Diseñador UX/UI</option>
+                                  <option value="Redactor UX">Redactor UX</option>
+                                  <option value="Compartido">Compartido</option>
+                                </select>
+                              </div>
+                            </th>
                             <th>Solución sugerida</th>
                             <th>Artículo legal</th>
                             <th>Evidencia</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedUrlResult.violations
-                            ?.filter(v => (filterRole === 'todos' || v.role === filterRole || v.role === 'Compartido') &&
-                              (filterLevel === 'todos' || v.level === filterLevel) &&
-                              (filterSeverity === 'todos' || v.severity === filterSeverity || (filterSeverity === 'crítico' && v.severity === 'crítico')))
-                            .map((violation, index) => (
-                              <React.Fragment key={index}>
-                                <tr className="report-row-hover">
-                                  <td>{violation.criterion}</td>
-                                  <td><span className={`report-severity-chip ${
-                                    violation.severity === 'crítico' || violation.severity === 'alto' ? 'report-sev-high' :
-                                    violation.severity === 'medio' ? 'report-sev-medium' :
-                                    'report-sev-low'
-                                  }`}>{violation.severity}</span></td>
-                                  <td>{violation.description}</td>
-                                  <td><code className="report-code">{violation.selector}</code></td>
-                                  <td>{violation.role}</td>
-                                  <td>{violation.suggestedFix}</td>
-                                  <td>{violation.resolutionArticle}</td>
-                                  <td>
-                                    <button onClick={() => setExpandedViolationIndex(expandedViolationIndex === index ? null : index)} className="report-evidence-btn">
-                                      {expandedViolationIndex === index ? 'Ocultar' : 'Ver'}
-                                    </button>
+                          {filteredApplicabilityRows.length === 0 ? (
+                            <tr>
+                              <td colSpan={17} className="text-center text-slate-500">No hay criterios para el filtro seleccionado.</td>
+                            </tr>
+                          ) : groupedApplicabilityRows.map((item) => {
+                            if (item.kind === 'principle') {
+                              return (
+                                <tr key={`principle-${item.key}`} className="report-principle-row">
+                                  <td colSpan={17}>
+                                    <div className="report-principle-row-content">
+                                      <strong>{item.key === 'otros' ? item.title : `${item.key}. ${item.title}`}</strong>
+                                      <span>{item.description}</span>
+                                      <em>{item.count} criterio(s)</em>
+                                    </div>
                                   </td>
                                 </tr>
-                                {expandedViolationIndex === index && (
+                              );
+                            }
+                            if (item.kind === 'guideline') {
+                              return (
+                                <tr key={`guideline-${item.key}`} className="report-guideline-row">
+                                  <td colSpan={17}>
+                                    <div className="report-guideline-row-content">
+                                      <strong>{item.key === 'otros' ? item.title : `Pauta ${item.key}. ${item.title}`}</strong>
+                                      <span>{item.description}</span>
+                                      <em>{item.count} criterio(s)</em>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            const row = item.row;
+                            const finding = row.primaryFinding;
+                            return (
+                              <React.Fragment key={item.key}>
+                                <tr className="report-row-hover">
+                                  <td>{row.id}</td>
+                                  <td>{row.nivel}</td>
+                                  <td>
+                                    <select
+                                      aria-label={`Editar aplicabilidad del criterio ${row.id}`}
+                                      className="report-table-filter report-applicability-edit"
+                                      value={row.estado}
+                                      disabled={updatingCriterionId === row.id}
+                                      onChange={e => handleApplicabilityUpdate(row.id, e.target.value as 'aplica' | 'no_aplica')}
+                                    >
+                                      <option value="aplica">Aplica</option>
+                                      <option value="no_aplica">No aplica</option>
+                                    </select>
+                                  </td>
+                                  <td>{row.estado === 'no_aplica' ? '' : <span className={`report-status-badge ${getApplicabilityStatusClass(row.uiStatus)}`}>{getApplicabilityStatusLabel(row.uiStatus)}</span>}</td>
+                                  <td>{row.nombre}</td>
+                                  <td>{row.razon}</td>
+                                  <td>
+                                    {row.estado === 'aplica' && row.findings.length > 0 ? `${row.findings.length} hallazgo(s)` : ''}
+                                    {row.manualVerifications.length > 0 ? `${row.findings.length > 0 ? ' + ' : ''}${row.manualVerifications.length} manual` : ''}
+                                  </td>
+                                  <td>{finding ? <span className={`report-severity-chip ${
+                                    finding.severity === 'crítico' || finding.severity === 'critico' || finding.severity === 'alto' ? 'report-sev-high' :
+                                    finding.severity === 'medio' ? 'report-sev-medium' :
+                                    'report-sev-low'
+                                  }`}>{finding.severity}</span> : ''}</td>
+                                  <td>{finding ? <span className={`report-status-badge ${getFindingStatusClass(finding)}`}>{getFindingStatusLabel(finding)}</span> : ''}</td>
+                                  <td>
+                                    {row.manualVerifications.length > 0 ? (
+                                      <div className="report-manual-inline">
+                                        {row.manualVerifications.map((manual) => (
+                                          <label key={manual.id} className="report-manual-inline-item">
+                                            <span>{manual.name}</span>
+                                            <select
+                                              className="report-table-filter"
+                                              value={manual.status}
+                                              onChange={(event) => handleManualVerificationUpdate(manual.id, event.target.value as 'pending' | 'approved' | 'failed' | 'not_applicable')}
+                                            >
+                                              <option value="pending">Pendiente</option>
+                                              <option value="approved">Cumple</option>
+                                              <option value="failed">No cumple</option>
+                                              <option value="not_applicable">No aplica</option>
+                                            </select>
+                                            <small>{getManualStatusLabel(manual.status)}</small>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    ) : ''}
+                                  </td>
+                                  <td>{finding ? finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales') : ''}</td>
+                                  <td>{finding?.description || row.manualVerifications.map((manual) => manual.description).join(' | ')}</td>
+                                  <td>{finding ? <code className="report-code">{finding.selector}</code> : ''}</td>
+                                  <td>{finding?.role || ''}</td>
+                                  <td>{finding?.suggestedFix || ''}</td>
+                                  <td>{finding?.resolutionArticle || ''}</td>
+                                  <td>
+                                    {row.findings.length > 0 ? (
+                                      <button onClick={() => setExpandedCriterionId(expandedCriterionId === row.id ? null : row.id)} className="report-evidence-btn">
+                                        {expandedCriterionId === row.id ? 'Ocultar' : 'Ver'}
+                                      </button>
+                                    ) : ''}
+                                  </td>
+                                </tr>
+                                {expandedCriterionId === row.id && row.findings.length > 0 && (
                                   <tr>
-                                    <td colSpan={8} className="report-evidence-cell">
-                                      <div className="grid md:grid-cols-2 gap-4">
-                                        <pre className="report-html-block"><code>{violation.elementHtml}</code></pre>
-                                        {violation.screenshotUrl ? (
-                                          <a href={violation.screenshotUrl} target="_blank" rel="noreferrer" className="report-evidence-link">
-                                            <img src={violation.screenshotUrl} alt="Evidencia visual" className="w-full rounded-lg border border-slate-200" />
-                                          </a>
-                                        ) : (
-                                          <div className="report-no-evidence">Sin evidencia visual disponible</div>
-                                        )}
+                                    <td colSpan={17} className="report-evidence-cell">
+                                      <div className="space-y-4">
+                                        {row.findings.map((item, itemIndex) => (
+                                          <div key={`${row.id}-${itemIndex}`} className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                              <p className="text-xs font-bold text-slate-500 mb-2">{item.pageStateLabel || (item.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales')} · {getFindingStatusLabel(item)}</p>
+                                              <pre className="report-html-block"><code>{item.elementHtml}</code></pre>
+                                            </div>
+                                            {item.screenshotUrl ? (
+                                              <a href={item.screenshotUrl} target="_blank" rel="noreferrer" className="report-evidence-link">
+                                                <img src={item.screenshotUrl} alt="Evidencia visual" className="w-full rounded-lg border border-slate-200" />
+                                              </a>
+                                            ) : (
+                                              <div className="report-no-evidence">Sin evidencia visual disponible</div>
+                                            )}
+                                          </div>
+                                        ))}
                                       </div>
                                     </td>
                                   </tr>
                                 )}
                               </React.Fragment>
-                            ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

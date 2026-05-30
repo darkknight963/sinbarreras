@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ScansService } from './scans.service';
 
 @Controller('scans')
@@ -24,5 +24,10 @@ export class ScansController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.scansService.findOne(id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.scansService.remove(id);
   }
 }

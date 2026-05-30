@@ -13,7 +13,7 @@ import { Scan } from '../scans/entities/scan.entity';
  *   Sheet 3: Errores del Desarrollador
  *   Sheet 4: Errores del Diseñador UX/UI
  *   Sheet 5: Errores del Redactor UX
- *   Sheet 6: Checklist 83 Criterios WCAG 2.2
+ *   Sheet 6: Checklist 86 Criterios WCAG 2.2
  *   Sheet 7: Normativa Peruana
  *   Sheet 8: Matriz de Priorización
  */
@@ -44,9 +44,10 @@ export class ExcelService {
     ];
     this.styleHeader(summarySheet);
 
-    const totalViolations = scan.urlResults?.reduce(
-      (acc, ur) => acc + (ur.violations?.length || 0), 0
-    ) || 0;
+    const allErrors = this.collectAllViolations(scan);
+    const confirmedErrors = allErrors.filter((v) => this.findingStatus(v) === 'confirmed');
+    const reviewErrors = allErrors.filter((v) => this.findingStatus(v) !== 'confirmed');
+    const totalViolations = confirmedErrors.length;
 
     summarySheet.addRows([
       { metric: 'Proyecto', value: scan.project?.name || '' },
@@ -66,8 +67,9 @@ export class ExcelService {
     ]);
 
     // ── Sheet 2: Todos los Errores ──
-    const allErrors = this.collectAllViolations(scan);
     this.createViolationsSheet(workbook, 'Todos los Errores', allErrors);
+    this.createViolationsSheet(workbook, 'Violaciones Confirmadas', confirmedErrors);
+    this.createViolationsSheet(workbook, 'Revision y Cobertura', reviewErrors);
 
     // ── Sheet 3: Errores del Desarrollador ──
     const devErrors = allErrors.filter(e => e.role === 'Desarrollador' || e.role === 'Compartido');
@@ -81,15 +83,8 @@ export class ExcelService {
     const writerErrors = allErrors.filter(e => e.role === 'Redactor UX' || e.role === 'Compartido');
     this.createViolationsSheet(workbook, 'Errores Redactor UX', writerErrors);
 
-    // ── Sheet 6: Checklist ──
-    const checklistSheet = workbook.addWorksheet('Checklist 83 Criterios');
-    checklistSheet.columns = [
-      { header: 'Criterio', key: 'criterion', width: 12 },
-      { header: 'Nombre', key: 'name', width: 50 },
-      { header: 'Nivel', key: 'level', width: 8 },
-      { header: 'Estado', key: 'status', width: 20 },
-    ];
-    this.styleHeader(checklistSheet);
+    // ── Sheet 6: Checklist de aplicabilidad ──
+    this.createApplicabilitySheet(workbook, scan);
 
     // ── Sheet 7: Normativa Peruana ──
     const normativaSheet = workbook.addWorksheet('Normativa Peruana');
@@ -152,8 +147,10 @@ export class ExcelService {
       { header: 'URL', key: 'url', width: 40 },
       { header: 'Criterio WCAG', key: 'criterion', width: 12 },
       { header: 'Nombre (ES)', key: 'nameEs', width: 35 },
-      { header: 'Nivel', key: 'level', width: 8 },
+      { header: 'Nivel WCAG', key: 'level', width: 10 },
       { header: 'Severidad', key: 'severity', width: 12 },
+      { header: 'Estado', key: 'statusLabel', width: 18 },
+      { header: 'Vista evaluada', key: 'pageStateLabel', width: 24 },
       { header: 'Rol Responsable', key: 'role', width: 18 },
       { header: 'Discapacidad', key: 'disability', width: 30 },
       { header: 'Descripción', key: 'description', width: 50 },
@@ -171,6 +168,8 @@ export class ExcelService {
         nameEs: v.nameEs,
         level: v.level,
         severity: v.severity,
+        statusLabel: v.statusLabel || this.findingStatusLabel(v),
+        pageStateLabel: v.pageStateLabel || (v.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales'),
         role: v.role,
         disability: Array.isArray(v.disability) ? v.disability.join(', ') : v.disability,
         description: v.description,
@@ -179,6 +178,74 @@ export class ExcelService {
         suggestedFix: v.suggestedFix,
         resolutionArticle: v.resolutionArticle,
       });
+    }
+  }
+
+  private createApplicabilitySheet(workbook: ExcelJS.Workbook, scan: Scan) {
+    const sheet = workbook.addWorksheet('Checklist 86 WCAG');
+    sheet.columns = [
+      { header: 'URL', key: 'url', width: 45 },
+      { header: 'Criterio', key: 'criterion', width: 12 },
+      { header: 'Nombre', key: 'name', width: 42 },
+      { header: 'Nivel', key: 'level', width: 8 },
+      { header: 'Aplicabilidad', key: 'applicability', width: 16 },
+      { header: 'Resultado', key: 'result', width: 18 },
+      { header: 'Razon', key: 'reason', width: 60 },
+      { header: 'Hallazgos', key: 'findingCount', width: 12 },
+      { header: 'Severidad', key: 'severity', width: 12 },
+      { header: 'Estado hallazgo', key: 'findingStatus', width: 18 },
+      { header: 'Vista evaluada', key: 'pageStateLabel', width: 24 },
+      { header: 'Descripcion', key: 'description', width: 50 },
+      { header: 'Selector CSS', key: 'selector', width: 30 },
+      { header: 'Rol', key: 'role', width: 18 },
+      { header: 'Solucion sugerida', key: 'suggestedFix', width: 40 },
+      { header: 'Articulo legal', key: 'resolutionArticle', width: 30 },
+    ];
+    this.styleHeader(sheet);
+
+    for (const ur of scan.urlResults ?? []) {
+      const applicability = (ur.applicability as any) || {};
+      const criteria = Array.isArray(applicability.criteria) ? applicability.criteria : [];
+      const failed = new Set(
+        (((ur.violations as any[]) ?? [])
+          .filter((v) => this.findingStatus(v) === 'confirmed')
+          .map((v) => v.criterion))
+      );
+      const findingsByCriterion = new Map<string, any[]>();
+      for (const violation of ((ur.violations as any[]) ?? [])) {
+        const current = findingsByCriterion.get(violation.criterion) || [];
+        current.push(violation);
+        findingsByCriterion.set(violation.criterion, current);
+      }
+
+      for (const criterion of criteria) {
+        const findings = findingsByCriterion.get(criterion.id) || [];
+        const primaryFinding = findings.find((v) => this.findingStatus(v) === 'confirmed') || findings[0];
+        const result = criterion.estado === 'no_aplica'
+          ? 'N/A'
+          : failed.has(criterion.id)
+            ? 'Falla'
+            : 'Cumple';
+
+        sheet.addRow({
+          url: ur.url,
+          criterion: criterion.id,
+          name: criterion.nombre,
+          level: criterion.nivel,
+          applicability: criterion.estado,
+          result,
+          reason: criterion.razon,
+          findingCount: criterion.estado === 'aplica' && findings.length > 0 ? findings.length : '',
+          severity: primaryFinding?.severity || '',
+          findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
+          pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales') : '',
+          description: primaryFinding?.description || '',
+          selector: primaryFinding?.selector || '',
+          role: primaryFinding?.role || '',
+          suggestedFix: primaryFinding?.suggestedFix || '',
+          resolutionArticle: primaryFinding?.resolutionArticle || '',
+        });
+      }
     }
   }
 
@@ -191,5 +258,17 @@ export class ExcelService {
       fgColor: { argb: 'FF002C76' }, // Official Gob.pe Blue
     };
     headerRow.alignment = { vertical: 'middle' };
+  }
+
+  private findingStatus(v: any): string {
+    return v.findingStatus || v.status || 'confirmed';
+  }
+
+  private findingStatusLabel(v: any): string {
+    const status = this.findingStatus(v);
+    if (status === 'not_evaluated') return 'No evaluado';
+    if (status === 'not_applicable') return 'No aplicable';
+    if (status === 'needs_review') return 'Requiere revision';
+    return 'Confirmado';
   }
 }

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import './index.css'
 import App from './App'
+import { API_FALLBACK_BASE_URL, isLocalRuntimeHost, resolveApiBaseUrl } from './config'
 
 vi.mock('socket.io-client', () => ({
   io: vi.fn(() => ({
@@ -35,6 +36,7 @@ const projectsResponse = [
 ]
 
 const cssSource = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8')
+const appSource = readFileSync(join(process.cwd(), 'src', 'App.tsx'), 'utf8')
 
 describe('App project creation experience', () => {
   beforeEach(() => {
@@ -136,8 +138,32 @@ describe('App project creation experience', () => {
     expect(cssSource).toContain('min-width: 0;')
   })
 
+  it('keeps WCAG table filters inside the header row', () => {
+    expect(appSource).not.toContain('report-table-filter-row')
+    expect(appSource).toContain('report-table-header-cell')
+    expect(appSource).toContain('report-table-filter-label')
+  })
+
+  it('offers a WCAG criteria view grouped by principle', () => {
+    expect(appSource).toContain("useState<'normal' | 'principles'>('normal')")
+    expect(appSource).toContain('Por principios')
+    expect(appSource).toContain('Perceptible')
+    expect(appSource).toContain('Operable')
+    expect(appSource).toContain('Comprensible')
+    expect(appSource).toContain('Robusto')
+    expect(appSource).toContain('report-principle-row')
+    expect(appSource).toContain('getWcagGuideline')
+    expect(appSource).toContain('Pauta ${item.key}')
+    expect(appSource).toContain('Alternativas textuales')
+    expect(appSource).toContain('Navegable')
+    expect(appSource).toContain('Asistencia en la entrada')
+    expect(appSource).toContain('Compatible')
+    expect(appSource).toContain('report-guideline-row')
+  })
+
   it('uses accessible labels and responsive controls in the new scan modal', async () => {
     const user = userEvent.setup()
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
@@ -151,5 +177,22 @@ describe('App project creation experience', () => {
     expect(screen.getByLabelText(/modo del análisis/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/impacto en experiencia/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/script de pre-navegación/i)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/urls a analizar/i), 'example.com')
+    expect(screen.getByText(/no se transfieren al navegador playwright/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /abrir url/i }))
+    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+
+    openSpy.mockRestore()
+  })
+  it('treats loopback hosts as local runtimes for API fallback', () => {
+    expect(isLocalRuntimeHost('localhost')).toBe(true)
+    expect(isLocalRuntimeHost('127.0.0.1')).toBe(true)
+    expect(isLocalRuntimeHost('[::1]')).toBe(true)
+    expect(isLocalRuntimeHost('example.com')).toBe(false)
+    expect(resolveApiBaseUrl(undefined, false, 'localhost')).toBe(API_FALLBACK_BASE_URL)
+    expect(resolveApiBaseUrl(undefined, false, '127.0.0.1')).toBe(API_FALLBACK_BASE_URL)
+    expect(resolveApiBaseUrl(undefined, false, 'example.com')).toBe('/api')
+    expect(resolveApiBaseUrl('https://api.example.com', false, 'localhost')).toBe('https://api.example.com')
   })
 })

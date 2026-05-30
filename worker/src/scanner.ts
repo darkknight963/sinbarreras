@@ -7,6 +7,8 @@ import { runPeruvianChecks } from './peruvianChecks.js';
 import { enforceClassification } from './classificationPolicy.js';
 import { buildManualGuidance } from './manualGuidanceBuilder.js';
 import { buildCoverageReport } from './coverageReport.js';
+import { detectPageContent } from './content-detector.js';
+import { buildApplicability, conservativeApplicability, summarizeApplicability } from './wcag-applicability.js';
 
 const axeSource = axeCore.source;
 declare const document: any;
@@ -15,6 +17,8 @@ declare const window: any;
 type SeverityEs = 'critico' | 'alto' | 'medio' | 'bajo';
 type FindingCategory = 'violation' | 'alert' | 'manual_check';
 type FindingTool = 'axe' | 'lighthouse' | 'pa11y' | 'ibm-equal-access' | 'heuristic-dom';
+type FindingStatus = 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
+type PageState = 'initial' | 'post_overlay';
 
 interface RawFinding {
   tool: FindingTool;
@@ -23,6 +27,8 @@ interface RawFinding {
   category: FindingCategory;
   wcagCriterion?: string;
   wcagLevel?: 'A' | 'AA' | 'AAA';
+  findingStatus?: FindingStatus;
+  pageState?: PageState;
   description: string;
   selector: string;
   elementHtml: string;
@@ -36,6 +42,8 @@ interface GroupedFinding {
   category: FindingCategory;
   wcagCriterion?: string;
   wcagLevel?: 'A' | 'AA' | 'AAA';
+  findingStatus?: FindingStatus;
+  pageState?: PageState;
   description: string;
   severity: SeverityEs;
   selectors: string[];
@@ -47,6 +55,7 @@ interface GroupedFinding {
 export interface ScanOptions {
   viewport?: { width: number; height: number };
   preNavigationScript?: string;
+  onProgress?: (progress: number) => Promise<void> | void;
 }
 
 async function getFreePort(): Promise<number> {
@@ -85,8 +94,8 @@ function normalizeSelector(selector: string): string {
   return (selector || '').trim() || 'document';
 }
 
-function normalizeCause(ruleId: string, description: string): string {
-  return `${(ruleId || 'unknown').trim().toLowerCase()}::${(description || '').trim().toLowerCase()}`;
+function normalizeCause(ruleId: string, description: string, pageState?: PageState): string {
+  return `${pageState || 'page'}::${(ruleId || 'unknown').trim().toLowerCase()}::${(description || '').trim().toLowerCase()}`;
 }
 
 function normalizeRuleId(ruleId: string, description: string): string {
@@ -94,15 +103,32 @@ function normalizeRuleId(ruleId: string, description: string): string {
   const d = (description || '').toLowerCase();
 
   if (r.includes('duplicate-id') || d.includes('id attribute is not unique')) return 'duplicate-id';
+  if (r.includes('aria-dialog-name') || d.includes('dialog') && d.includes('accessible name')) return 'aria-dialog-name';
+  if (r.includes('aria-valid-attr-value') || d.includes('aria attributes') && d.includes('valid values')) return 'aria-valid-attr-value';
+  if (r.includes('scrollable-region-focusable') || d.includes('scrollable region') && d.includes('keyboard')) return 'scrollable-region-focusable';
+  if (r.includes('frame-tested')) return 'frame-tested';
+  if (r.includes('region') || d.includes('contained by landmarks')) return 'region';
   if (r.includes('main') && (r.includes('landmark') || d.includes('main landmark'))) return 'landmark-main-missing';
   if (r.includes('nav') && (r.includes('landmark') || d.includes('navigation'))) return 'landmark-nav-missing';
   if (r.includes('bypass') || d.includes('skip to main') || d.includes('bypass blocks')) return 'bypass-missing';
-  if (r.includes('label') && d.includes('more than one')) return 'form-control-multiple-labels';
+  if (r.includes('multiple-labels') || r.includes('label') && d.includes('more than one')) return 'form-control-multiple-labels';
+  if (r.includes('form-field-multiple-labels')) return 'form-control-multiple-labels';
   if (r.includes('label') && d.includes('empty')) return 'label-empty-text';
   if (d.includes('autocomplete') && d.includes('missing')) return 'autocomplete-missing';
-  if (d.includes('required') && d.includes('html5')) return 'required-html5-indicator';
+  if (r.includes('required-html5-attribute') || d.includes('required') && d.includes('html5')) return 'required-html5-indicator';
   if (d.includes('contrast') && d.includes('image background')) return 'contrast-image-background-undetermined';
+  if (r.includes('f24.fgcolour') || d.includes('inherited background colour')) return 'contrast-image-background-undetermined';
   if (d.includes('checkbox') && d.includes('no text in label')) return 'checkbox-label-missing';
+  if (r.includes('h91.select.value')) return 'select-value';
+  if (r.includes('h85.2')) return 'select-optgroup';
+  if (r.includes('h44.notformcontrol')) return 'label-not-form-control';
+  if (r.includes('h39.3.nocaption')) return 'table-caption-review';
+  if (r.includes('h67.2')) return 'image-ignored-review';
+  if (r.includes('1_4_10')) return 'reflow-fixed-position';
+  if (r.includes('h42')) return 'heading-markup-review';
+  if (r.includes('h91.textarea.name')) return 'textarea-name';
+  if (r.includes('f68')) return 'form-field-label-missing';
+  if (r.includes('h64.1')) return 'iframe-title';
 
   return (ruleId || 'unknown').trim().toLowerCase();
 }
@@ -126,15 +152,25 @@ async function handleCommonOverlays(page: Page) {
   const candidates = [
     'button:has-text("Aceptar")',
     'button:has-text("Acepto")',
+    'button:has-text("Acepto los términos")',
+    'button:has-text("Aceptar términos")',
     'button:has-text("Aceptar todo")',
     'button:has-text("Aceptar todas")',
     'button:has-text("Cerrar")',
+    'button:has-text("Cerrar ventana")',
     'button:has-text("Continuar")',
     'button:has-text("Entendido")',
+    'button:has-text("De acuerdo")',
+    'button:has-text("Estoy de acuerdo")',
+    'a:has-text("Aceptar")',
+    'a:has-text("Cerrar")',
     '[aria-label*="cerrar" i]',
+    '[aria-label*="close" i]',
     '[data-testid*="close" i]',
     '.cookie-accept',
     '.cookies-accept',
+    '.accept-cookies',
+    '.modal [data-dismiss="modal"]',
     '.modal-close',
   ];
 
@@ -148,6 +184,39 @@ async function handleCommonOverlays(page: Page) {
       }
     }
   }
+}
+
+async function detectBlockingOverlays(page: Page): Promise<RawFinding[]> {
+  const overlays = await page.evaluate(`(() => {
+    const candidates = Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"], .modal, .modal-dialog, [aria-modal="true"]'));
+    const visible = candidates
+      .filter((el) => {
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 120 && rect.height > 80;
+      })
+      .slice(0, 3)
+      .map((el) => {
+        const id = el.id ? '#' + el.id : '';
+        const selector = id || (el.className ? '.' + String(el.className).trim().split(/\\s+/).join('.') : el.tagName.toLowerCase());
+        return { selector, html: el.outerHTML.slice(0, 1000) };
+      });
+    return visible;
+  })()`) as Array<{ selector: string; html: string }>;
+
+  return overlays.map((overlay) => ({
+    tool: 'heuristic-dom',
+    ruleId: 'blocking-overlay-needs-review',
+    normalizedRuleId: 'blocking-overlay-needs-review',
+    category: 'manual_check',
+    wcagCriterion: 'Revision manual',
+    findingStatus: 'needs_review',
+    description: 'Se detecto un modal o bloqueo visible que puede limitar la cobertura del analisis automatico.',
+    selector: normalizeSelector(overlay.selector),
+    elementHtml: overlay.html,
+    severity: 'medio',
+    suggestedFix: 'Revisar el sitio en navegador, cerrar o aceptar terminos cuando corresponda, o configurar un script de pre-navegacion seguro para preparar la pagina antes del escaneo.',
+  }));
 }
 
 async function runAxe(page: Page): Promise<RawFinding[]> {
@@ -336,13 +405,13 @@ async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
 }
 
 async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
-  const checks = await page.evaluate(() => {
-    const findings: Array<{ ruleId: string; description: string; selector: string; html: string; wcagCriterion?: string; wcagLevel?: 'A' | 'AA' | 'AAA'; category: FindingCategory }> = [];
+  const checks = await page.evaluate(`(() => {
+    const findings = [];
 
-    const getSelector = (el: any): string => {
-      if (el.id) return `#${el.id}`;
+    const getSelector = (el) => {
+      if (el.id) return '#' + el.id;
       const name = el.getAttribute('name');
-      if (name) return `${el.tagName.toLowerCase()}[name="${name}"]`;
+      if (name) return el.tagName.toLowerCase() + '[name="' + name + '"]';
       return el.tagName.toLowerCase();
     };
 
@@ -385,8 +454,8 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       });
     }
 
-    const elementsWithId = Array.from(document.querySelectorAll('[id]')) as any[];
-    const idCount = new Map<string, number>();
+    const elementsWithId = Array.from(document.querySelectorAll('[id]'));
+    const idCount = new Map();
     for (const el of elementsWithId) {
       const id = el.getAttribute('id');
       if (!id) continue;
@@ -398,21 +467,21 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if ((idCount.get(id) || 0) > 1) {
         findings.push({
           ruleId: 'duplicate-id',
-          description: `ID duplicado detectado: ${id}`,
-          selector: `#${id}`,
+          description: 'ID duplicado detectado: ' + id,
+          selector: '#' + id,
           html: el.outerHTML,
-          wcagCriterion: '4.1.1',
+          wcagCriterion: '4.1.2',
           wcagLevel: 'A',
           category: 'violation',
         });
       }
     }
 
-    const controls = Array.from(document.querySelectorAll('input, select, textarea')) as any[];
+    const controls = Array.from(document.querySelectorAll('input, select, textarea'));
     for (const control of controls) {
       const id = control.getAttribute('id');
       if (!id) continue;
-      const labels = Array.from(document.querySelectorAll(`label[for="${id}"]`)) as any[];
+      const labels = Array.from(document.querySelectorAll('label[for="' + id + '"]'));
 
       if (labels.length > 1) {
         findings.push({
@@ -472,7 +541,15 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
     }
 
     return findings;
-  });
+  })()`) as Array<{
+    ruleId: string;
+    description: string;
+    selector: string;
+    html: string;
+    wcagCriterion?: string;
+    wcagLevel?: 'A' | 'AA' | 'AAA';
+    category: FindingCategory;
+  }>;
 
   return checks.map((c) => ({
     tool: 'heuristic-dom',
@@ -489,11 +566,40 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
   }));
 }
 
+function labelPageState(state: PageState): string {
+  return state === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales';
+}
+
+function tagFindingsWithPageState(findings: RawFinding[], pageState: PageState): RawFinding[] {
+  const label = labelPageState(pageState);
+  return findings.map((finding) => ({
+    ...finding,
+    pageState,
+    description: `[${label}] ${finding.description}`,
+  }));
+}
+
+async function runStatefulPageEngines(page: Page, pageState: PageState): Promise<RawFinding[]> {
+  const [axeFindings, ibmFindings, heuristicFindings, overlayFindings] = await Promise.all([
+    runAxe(page),
+    runIbmEqualAccess(page),
+    runHeuristicDomChecks(page),
+    detectBlockingOverlays(page),
+  ]);
+
+  return tagFindingsWithPageState([
+    ...axeFindings,
+    ...ibmFindings,
+    ...heuristicFindings,
+    ...overlayFindings,
+  ], pageState);
+}
+
 function dedupeByRuleAndSelector(findings: RawFinding[]): RawFinding[] {
   const map = new Map<string, RawFinding>();
 
   for (const finding of findings) {
-    const key = `${finding.normalizedRuleId}::${normalizeSelector(finding.selector)}`;
+    const key = `${finding.pageState || 'page'}::${finding.normalizedRuleId}::${normalizeSelector(finding.selector)}`;
     const existing = map.get(key);
 
     if (!existing) {
@@ -513,7 +619,7 @@ function groupFindings(findings: RawFinding[]): GroupedFinding[] {
   const map = new Map<string, GroupedFinding>();
 
   for (const f of findings) {
-    const key = normalizeCause(f.normalizedRuleId, f.description);
+    const key = normalizeCause(f.normalizedRuleId, f.description, f.pageState);
     const current = map.get(key);
 
     if (!current) {
@@ -523,6 +629,8 @@ function groupFindings(findings: RawFinding[]): GroupedFinding[] {
         category: f.category,
         wcagCriterion: f.wcagCriterion,
         wcagLevel: f.wcagLevel,
+        findingStatus: f.findingStatus,
+        pageState: f.pageState,
         description: f.description,
         severity: f.severity,
         selectors: [normalizeSelector(f.selector)],
@@ -541,6 +649,8 @@ function groupFindings(findings: RawFinding[]): GroupedFinding[] {
     if (current.category === 'manual_check' && f.category === 'alert') current.category = 'alert';
     if (!current.wcagCriterion && f.wcagCriterion) current.wcagCriterion = f.wcagCriterion;
     if (!current.wcagLevel && f.wcagLevel) current.wcagLevel = f.wcagLevel;
+    if (!current.findingStatus && f.findingStatus) current.findingStatus = f.findingStatus;
+    if (!current.pageState && f.pageState) current.pageState = f.pageState;
 
     const s = normalizeSelector(f.selector);
     if (!current.selectors.includes(s)) current.selectors.push(s);
@@ -550,6 +660,22 @@ function groupFindings(findings: RawFinding[]): GroupedFinding[] {
   }
 
   return Array.from(map.values());
+}
+
+function isSpecificCriterion(value?: string): value is string {
+  return !!value && value !== 'Otros' && value !== 'Revision manual';
+}
+
+function resolveLegalReference(criterion: string, fallback: string): string {
+  if (isSpecificCriterion(criterion)) return `Anexo 1 - Criterio ${criterion}`;
+  return fallback;
+}
+
+function resolveStatusLabel(status: FindingStatus): string {
+  if (status === 'confirmed') return 'Confirmado';
+  if (status === 'not_evaluated') return 'No evaluado';
+  if (status === 'not_applicable') return 'No aplicable';
+  return 'Requiere revision';
 }
 
 async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
@@ -584,22 +710,26 @@ async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
       }
     }
 
-    const ruleDetails = getRuleDetails(finding.ruleId);
-    const suggestedFix = finding.suggestedFixes[0] || 'Asegurar cumplimiento WCAG.';
+    const ruleDetails = getRuleDetails(finding.normalizedRuleId || finding.ruleId);
+    const effectiveCriterion = finding.wcagCriterion || ruleDetails.criterion || 'Otros';
+    const effectiveLevel = finding.wcagLevel || ruleDetails.level || 'A';
+    const findingStatus = finding.findingStatus || ruleDetails.findingStatus || (finding.category === 'violation' ? 'confirmed' : 'needs_review');
+    const suggestedFix = ruleDetails.suggestedFix || finding.suggestedFixes[0] || 'Revisar manualmente el hallazgo y determinar la correccion segun WCAG.';
+    const resolutionArticle = resolveLegalReference(effectiveCriterion, ruleDetails.resolutionArticle);
 
     const classification = enforceClassification({
       category: finding.category,
       selector,
       elementHtml: finding.elements[0] || '',
-      wcagCriterion: finding.wcagCriterion || ruleDetails.criterion,
+      wcagCriterion: effectiveCriterion,
       detectedBy: finding.tools,
       normalizedRuleId: finding.normalizedRuleId,
     });
 
     const manualGuidance = buildManualGuidance({
       category: classification.category,
-      wcagCriterion: finding.wcagCriterion || ruleDetails.criterion,
-      wcagLevel: finding.wcagLevel || ruleDetails.level,
+      wcagCriterion: effectiveCriterion,
+      wcagLevel: effectiveLevel === 'N/A' ? undefined : effectiveLevel,
       normalizedRuleId: finding.normalizedRuleId,
       description: finding.description,
       selector,
@@ -612,20 +742,25 @@ async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
       sourceCategory: classification.category,
       classificationConfidence: classification.confidence,
       classificationReason: classification.reason,
-      wcagCriterion: finding.wcagCriterion || ruleDetails.criterion,
-      wcagLevel: finding.wcagLevel || ruleDetails.level,
-      criterion: ruleDetails.criterion,
+      wcagCriterion: effectiveCriterion,
+      wcagLevel: effectiveLevel,
+      criterion: effectiveCriterion,
       nameEs: ruleDetails.nameEs,
-      level: ruleDetails.level,
+      level: effectiveLevel,
       disability: ruleDetails.disability,
       role: ruleDetails.role,
       severity: finding.severity,
+      findingStatus,
+      status: findingStatus,
+      statusLabel: resolveStatusLabel(findingStatus),
+      pageState: finding.pageState || 'post_overlay',
+      pageStateLabel: finding.pageState ? labelPageState(finding.pageState) : labelPageState('post_overlay'),
       description: finding.description,
       elementHtml: finding.elements[0] || '',
       selector,
       screenshotUrl,
       suggestedFix,
-      resolutionArticle: ruleDetails.resolutionArticle,
+      resolutionArticle,
       wcagUrl: ruleDetails.wcagUrl,
       detectedBy: finding.tools,
       rootCauseKey: finding.normalizedRuleId,
@@ -639,6 +774,11 @@ async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
 }
 
 export async function scanUrl(url: string, options: ScanOptions = {}) {
+  const reportProgress = async (progress: number) => {
+    if (!options.onProgress) return;
+    await options.onProgress(Math.max(0, Math.min(100, Math.round(progress))));
+  };
+
   const debugPort = await getFreePort();
   const browser = await chromium.launch({
     headless: true,
@@ -654,11 +794,34 @@ export async function scanUrl(url: string, options: ScanOptions = {}) {
 
   try {
     console.log(`Navigating to: ${url}`);
+    await reportProgress(5);
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await reportProgress(15);
+
+    let applicability = conservativeApplicability();
+    try {
+      const contentDetection = await detectPageContent(page);
+      applicability = buildApplicability(contentDetection);
+    } catch (err) {
+      console.warn('Content applicability detection failed; using conservative applicability.', err);
+    }
+
+    console.log('Running accessibility engines on initial page state...');
+    const initialFindings = await runStatefulPageEngines(page, 'initial');
+    await reportProgress(35);
+
     await handleCommonOverlays(page);
+    await page.waitForLoadState('networkidle').catch(() => { });
+    try {
+      const contentDetection = await detectPageContent(page);
+      applicability = buildApplicability(contentDetection);
+    } catch (err) {
+      console.warn('Content applicability detection after modal handling failed; keeping previous applicability state.', err);
+    }
 
     if (options.preNavigationScript) {
       console.log('Running pre-navigation script...');
+      await reportProgress(40);
       await page.evaluate(async (scriptText) => {
         const fn = new Function('window', 'document', `"use strict"; return (async () => { ${scriptText} })();`);
         await fn(window, document);
@@ -666,31 +829,42 @@ export async function scanUrl(url: string, options: ScanOptions = {}) {
       await page.waitForTimeout(2000);
       await page.waitForLoadState('networkidle').catch(() => { });
       await handleCommonOverlays(page);
+      try {
+        const contentDetection = await detectPageContent(page);
+        applicability = buildApplicability(contentDetection);
+      } catch (err) {
+        console.warn('Content applicability detection after pre-navigation failed; keeping conservative/applicable state.', err);
+      }
     }
 
-    console.log('Running accessibility engines: axe, lighthouse, pa11y, ibm-equal-access, heuristic-dom...');
-    const [axeFindings, lighthouseFindings, pa11yFindings, ibmFindings, heuristicFindings] = await Promise.all([
-      runAxe(page),
+    await reportProgress(50);
+    console.log('Running accessibility engines after modal handling...');
+    const [postOverlayFindings, lighthouseFindings, pa11yFindings] = await Promise.all([
+      runStatefulPageEngines(page, 'post_overlay'),
       runLighthouse(url, debugPort),
       runPa11y(url, debugPort),
-      runIbmEqualAccess(page),
-      runHeuristicDomChecks(page),
     ]);
+    await reportProgress(65);
 
-    const mergedRaw = [...axeFindings, ...lighthouseFindings, ...pa11yFindings, ...ibmFindings, ...heuristicFindings];
+    const mergedRaw = [
+      ...initialFindings,
+      ...postOverlayFindings,
+      ...tagFindingsWithPageState([...lighthouseFindings, ...pa11yFindings], 'post_overlay'),
+    ];
     const coverageReport = buildCoverageReport(mergedRaw);
     const dedupedRaw = dedupeByRuleAndSelector(mergedRaw);
     const grouped = groupFindings(dedupedRaw);
+    await reportProgress(75);
     const formattedViolations = await enrichAndCapture(page, grouped);
+    await reportProgress(85);
 
-    let score = 100;
-    const criticalCount = formattedViolations.filter(v => v.severity === 'critico').length;
-    const highCount = formattedViolations.filter(v => v.severity === 'alto').length;
-    const mediumCount = formattedViolations.filter(v => v.severity === 'medio').length;
-    const lowCount = formattedViolations.filter(v => v.severity === 'bajo').length;
-
-    score = score - (criticalCount * 5) - (highCount * 3) - (mediumCount * 1.5) - (lowCount * 0.5);
-    score = Math.max(0, Math.round(score));
+    const failedCriterionIds = new Set(
+      formattedViolations
+        .filter(v => (v.findingStatus || 'confirmed') === 'confirmed' && isSpecificCriterion(v.criterion))
+        .map(v => v.criterion)
+    );
+    const applicabilitySummary = summarizeApplicability(applicability, failedCriterionIds);
+    const score = applicabilitySummary.score;
 
     let htmlDumpUrl = '';
     try {
@@ -702,10 +876,13 @@ export async function scanUrl(url: string, options: ScanOptions = {}) {
 
     console.log('Running Peruvian compliance heuristics...');
     const peruvianResults = await runPeruvianChecks(page, url);
+    await reportProgress(95);
 
     return {
       score,
       violations: formattedViolations,
+      applicability,
+      applicabilitySummary,
       coverageReport,
       peruvianChecks: peruvianResults,
       device: options.viewport?.width === 375 ? 'Movil' : options.viewport?.width === 768 ? 'Tablet' : 'Desktop',

@@ -23,11 +23,18 @@ export interface Scan {
 export interface Violation {
   ruleId: string;
   criterion: string;
+  wcagCriterion?: string;
   nameEs: string;
-  level: 'A' | 'AA' | 'AAA';
+  level: 'A' | 'AA' | 'AAA' | 'N/A';
+  wcagLevel?: 'A' | 'AA' | 'AAA' | 'N/A';
   disability: string[];
   role: 'Desarrollador' | 'Diseñador UX/UI' | 'Redactor UX' | 'Compartido';
-  severity: 'crítico' | 'alto' | 'medio' | 'bajo';
+  severity: 'critico' | 'crítico' | 'alto' | 'medio' | 'bajo';
+  findingStatus?: 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
+  status?: 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
+  statusLabel?: string;
+  pageState?: 'initial' | 'post_overlay';
+  pageStateLabel?: string;
   description: string;
   elementHtml: string;
   selector: string;
@@ -45,12 +52,35 @@ export interface ManualVerification {
   description: string;
 }
 
+export interface CriterionApplicability {
+  id: string;
+  nombre: string;
+  nivel: 'A' | 'AA' | 'AAA';
+  estado: 'aplica' | 'no_aplica';
+  razon: string;
+}
+
+export interface ApplicabilitySummary {
+  totalCriteria: number;
+  applicableCount: number;
+  notApplicableCount: number;
+  failedCount: number;
+  passedCount: number;
+  score: number;
+}
+
+export interface ApplicabilityResult {
+  criteria: CriterionApplicability[];
+  summary: ApplicabilitySummary;
+}
+
 export interface UrlResult {
   id: string;
   url: string;
   score: number;
   violations: Violation[];
   manualVerifications: ManualVerification[];
+  applicability?: ApplicabilityResult;
   status: 'completed' | 'failed' | 'scanning';
   createdAt: string;
   scan?: Scan;

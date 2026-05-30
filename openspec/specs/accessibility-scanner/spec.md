@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define how the accessibility scanner executes automated and semi-automated checks, normalizes findings, captures evidence, and reports scan coverage for audited URLs.
+
+## Requirements
 
 ### Requirement: WCAG 2.2 Core Scanning via Worker
 The system SHALL scan single or multiple URLs using isolated Worker containers to verify the 83 criteria of WCAG 2.2 using headless browsers.

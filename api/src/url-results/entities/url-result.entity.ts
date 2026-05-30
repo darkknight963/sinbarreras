@@ -18,6 +18,9 @@ export class UrlResult {
   @Column({ type: 'jsonb', nullable: true })
   manualVerifications!: any; // manual reviews checklist state
 
+  @Column({ type: 'jsonb', nullable: true })
+  applicability!: any; // WCAG criteria applicability matrix and summary
+
   @Column({ default: 'completed' }) // pending, scanning, completed, failed
   status!: string;
 

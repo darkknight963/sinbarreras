@@ -36,9 +36,9 @@ export class ReportsController {
       throw new NotFoundException('Scan not found');
     }
 
-    const totalViolations = scan.urlResults?.reduce(
-      (acc, ur) => acc + (ur.violations?.length || 0), 0
-    ) || 0;
+    const allFindings = (scan.urlResults ?? []).flatMap((ur) => (ur.violations as any[]) ?? []);
+    const totalViolations = allFindings.filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed').length;
+    const reviewFindings = allFindings.length - totalViolations;
 
     return {
       metadata: {
@@ -55,6 +55,7 @@ export class ReportsController {
         globalScore: scan.globalScore,
         totalPages: scan.urlResults?.length || 0,
         totalViolations,
+        reviewFindings,
         vp: {
           vo: scan.project?.vo,
           ux: scan.ux,
@@ -66,7 +67,9 @@ export class ReportsController {
         url: ur.url,
         score: ur.score,
         status: ur.status,
-        violationsCount: ur.violations?.length || 0,
+        violationsCount: ((ur.violations as any[]) ?? []).filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed').length,
+        reviewFindingsCount: ((ur.violations as any[]) ?? []).filter((v) => (v.findingStatus || v.status || 'confirmed') !== 'confirmed').length,
+        applicability: ur.applicability,
         violations: ur.violations,
         manualVerifications: ur.manualVerifications,
       })),

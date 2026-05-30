@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define the report generation capabilities for exporting accessibility findings, compliance summaries, evidence, manual-review guidance, and coverage metrics in stakeholder-ready formats.
+
+## Requirements
 
 ### Requirement: Multi-format Export
 The system SHALL generate and export analysis reports in PDF, Excel, JSON, and HTML formats.
@@ -17,6 +20,19 @@ The system SHALL produce an executive PDF report tailored for high-level managem
 #### Scenario: Exporting Executive PDF
 - **WHEN** user requests an Executive PDF report
 - **THEN** system generates a report highlighting the global score, Vp metric, Sello de Accesibilidad eligibility, and a roadmap for critical fixes
+
+### Requirement: Stakeholder-ready PDF Layouts
+The system SHALL generate visually structured executive and technical PDFs with a cover page, scan metadata, score summary, legal context, pagination, and clearly separated sections for decision-making and remediation.
+
+#### Scenario: Exporting enhanced Executive PDF
+- **WHEN** user requests an Executive PDF report
+- **THEN** system generates a management-oriented PDF with cover, score badge, project metadata, global metrics, executive verdict, WCAG applicability summary, findings by severity, responsible-role summary, recommended remediation plan, and highest-risk pages
+
+#### Scenario: Exporting enhanced Technical PDF
+- **WHEN** user requests a Technical PDF report
+- **THEN** system generates an auditor/developer-oriented PDF with cover, scope, per-page summary, and a prioritized remediation matrix
+- **AND** each remediation item includes criterion, level, severity, finding status, responsible role, evaluated view, selector, suggested action, and legal reference
+- **AND** findings are ordered by remediation priority using severity and confirmation status
 
 ### Requirement: Finding Category Separation in Reports
 The system SHALL clearly separate automatic violations from alerts and manual checks in all exported reports.

@@ -67,4 +67,8 @@ export class ScansService {
     if (!updated) throw new Error('Scan not found');
     return updated;
   }
+
+  async remove(id: string): Promise<void> {
+    await this.scanRepository.delete(id);
+  }
 }

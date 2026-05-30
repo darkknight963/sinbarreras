@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UrlResult } from './entities/url-result.entity';
 import { UrlResultsService } from './url-results.service';
 import { UrlResultsController } from './url-results.controller';
+import { Scan } from '../scans/entities/scan.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UrlResult])],
+  imports: [TypeOrmModule.forFeature([UrlResult, Scan])],
   providers: [UrlResultsService],
   controllers: [UrlResultsController],
   exports: [UrlResultsService],

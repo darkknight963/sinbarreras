@@ -12,9 +12,14 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'accessibility_db',
 });
 
+async function ensureUrlResultSchema(): Promise<void> {
+  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS applicability jsonb`);
+}
+
 export async function processScan(job: Job): Promise<void> {
   const { scanId, urls, scanMode, preNavigationScript } = job.data;
   console.log(`Starting execution of Scan ID: ${scanId}`);
+  await ensureUrlResultSchema();
 
   // Update scan status to running
   await pool.query(
@@ -27,10 +32,6 @@ export async function processScan(job: Job): Promise<void> {
 
   for (let i = 0; i < totalUrls; i++) {
     const url = urls[i];
-    const urlProgressStart = (i / totalUrls) * 100;
-    
-    // Update progress
-    await job.updateProgress(Math.round(urlProgressStart));
 
     try {
       console.log(`Scanning URL [${i + 1}/${totalUrls}]: ${url}`);
@@ -42,12 +43,26 @@ export async function processScan(job: Job): Promise<void> {
       }
 
       const viewportResults = [];
-      for (const vp of viewports) {
+      const totalUnits = Math.max(1, totalUrls * viewports.length);
+
+      for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
+        const vp = viewports[viewportIndex];
+        const unitIndex = (i * viewports.length) + viewportIndex;
+        const unitStart = (unitIndex / totalUnits) * 100;
+        const unitSpan = 100 / totalUnits;
+        const updateViewportProgress = async (viewportProgress: number) => {
+          const overallProgress = unitStart + ((Math.max(0, Math.min(100, viewportProgress)) / 100) * unitSpan);
+          await job.updateProgress(Math.min(99, Math.round(overallProgress)));
+        };
+
+        await updateViewportProgress(0);
         const res = await scanUrl(url, {
           viewport: vp,
           preNavigationScript,
+          onProgress: updateViewportProgress,
         });
         viewportResults.push(res);
+        await updateViewportProgress(100);
       }
 
       // Aggregate scores
@@ -66,6 +81,9 @@ export async function processScan(job: Job): Promise<void> {
         }
       }
 
+      const applicability = viewportResults[0]?.applicability || [];
+      const applicabilitySummary = viewportResults[0]?.applicabilitySummary || null;
+
       // Detect .gob.pe for Peruvian specific compliance
       const isGobPe = url.includes('.gob.pe');
       
@@ -77,8 +95,8 @@ export async function processScan(job: Job): Promise<void> {
       ];
 
       const insertQuery = `
-        INSERT INTO url_results (url, score, violations, "manualVerifications", status, "scanId")
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, status, "scanId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
       `;
       
       await pool.query(insertQuery, [
@@ -86,6 +104,7 @@ export async function processScan(job: Job): Promise<void> {
         avgScore,
         JSON.stringify(allViolations),
         JSON.stringify(manualVerifications),
+        JSON.stringify({ criteria: applicability, summary: applicabilitySummary }),
         'completed',
         scanId,
       ]);

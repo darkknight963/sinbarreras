@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Define the Peruvian compliance rules, prioritization model, public-administration detection, and traceability requirements used to evaluate digital accessibility against local regulation.
+
+## Requirements
 
 ### Requirement: Prioritization Value (Vp) Calculation and Bulk Upload
 The system SHALL automatically calculate the Valor de Priorización (Vp = Vo × Ux) and support bulk uploads (CSV) of Vo (Volumen de visitas) metrics.
