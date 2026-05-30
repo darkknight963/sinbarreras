@@ -17,7 +17,8 @@ import {
   FileText,
   Gauge,
   ListChecks,
-  TableProperties
+  TableProperties,
+  Building2
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
 import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL } from './config';
@@ -279,10 +280,54 @@ export default function App() {
 
   // Helper to determine Vp category
   const getVpCategory = (vpValue: number | null) => {
-    if (!vpValue) return { label: 'Bajo', color: 'bg-green-100 text-green-800 border-green-200' };
-    if (vpValue >= 24) return { label: 'Prioridad Alta', color: 'bg-red-100 text-red-800 border-red-200' };
-    if (vpValue >= 12) return { label: 'Prioridad Media', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
-    return { label: 'Prioridad Baja', color: 'bg-green-100 text-green-800 border-green-200' };
+    if (!vpValue) return { label: 'Prioridad Baja', color: 'report-priority-badge report-priority-low' };
+    if (vpValue >= 24) return { label: 'Prioridad Alta', color: 'report-priority-badge report-priority-high' };
+    if (vpValue >= 12) return { label: 'Prioridad Media', color: 'report-priority-badge report-priority-medium' };
+    return { label: 'Prioridad Baja', color: 'report-priority-badge report-priority-low' };
+  };
+
+  const getScoreMeta = (score: number | null | undefined) => {
+    const value = Math.max(0, Math.min(100, score ?? 0));
+    if (value >= 80) return { value, tone: 'good', label: 'Cumplimiento bueno' };
+    if (value >= 50) return { value, tone: 'warning', label: 'Cumplimiento medio' };
+    return { value, tone: 'danger', label: 'Cumplimiento en riesgo' };
+  };
+
+  const renderScoreMeter = (
+    score: number | null | undefined,
+    label = 'Score',
+    size: 'compact' | 'large' = 'compact',
+  ) => {
+    const meta = getScoreMeta(score);
+    return (
+      <div className={`report-score-meter report-score-${meta.tone} report-score-${size}`}>
+        <div className="report-score-meter-head">
+          <span className="report-score-meter-label">{label}</span>
+          <strong>{meta.value}/100</strong>
+        </div>
+        <div className="report-score-track" aria-label={`${label}: ${meta.value} de 100`}>
+          <div className="report-score-fill" style={{ width: `${meta.value}%` }} />
+        </div>
+        <span className="report-score-caption">{meta.label}</span>
+      </div>
+    );
+  };
+
+  const renderStatusBadge = (status: string) => {
+    const normalized = status.toLowerCase();
+    const isCompleted = normalized === 'completed';
+    const isFailed = normalized === 'failed';
+    const Icon = isCompleted ? CheckCircle : isFailed ? X : null;
+    return (
+      <span className={`report-analysis-status ${
+        isCompleted ? 'report-analysis-completed' :
+        isFailed ? 'report-analysis-failed' :
+        'report-analysis-running'
+      }`}>
+        {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden="true" /> : <span className="report-spinner" aria-hidden="true" />}
+        {status}
+      </span>
+    );
   };
 
   // Helper to determine Sello de Accesibilidad eligibility
@@ -317,11 +362,23 @@ export default function App() {
     document.title = `Plataforma de Accesibilidad Web | ${section}`;
   }, [view]);
 
+  const latestScans = projects
+    .map((project) => project.scans && project.scans.length > 0 ? project.scans[project.scans.length - 1] : null)
+    .filter((scan): scan is Scan => Boolean(scan));
+  const completedScores = latestScans
+    .map((scan) => scan.globalScore)
+    .filter((score): score is number => typeof score === 'number');
+  const averageScore = completedScores.length > 0
+    ? Math.round(completedScores.reduce((sum, score) => sum + score, 0) / completedScores.length)
+    : 0;
+  const projectsAtRisk = latestScans.filter((scan) => (scan.globalScore ?? 0) < 50).length;
+  const runningAnalyses = latestScans.filter((scan) => scan.status === 'running' || scan.status === 'pending').length;
+
   return (
     <div className="min-h-screen text-slate-900 font-sans">
       <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 px-8 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-50 px-8 py-4 min-h-14 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="h-10 w-10 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center">
             <Shield className="h-6 w-6 text-white" />
@@ -337,6 +394,7 @@ export default function App() {
             <span className="h-2 w-2 bg-green-400 rounded-full inline-block animate-pulse"></span>
             <span>Normativa Peruana 2026</span>
           </div>
+          <div className="header-avatar" aria-label="Usuario administrador">AU</div>
           <button type="button" aria-label="Abrir configuración" className="report-icon-btn">
             <Settings className="h-5 w-5 text-white/70 hover:text-white transition-colors" aria-hidden="true" />
           </button>
@@ -369,8 +427,30 @@ export default function App() {
               </button>
             </div>
 
+            <section className="project-summary-grid" aria-label="Métricas globales de proyectos">
+              <div className="project-summary-card">
+                <span>Total de proyectos</span>
+                <strong>{projects.length}</strong>
+              </div>
+              <div className="project-summary-card">
+                <span>Cumplimiento global</span>
+                <strong>{averageScore}/100</strong>
+                <div className="project-summary-bar">
+                  <div style={{ width: `${averageScore}%` }} />
+                </div>
+              </div>
+              <div className="project-summary-card project-summary-risk">
+                <span>En riesgo</span>
+                <strong>{projectsAtRisk}</strong>
+              </div>
+              <div className="project-summary-card project-summary-running">
+                <span>Completando análisis</span>
+                <strong>{runningAnalyses}</strong>
+              </div>
+            </section>
+
             {/* Grid of Projects */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.length === 0 ? (
                 <div className="col-span-full report-empty-state">
                   <Globe className="h-12 w-12 mx-auto mb-4 text-slate-400" />
@@ -396,7 +476,7 @@ export default function App() {
                         <div className="bg-blue-50 p-3 rounded-xl">
                           <Globe className="h-6 w-6 text-gob-blue" />
                         </div>
-                        <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium">
+                        <span className="report-entity-badge">
                           {p.entityType}
                         </span>
                       </div>
@@ -404,17 +484,12 @@ export default function App() {
                       <p className="text-slate-500 text-sm mb-4 break-all">{p.domain}</p>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-4 mt-4 flex items-center justify-between">
-                      <div className="text-left">
-                        <span className="text-xs text-slate-400 uppercase block tracking-wider font-semibold">Score Promedio</span>
-                        <span className="text-2xl font-black text-gob-dark">
-                          {lastScan?.globalScore !== null ? `${lastScan?.globalScore}/100` : 'N/A'}
-                        </span>
-                      </div>
+                    <div className="border-t border-slate-100 pt-4 mt-4 space-y-4">
+                      {renderScoreMeter(lastScan?.globalScore, 'Score promedio')}
 
-                      <div className="text-right">
+                      <div className="flex items-center justify-between gap-3">
                         <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Priorización (Vp)</span>
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getVpCategory(lastScan?.vp || null).color}`}>
+                        <span className={getVpCategory(lastScan?.vp || null).color}>
                           {getVpCategory(lastScan?.vp || null).label}
                         </span>
                       </div>
@@ -427,65 +502,101 @@ export default function App() {
             {/* Modal Create Project */}
             {showCreateProject && (
               <div className="fixed inset-0 report-modal-overlay flex items-center justify-center p-4" role="presentation">
-                <div className="report-modal" role="dialog" aria-modal="true" aria-labelledby="create-project-title">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 id="create-project-title" className="text-xl font-bold text-gob-dark">Añadir Proyecto</h3>
-                    <X className="h-5 w-5 cursor-pointer text-slate-400 hover:text-gob-dark transition-colors" onClick={() => setShowCreateProject(false)} />
-                  </div>
-                  <form onSubmit={handleCreateProject} className="space-y-4">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Nombre del Proyecto</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="Ej. Municipalidad de Lima"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark placeholder-slate-400 focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
-                        value={newProjectName}
-                        onChange={e => setNewProjectName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Dominio / URL Principal</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="https://www.munlima.gob.pe"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark placeholder-slate-400 focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
-                        value={newProjectDomain}
-                        onChange={e => setNewProjectDomain(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="report-modal create-project-modal" role="dialog" aria-modal="true" aria-labelledby="create-project-title">
+                  <form onSubmit={handleCreateProject}>
+                    <div className="create-project-modal-header">
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Tipo de Entidad</label>
-                        <select 
-                          className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
-                          value={newProjectEntityType}
-                          onChange={e => setNewProjectEntityType(e.target.value)}
-                        >
-                          <option>Administración Pública Peruana</option>
-                          <option>Gobierno Regional</option>
-                          <option>Gobierno Local</option>
-                          <option>Empresa pública FONAFE</option>
-                          <option>Sector privado</option>
-                        </select>
+                        <h3 id="create-project-title">Nuevo proyecto</h3>
+                        <p>Agrupa auditorías de accesibilidad bajo una entidad, dominio y criterio de priorización.</p>
                       </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Tráfico (Visitas - Vo)</label>
-                        <select 
-                          className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
-                          value={newProjectVo}
-                          onChange={e => setNewProjectVo(parseInt(e.target.value))}
-                        >
-                          <option value="6">Alto (Vo = 6)</option>
-                          <option value="4">Medio (Vo = 4)</option>
-                          <option value="2">Bajo (Vo = 2)</option>
-                        </select>
-                      </div>
+                      <button
+                        type="button"
+                        aria-label="Cerrar modal de nuevo proyecto"
+                        className="report-modal-close"
+                        onClick={() => setShowCreateProject(false)}
+                      >
+                        <X className="h-5 w-5" aria-hidden="true" />
+                      </button>
                     </div>
-<button type="submit" className="w-full report-action-btn justify-center mt-6">
-                      Crear Proyecto
-                    </button>
+                    <div className="create-project-modal-body">
+                      <section className="create-project-section">
+                        <div className="create-project-section-chip">
+                          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Datos básicos</span>
+                        </div>
+                        <div className="create-project-field">
+                          <label htmlFor="new-project-name">Nombre del proyecto</label>
+                          <input
+                            id="new-project-name"
+                            type="text"
+                            required
+                            placeholder="Ej. Municipalidad de Lima"
+                            className="create-project-control"
+                            value={newProjectName}
+                            onChange={e => setNewProjectName(e.target.value)}
+                          />
+                        </div>
+                        <div className="create-project-field">
+                          <label htmlFor="new-project-domain">Dominio / URL principal</label>
+                          <input
+                            id="new-project-domain"
+                            type="text"
+                            required
+                            placeholder="https://www.munlima.gob.pe"
+                            className="create-project-control"
+                            value={newProjectDomain}
+                            onChange={e => setNewProjectDomain(e.target.value)}
+                          />
+                        </div>
+                      </section>
+                      <section className="create-project-section create-project-section-spaced">
+                        <div className="create-project-section-chip">
+                          <Building2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Clasificación institucional</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="project-classification-grid">
+                          <div className="create-project-field">
+                            <label htmlFor="new-project-entity-type">Tipo de entidad</label>
+                            <div className="create-project-select-wrap">
+                              <select
+                                id="new-project-entity-type"
+                                className="create-project-control"
+                                value={newProjectEntityType}
+                                onChange={e => setNewProjectEntityType(e.target.value)}
+                              >
+                                <option>Administración Pública Peruana</option>
+                                <option>Gobierno Regional</option>
+                                <option>Gobierno Local</option>
+                                <option>Empresa pública FONAFE</option>
+                                <option>Sector privado</option>
+                              </select>
+                            </div>
+                            <p className="create-project-help">Define el contexto institucional usado para clasificar el proyecto.</p>
+                          </div>
+                          <div className="create-project-field">
+                            <label htmlFor="new-project-vo">Tráfico (Visitas - Vo)</label>
+                            <div className="create-project-select-wrap">
+                              <select
+                                id="new-project-vo"
+                                className="create-project-control"
+                                value={newProjectVo}
+                                onChange={e => setNewProjectVo(parseInt(e.target.value))}
+                              >
+                                <option value="6">Alto (Vo = 6)</option>
+                                <option value="4">Medio (Vo = 4)</option>
+                                <option value="2">Bajo (Vo = 2)</option>
+                              </select>
+                            </div>
+                            <p className="create-project-help">Este valor alimenta la priorización peruana del proyecto.</p>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                    <div className="create-project-modal-footer">
+                      <button type="submit" className="create-project-submit">
+                        Crear proyecto
+                      </button>
+                    </div>
                   </form>
                 </div>
               </div>
@@ -506,7 +617,7 @@ export default function App() {
               <div>
                 <div className="flex items-center space-x-2">
 <h2 className="text-2xl font-bold text-white">{currentProject.name}</h2>
-                  <span className="text-xs bg-white/10 border border-white/20 text-white/80 px-3 py-0.5 rounded-full">
+                    <span className="report-project-vo-badge">
                     Vo = {currentProject.vo}
                   </span>
                 </div>
@@ -519,18 +630,18 @@ export default function App() {
               <div className="report-panel report-panel-spacious space-y-8">
                 <h3 className="font-bold text-md text-gob-dark border-b border-slate-200 pb-3 uppercase tracking-wider text-xs">Métricas Legales</h3>
                 
-                <div className="space-y-6">
-                  <div>
-                    <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Clasificación</span>
-                    <span className="text-lg font-bold text-gob-dark">{currentProject.entityType}</span>
+                <div className="legal-metrics-list">
+                  <div className="legal-metric-item">
+                    <span className="legal-metric-label">Clasificación</span>
+                    <span className="legal-metric-value">{currentProject.entityType}</span>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Norma Aplicable</span>
-                    <span className="text-sm text-slate-600">Resolución N° 001-2025-PCM/SGTD</span>
+                  <div className="legal-metric-item">
+                    <span className="legal-metric-label">Norma Aplicable</span>
+                    <span className="legal-metric-value">Resolución N° 001-2025-PCM/SGTD</span>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Ley General</span>
-                    <span className="text-sm text-slate-600">Ley N° 29973 (Multas hasta 12 UIT)</span>
+                  <div className="legal-metric-item">
+                    <span className="legal-metric-label">Ley General</span>
+                    <span className="legal-metric-value">Ley N° 29973 (Multas hasta 12 UIT)</span>
                   </div>
                 </div>
 
@@ -550,7 +661,7 @@ export default function App() {
                   <div className="text-xs text-slate-500">Total: {currentProject.scans?.length || 0} análisis</div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {currentProject.scans?.map(scan => {
                     const progress = scanProgress[scan.id];
                     const isRunning = scan.status === 'running' || scan.status === 'pending';
@@ -564,18 +675,12 @@ export default function App() {
                             setView('scan');
                           }
                         }}
-                        className={`bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between transition-all ${isRunning ? 'opacity-85 pointer-events-none' : 'hover:border-gob-blue/30 hover:shadow-md cursor-pointer'}`}
+                        className={`scan-history-item ${isRunning ? 'scan-history-running pointer-events-none' : 'hover:border-gob-blue/30 hover:shadow-md cursor-pointer'}`}
                       >
                         <div className="space-y-1">
                           <div className="flex items-center space-x-2.5">
                             <span className="text-sm font-semibold text-gob-dark">Análisis {scan.scanMode}</span>
-                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
-scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
-                              scan.status === 'failed' ? 'bg-red-100 text-red-800 border-red-300' :
-                              'bg-blue-100 text-blue-800 border-blue-300 animate-pulse'
-                            }`}>
-                              {scan.status}
-                            </span>
+                            {renderStatusBadge(scan.status)}
                           </div>
                           <div className="text-xs text-slate-500 flex items-center space-x-2">
                             <Clock className="h-3 w-3" />
@@ -584,24 +689,21 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                         </div>
 
                         {isRunning ? (
-                          <div className="w-1/3 space-y-1.5">
-                            <div className="flex justify-between text-xs font-semibold text-blue-400">
+                          <div className="w-full max-w-xs space-y-1.5">
+                            <div className="flex justify-between text-xs font-semibold text-blue-900">
                               <span>Progreso del bot...</span>
                               <span>{progress || 0}%</span>
                             </div>
-<div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                              <div className="bg-gob-blue h-full transition-all duration-300" style={{ width: `${progress || 0}%` }}></div>
+                            <div className="scan-progress-track">
+                              <div className="scan-progress-fill" style={{ width: `${progress || 0}%` }}></div>
                             </div>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-6">
-                            <div className="text-right">
-                              <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Puntaje</span>
-                              <span className="text-lg font-bold text-gob-dark">{scan.globalScore !== null ? `${scan.globalScore}/100` : 'Failed'}</span>
-                            </div>
+                            {renderScoreMeter(scan.globalScore, 'Puntaje')}
                             <div className="text-right">
                               <span className="text-xs text-slate-500 uppercase block tracking-wider font-semibold">Priorización (Vp)</span>
-                              <span className={`text-xs px-2 py-0.5 rounded border inline-block ${getVpCategory(scan.vp).color}`}>
+                              <span className={getVpCategory(scan.vp).color}>
                                 {getVpCategory(scan.vp).label} ({scan.vp})
                               </span>
                             </div>
@@ -620,12 +722,20 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                 <div className="report-modal max-w-lg w-full space-y-6" role="dialog" aria-modal="true" aria-labelledby="new-scan-title">
                   <div className="flex justify-between items-center mb-2">
                     <h3 id="new-scan-title" className="text-xl font-bold text-gob-dark">Lanzar Auditoría</h3>
-                    <X className="h-5 w-5 cursor-pointer text-slate-400 hover:text-gob-dark transition-colors" onClick={() => setShowNewScan(false)} />
+                    <button
+                      type="button"
+                      aria-label="Cerrar modal de nueva auditoría"
+                      className="report-modal-close"
+                      onClick={() => setShowNewScan(false)}
+                    >
+                      <X className="h-5 w-5" aria-hidden="true" />
+                    </button>
                   </div>
                   <form onSubmit={handleTriggerScan} className="space-y-4">
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">URLs a analizar (Una por línea)</label>
+                      <label htmlFor="new-scan-urls" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">URLs a analizar (Una por línea)</label>
                       <textarea 
+                        id="new-scan-urls"
                         required
                         rows={4}
                         placeholder="https://www.munlima.gob.pe&#10;https://www.munlima.gob.pe/transparencia"
@@ -635,10 +745,11 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                       />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Modo del Análisis</label>
+                        <label htmlFor="new-scan-mode" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Modo del Análisis</label>
                         <select 
+                          id="new-scan-mode"
                           className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
                           value={newScanMode}
                           onChange={e => setNewScanMode(e.target.value as any)}
@@ -649,8 +760,9 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Impacto en Experiencia (Ux)</label>
+                        <label htmlFor="new-scan-ux" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Impacto en Experiencia (Ux)</label>
                         <select 
+                          id="new-scan-ux"
                           className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
                           value={newScanUx}
                           onChange={e => setNewScanUx(parseInt(e.target.value))}
@@ -664,10 +776,11 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
 
                     <div>
                       <div className="flex items-center space-x-1.5 mb-2">
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Script de Pre-Navegación</label>
+                        <label htmlFor="pre-navigation-script" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Script de Pre-Navegación</label>
                         <Lock className="h-3 w-3 text-slate-500" />
                       </div>
                       <textarea 
+                        id="pre-navigation-script"
                         rows={3}
                         placeholder="() => { document.querySelector('#user').value = 'admin'; ... }"
                         className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark placeholder-slate-400 font-mono text-xs focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
@@ -734,7 +847,7 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
               <section id="score" className="grid grid-cols-1 xl:grid-cols-5 gap-4">
                 <div className="xl:col-span-2 report-panel">
                   <p className="report-kicker">Cumplimiento Global</p>
-                  <p className="report-score-number">{currentScan.globalScore ?? 0}%</p>
+                  {renderScoreMeter(currentScan.globalScore, 'Score técnico', 'large')}
                 </div>
 
                 <div className="xl:col-span-3 grid md:grid-cols-2 gap-4">
@@ -742,7 +855,7 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                     <p className="report-kicker">Fórmula de Priorización Peruana</p>
                     <p className="text-slate-700 font-semibold mt-1">(p = Vo({currentProject?.vo || 4}) + Ux({currentScan.ux})) / 16</p>
                     <p className="text-4xl font-black text-gob-blue mt-2">{currentScan.vp ?? 0}</p>
-                    <span className="report-chip mt-2 inline-flex">{getVpCategory(currentScan.vp).label}</span>
+                    <span className={`${getVpCategory(currentScan.vp).color} mt-2`}>{getVpCategory(currentScan.vp).label}</span>
                   </div>
                   <div className="report-panel report-panel-spacious">
                     <p className="report-kicker">Sello de Accesibilidad PCM</p>
@@ -820,14 +933,14 @@ scan.status === 'completed' ? 'bg-green-100 text-green-800 border-green-300' :
                   <section id="violaciones" className="report-panel report-panel-spacious">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                       <h3 className="report-section-title">Violaciones Detectadas ({selectedUrlResult.violations?.length || 0})</h3>
-                      <div className="flex gap-2">
-                        <select className="report-select" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+                      <div className="flex flex-wrap gap-2">
+                        <select className="report-select min-w-0" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
                           <option value="todos">Rol: Todos</option>
                           <option value="Desarrollador">Desarrollador</option>
                           <option value="Diseñador UX/UI">Diseñador UX/UI</option>
                           <option value="Redactor UX">Redactor UX</option>
                         </select>
-                        <select className="report-select" value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}>
+                        <select className="report-select min-w-0" value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}>
                           <option value="todos">Severidad: Todas</option>
                           <option value="crítico">Alto / Crítico</option>
                           <option value="alto">Alto</option>

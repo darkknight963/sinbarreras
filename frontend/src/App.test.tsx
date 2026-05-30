@@ -1,0 +1,155 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import './index.css'
+import App from './App'
+
+vi.mock('socket.io-client', () => ({
+  io: vi.fn(() => ({
+    on: vi.fn(),
+    disconnect: vi.fn(),
+  })),
+}))
+
+const projectsResponse = [
+  {
+    id: 'project-1',
+    name: 'Portal de Servicios',
+    domain: 'https://www.gob.pe',
+    entityType: 'Administración Pública Peruana',
+    vo: 4,
+    scans: [
+      {
+        id: 'scan-1',
+        status: 'completed',
+        globalScore: 82,
+        vp: 12,
+        ux: 4,
+        createdAt: '2026-05-29T12:00:00.000Z',
+        urlResults: [],
+      },
+    ],
+  },
+]
+
+const cssSource = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8')
+
+describe('App project creation experience', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        return {
+          ok: true,
+          status: 200,
+          json: async () => (url.includes('/projects/project-1') ? projectsResponse[0] : projectsResponse),
+        }
+      }),
+    )
+  })
+
+  it('opens a guided single-step project modal with contextual help', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByText('Portal de Servicios')
+    await user.click(screen.getByRole('button', { name: /nuevo proyecto/i }))
+
+    expect(screen.getByRole('dialog', { name: /nuevo proyecto/i })).toBeInTheDocument()
+    expect(screen.getByText(/agrupa auditor.as de accesibilidad/i)).toBeInTheDocument()
+    expect(screen.getByText(/define el contexto institucional/i)).toBeInTheDocument()
+    expect(screen.getByText(/alimenta la priorizaci.n peruana/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cerrar modal de nuevo proyecto/i })).toBeInTheDocument()
+  })
+
+  it('closes the project modal with the accessible close button', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByText('Portal de Servicios')
+    await user.click(screen.getByRole('button', { name: /nuevo proyecto/i }))
+    await user.click(screen.getByRole('button', { name: /cerrar modal de nuevo proyecto/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: /nuevo proyecto/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('keeps entity type and traffic controls in a responsive classification group', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByText('Portal de Servicios')
+    await user.click(screen.getByRole('button', { name: /nuevo proyecto/i }))
+
+    const entityType = screen.getByLabelText(/tipo de entidad/i)
+    const traffic = screen.getByLabelText(/tr.fico/i)
+    const group = entityType.closest('[data-testid="project-classification-grid"]')
+
+    expect(group).toBeInTheDocument()
+    expect(group).toContainElement(entityType)
+    expect(group).toContainElement(traffic)
+    expect(group).toHaveClass('grid-cols-1', 'md:grid-cols-2')
+  })
+
+  it('uses dark readable text for entity and priority labels on light project cards', async () => {
+    render(<App />)
+
+    const entityLabel = await screen.findByText('Administración Pública Peruana')
+    const priorityLabel = screen.getByText('Prioridad Media')
+
+    expect(entityLabel).toHaveClass('report-entity-badge')
+    expect(priorityLabel).toHaveClass('report-priority-badge', 'report-priority-medium')
+
+    expect(entityLabel).not.toHaveClass('text-slate-600')
+    expect(priorityLabel).not.toHaveClass('text-yellow-800')
+  })
+
+  it('renders visual score meters and global project metrics', async () => {
+    render(<App />)
+
+    await screen.findByText('Portal de Servicios')
+
+    expect(screen.getByText('Total de proyectos')).toBeInTheDocument()
+    expect(screen.getByText('Cumplimiento global')).toBeInTheDocument()
+    expect(screen.getByText('En riesgo')).toBeInTheDocument()
+    expect(screen.getByText('Completando análisis')).toBeInTheDocument()
+    expect(screen.getAllByText('82/100').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Cumplimiento bueno')).toBeInTheDocument()
+  })
+
+  it('declares higher-specificity dark text rules for light surfaces nested in dark report surfaces', () => {
+    expect(cssSource).toContain('.report-surface .report-panel span')
+    expect(cssSource).toContain('.report-surface .report-modal span')
+    expect(cssSource).toContain('.report-surface .report-card-entity span')
+    expect(cssSource).toContain('.report-priority-medium')
+    expect(cssSource).toContain('color: #0C447C;')
+  })
+
+  it('declares border-box sizing for controls so borders stay inside containers', () => {
+    expect(cssSource).toContain('box-sizing: border-box;')
+    expect(cssSource).toContain('input,\ntextarea,\nselect,\nbutton')
+    expect(cssSource).toContain('max-width: 100%;')
+    expect(cssSource).toContain('min-width: 0;')
+  })
+
+  it('uses accessible labels and responsive controls in the new scan modal', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByText('Portal de Servicios')
+    await user.click(screen.getByRole('button', { name: /ver detalles del proyecto portal de servicios/i }))
+    await screen.findByRole('heading', { name: /portal de servicios/i })
+    await user.click(screen.getByRole('button', { name: /nuevo análisis/i }))
+
+    expect(screen.getByRole('dialog', { name: /lanzar auditoría/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cerrar modal de nueva auditoría/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/urls a analizar/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/modo del análisis/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/impacto en experiencia/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/script de pre-navegación/i)).toBeInTheDocument()
+  })
+})

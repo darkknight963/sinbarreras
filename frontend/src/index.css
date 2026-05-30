@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* ============================================================================
    TRANSITION UTILITIES (Task 10.1)
    Reusable transition classes for consistent animation timing across components
@@ -113,8 +119,8 @@ summary:focus-visible {
 }
 
 .report-icon-btn {
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 42px;
+  min-height: 42px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   background: rgba(255, 255, 255, 0.08);
@@ -125,10 +131,11 @@ summary:focus-visible {
 
 header.sticky {
   background: linear-gradient(115deg, #001f54 0%, #003a94 42%, #0b5ed7 100%) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.18) !important;
-  box-shadow: 0 8px 28px rgba(0, 25, 81, 0.35);
+  border-bottom: 2px solid rgba(219, 230, 255, 0.55) !important;
+  box-shadow: 0 10px 30px rgba(0, 25, 81, 0.38), 0 1px 0 rgba(255, 255, 255, 0.16) inset;
   transition: box-shadow 200ms ease-out;
   backdrop-filter: blur(8px);
+  min-height: 56px;
 }
 
 header.sticky h1 { 
@@ -164,6 +171,22 @@ header.sticky .header-badge {
 header.sticky .header-badge:hover {
   background: rgba(255, 255, 255, 0.3);
   border-color: rgba(255, 255, 255, 0.5);
+}
+
+.header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #002C76;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  box-shadow: 0 8px 18px rgba(0, 20, 74, 0.22);
 }
 
 .report-shell {
@@ -225,6 +248,86 @@ header.sticky .header-badge:hover {
   color: #002C76;
   line-height: 1;
   letter-spacing: -0.03em;
+}
+
+.report-score-meter {
+  width: 100%;
+  min-width: 160px;
+}
+
+.report-score-meter-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.report-score-meter-label,
+.report-score-caption {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  color: #475569;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.report-score-meter strong {
+  color: #0f172a;
+  font-size: 1.6rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.report-score-large .report-score-meter-head {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-score-large strong {
+  font-size: 3.25rem;
+  color: #002C76;
+}
+
+.report-score-track {
+  width: 100%;
+  height: 9px;
+  margin-top: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+}
+
+.report-score-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 260ms ease-out;
+}
+
+.report-score-danger .report-score-fill { min-width: 4px; background: #E24B4A; }
+.report-score-warning .report-score-fill { min-width: 4px; background: #EF9F27; }
+.report-score-good .report-score-fill { min-width: 4px; background: #1D9E75; }
+.report-score-danger strong { color: #A32D2D !important; }
+.report-score-warning strong { color: #854F0B !important; }
+.report-score-good strong { color: #3B6D11 !important; }
+.report-score-danger .report-score-caption {
+  background: #FCEBEB;
+  color: #A32D2D !important;
+}
+.report-score-warning .report-score-caption {
+  background: #FAEEDA;
+  color: #854F0B !important;
+}
+.report-score-good .report-score-caption {
+  background: #EAF3DE;
+  color: #3B6D11 !important;
 }
 
 .report-panel-spacious {
@@ -354,6 +457,62 @@ header.sticky .header-badge:hover {
   border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+.project-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.project-summary-card {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.18);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.project-summary-card span {
+  display: block;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.project-summary-card strong {
+  display: block;
+  margin-top: 6px;
+  color: #ffffff !important;
+  font-size: 1.8rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.project-summary-bar {
+  margin-top: 10px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.project-summary-bar div {
+  height: 100%;
+  background: #047857;
+}
+
+.project-summary-risk {
+  border-color: rgba(226, 232, 240, 0.18);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.project-summary-running {
+  border-color: rgba(226, 232, 240, 0.18);
+  background: rgba(15, 23, 42, 0.72);
+}
+
 .report-surface .text-slate-300 {
   color: #e2e8f0 !important;
 }
@@ -402,6 +561,91 @@ header.sticky .header-badge:hover {
   color: #0f172a;
 }
 
+.report-panel :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong),
+.report-header-panel :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong),
+.report-card-entity :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong),
+.report-modal :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong),
+.report-sidebar :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong),
+.report-url-card :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong),
+.report-manual-card :where(h1, h2, h3, h4, h5, h6, p, span, label, li, small, strong) {
+  color: #0f172a;
+}
+
+.report-surface .report-panel h1,
+.report-surface .report-panel h2,
+.report-surface .report-panel h3,
+.report-surface .report-panel h4,
+.report-surface .report-panel h5,
+.report-surface .report-panel h6,
+.report-surface .report-panel p,
+.report-surface .report-panel span,
+.report-surface .report-panel label,
+.report-surface .report-panel li,
+.report-surface .report-panel small,
+.report-surface .report-panel strong,
+.report-surface .report-header-panel h1,
+.report-surface .report-header-panel h2,
+.report-surface .report-header-panel h3,
+.report-surface .report-header-panel h4,
+.report-surface .report-header-panel h5,
+.report-surface .report-header-panel h6,
+.report-surface .report-header-panel p,
+.report-surface .report-header-panel span,
+.report-surface .report-header-panel label,
+.report-surface .report-header-panel li,
+.report-surface .report-header-panel small,
+.report-surface .report-header-panel strong,
+.report-surface .report-card-entity h1,
+.report-surface .report-card-entity h2,
+.report-surface .report-card-entity h3,
+.report-surface .report-card-entity h4,
+.report-surface .report-card-entity h5,
+.report-surface .report-card-entity h6,
+.report-surface .report-card-entity p,
+.report-surface .report-card-entity span,
+.report-surface .report-card-entity label,
+.report-surface .report-card-entity li,
+.report-surface .report-card-entity small,
+.report-surface .report-card-entity strong,
+.report-surface .report-modal h1,
+.report-surface .report-modal h2,
+.report-surface .report-modal h3,
+.report-surface .report-modal h4,
+.report-surface .report-modal h5,
+.report-surface .report-modal h6,
+.report-surface .report-modal p,
+.report-surface .report-modal span,
+.report-surface .report-modal label,
+.report-surface .report-modal li,
+.report-surface .report-modal small,
+.report-surface .report-modal strong,
+.report-surface .report-url-card h1,
+.report-surface .report-url-card h2,
+.report-surface .report-url-card h3,
+.report-surface .report-url-card h4,
+.report-surface .report-url-card h5,
+.report-surface .report-url-card h6,
+.report-surface .report-url-card p,
+.report-surface .report-url-card span,
+.report-surface .report-url-card label,
+.report-surface .report-url-card li,
+.report-surface .report-url-card small,
+.report-surface .report-url-card strong,
+.report-surface .report-manual-card h1,
+.report-surface .report-manual-card h2,
+.report-surface .report-manual-card h3,
+.report-surface .report-manual-card h4,
+.report-surface .report-manual-card h5,
+.report-surface .report-manual-card h6,
+.report-surface .report-manual-card p,
+.report-surface .report-manual-card span,
+.report-surface .report-manual-card label,
+.report-surface .report-manual-card li,
+.report-surface .report-manual-card small,
+.report-surface .report-manual-card strong {
+  color: #0f172a;
+}
+
 .report-panel .text-slate-400,
 .report-panel .text-slate-500,
 .report-header-panel .text-slate-400,
@@ -410,9 +654,36 @@ header.sticky .header-badge:hover {
 .report-card-entity .text-slate-500,
 .report-modal .text-slate-400,
 .report-modal .text-slate-500,
+.report-modal .text-slate-600,
 .report-sidebar .text-slate-400,
 .report-sidebar .text-slate-500 {
   color: #475569 !important;
+}
+
+.report-surface :is(.report-panel, .report-header-panel, .report-card-entity, .report-modal, .report-url-card, .report-manual-card) :is(.text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600) {
+  color: #475569 !important;
+}
+
+.report-surface :is(.report-panel, .report-header-panel, .report-card-entity, .report-modal, .report-url-card, .report-manual-card) :is(.text-white, .text-white\/70, .text-white\/80) {
+  color: #0f172a !important;
+}
+
+.report-surface :is(.report-panel, .report-header-panel, .report-card-entity, .report-modal, .report-url-card, .report-manual-card) :is(input, textarea, select, button, table, th, td, code, pre) {
+  max-width: 100%;
+}
+
+input,
+textarea,
+select,
+button {
+  box-sizing: border-box;
+}
+
+input,
+textarea,
+select {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .report-card-entity {
@@ -434,6 +705,26 @@ header.sticky .header-badge:hover {
   border-color: #2563eb;
   box-shadow: 0 20px 42px rgba(37, 99, 235, 0.2);
   transform: translateY(-5px);
+}
+
+.report-entity-badge,
+.report-project-vo-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #111827 !important;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.report-project-vo-badge {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
 }
 
 .report-card-entity:focus-visible,
@@ -458,9 +749,16 @@ header.sticky .header-badge:hover {
 }
 
 .report-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   z-index: 49;
+  overflow-y: auto;
 }
 
 @keyframes modalIn {
@@ -478,6 +776,211 @@ header.sticky .header-badge:hover {
   color: #1D2939;
 }
 
+.report-modal-close {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #dbe6ff;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.report-modal-close:hover {
+  border-color: #002C76;
+  color: #002C76;
+  background: #f0f4ff;
+}
+
+.report-modal-close:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.create-project-modal {
+  max-width: 440px !important;
+  border-radius: 16px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.create-project-modal form {
+  margin: 0;
+}
+
+.create-project-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e8ecf1;
+}
+
+.create-project-modal-header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.create-project-modal-header p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.create-project-modal-body {
+  padding: 20px 24px;
+}
+
+.create-project-section {
+  display: grid;
+  gap: 0;
+}
+
+.create-project-section-spaced {
+  margin-top: 22px;
+}
+
+.create-project-section-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 4px 10px;
+  border: 1px solid #e8ecf1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.create-project-section-chip svg {
+  color: #002C76;
+}
+
+.create-project-field {
+  margin-bottom: 14px;
+}
+
+.create-project-field:last-child {
+  margin-bottom: 0;
+}
+
+.create-project-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.create-project-control {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #e8ecf1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 40px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.create-project-control::placeholder {
+  color: #64748b;
+}
+
+.create-project-control:focus {
+  outline: none;
+  border-color: #002C76;
+  box-shadow: 0 0 0 3px rgba(0, 44, 118, 0.1);
+}
+
+.create-project-select-wrap {
+  position: relative;
+}
+
+.create-project-select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: #475569;
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
+}
+
+.create-project-select-wrap select {
+  appearance: none;
+  padding-right: 34px;
+}
+
+.create-project-help {
+  margin: 5px 0 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.create-project-modal-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid #e8ecf1;
+  background: #ffffff;
+}
+
+.create-project-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 10px;
+  background: #002C76;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.create-project-submit:hover {
+  background: #003a94;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24);
+}
+
+.create-project-submit:active {
+  transform: translateY(1px);
+}
+
+.create-project-submit:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
 .report-chip {
   background: #e8edf5;
   border: 1px solid #cdd7e6;
@@ -486,6 +989,137 @@ header.sticky .header-badge:hover {
   padding: 4px 10px;
   font-size: 0.72rem;
   font-weight: 600;
+}
+
+.report-priority-badge,
+.report-analysis-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.report-priority-high {
+  background: #ffffff;
+  color: #111827 !important;
+  border-color: #cbd5e1;
+}
+
+.report-priority-medium {
+  background: #ffffff;
+  color: #111827 !important;
+  border-color: #cbd5e1;
+}
+
+.report-priority-low {
+  background: #ffffff;
+  color: #111827 !important;
+  border-color: #cbd5e1;
+}
+
+.report-analysis-completed {
+  background: #d1fae5;
+  color: #064e3b;
+  border-color: #6ee7b7;
+}
+
+.report-analysis-failed {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fecaca;
+}
+
+.report-analysis-running {
+  background: #dbeafe;
+  color: #0C447C;
+  border-color: #93c5fd;
+}
+
+.report-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: reportSpin 800ms linear infinite;
+}
+
+@keyframes reportSpin {
+  to { transform: rotate(360deg); }
+}
+
+.scan-history-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  transition: all 200ms ease;
+}
+
+.scan-history-running {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+}
+
+.scan-progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+}
+
+.scan-progress-fill {
+  height: 100%;
+  min-width: 4px;
+  background: #0C447C;
+  border-radius: inherit;
+  transition: width 300ms ease-out;
+}
+
+.legal-metrics-list {
+  display: grid;
+  gap: 14px;
+}
+
+.legal-metric-item {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.legal-metric-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.legal-metric-label {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+.legal-metric-value {
+  display: block;
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 500;
 }
 
 .report-section-title {
@@ -823,6 +1457,11 @@ main.max-w-7xl {
     padding: 12px 16px !important;
   }
 
+  .header-badge,
+  .header-avatar {
+    display: none !important;
+  }
+
   header.sticky h1 {
     font-size: 1rem;
   }
@@ -831,6 +1470,24 @@ main.max-w-7xl {
   main.max-w-7xl {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .report-surface {
+    padding: 18px;
+  }
+
+  .project-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-history-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .scan-history-item .report-score-meter,
+  .scan-history-item .max-w-xs {
+    max-width: 100%;
   }
 }
 
@@ -895,6 +1552,10 @@ main.max-w-7xl {
   main.max-w-7xl {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
+  }
+
+  .project-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
