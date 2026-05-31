@@ -1,4 +1,12 @@
-import { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand, PutBucketPolicyCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  CreateBucketCommand,
+  HeadBucketCommand,
+  DeleteBucketPolicyCommand,
+  DeleteObjectsCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -7,6 +15,7 @@ const endpoint = process.env.MINIO_ENDPOINT ? `http://${process.env.MINIO_ENDPOI
 const accessKeyId = process.env.MINIO_ROOT_USER || 'admin';
 const secretAccessKey = process.env.MINIO_ROOT_PASSWORD || 'admin123';
 const bucketName = 'accessibility-evidence';
+const retentionDays = Number.parseInt(process.env.EVIDENCE_RETENTION_DAYS || '0', 10);
 
 export const s3Client = new S3Client({
   endpoint,
@@ -29,33 +38,63 @@ export async function initializeStorage(): Promise<void> {
         await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
         console.log(`Bucket '${bucketName}' created successfully.`);
 
-        // Set public read bucket policy so that screenshots can be viewed in the dashboard directly
-        const policy = {
-          Version: '2012-10-17',
-          Statement: [
-            {
-              Sid: 'PublicRead',
-              Effect: 'Allow',
-              Principal: '*',
-              Action: ['s3:GetObject'],
-              Resource: [`arn:aws:s3:::${bucketName}/*`],
-            },
-          ],
-        };
-
-        await s3Client.send(
-          new PutBucketPolicyCommand({
-            Bucket: bucketName,
-            Policy: JSON.stringify(policy),
-          })
-        );
-        console.log(`Public read policy set for bucket '${bucketName}'.`);
       } else {
         throw err;
       }
     }
+
+    try {
+      await s3Client.send(new DeleteBucketPolicyCommand({ Bucket: bucketName }));
+      console.log(`Public bucket policy removed for '${bucketName}'.`);
+    } catch {
+      console.log(`Bucket '${bucketName}' has no public policy to remove.`);
+    }
+
+    await cleanupExpiredEvidence();
   } catch (err) {
     console.error('Error initializing storage bucket:', err);
+  }
+}
+
+async function cleanupExpiredEvidence(): Promise<void> {
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
+    return;
+  }
+
+  const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  let continuationToken: string | undefined;
+  let deletedObjects = 0;
+
+  do {
+    const response = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: bucketName,
+        ContinuationToken: continuationToken,
+      })
+    );
+
+    const expired = (response.Contents || [])
+      .filter((object) => object.Key && object.LastModified && object.LastModified.getTime() < cutoffMs)
+      .map((object) => ({ Key: object.Key! }));
+
+    if (expired.length > 0) {
+      await s3Client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucketName,
+          Delete: {
+            Objects: expired,
+            Quiet: true,
+          },
+        })
+      );
+      deletedObjects += expired.length;
+    }
+
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+
+  if (deletedObjects > 0) {
+    console.log(`Deleted ${deletedObjects} expired evidence object(s) from '${bucketName}'.`);
   }
 }
 
@@ -72,8 +111,7 @@ export async function uploadEvidence(
   });
 
   await s3Client.send(command);
-  
-  // Return the public URL for accessing the object
-  const publicEndpoint = process.env.PUBLIC_MINIO_ENDPOINT || 'http://localhost:9000';
-  return `${publicEndpoint}/${bucketName}/${key}`;
+
+  const publicApiEndpoint = process.env.PUBLIC_API_ENDPOINT || 'http://localhost:3000';
+  return `${publicApiEndpoint}/evidence/${encodeURIComponent(key)}`;
 }

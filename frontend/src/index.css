@@ -1,3 +1,4 @@
+@import "@fontsource/inter/index.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -63,7 +64,7 @@
 
 body {
   margin: 0;
-  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background:
     radial-gradient(circle at 12% 18%, rgba(0, 44, 118, 0.16), transparent 40%),
     radial-gradient(circle at 88% 5%, rgba(14, 165, 233, 0.16), transparent 42%),
@@ -194,11 +195,15 @@ header.sticky .header-badge:hover {
 }
 
 .report-shell {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
   width: 100%;
   max-width: none;
   margin: 0 auto;
   padding: 0.25rem 0 2.5rem;
+  min-width: 0;
 }
 
 .report-main-content {
@@ -213,6 +218,9 @@ header.sticky .header-badge:hover {
 .report-section-stack {
   display: grid;
   gap: 28px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
 }
 
 .report-section-stack > section {
@@ -224,6 +232,7 @@ header.sticky .header-badge:hover {
   max-width: none;
   padding-left: 32px;
   padding-right: 32px;
+  min-width: 0;
 }
 
 .projects-page-main {
@@ -241,6 +250,7 @@ header.sticky .header-badge:hover {
 }
 
 .report-sidebar {
+  display: none;
   position: sticky;
   top: 90px;
   align-self: flex-start;
@@ -286,6 +296,8 @@ header.sticky .header-badge:hover {
   padding: 24px;
   box-shadow: 0 12px 24px rgba(30, 41, 59, 0.08);
   transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  min-width: 0;
 }
 
 .report-panel:hover {
@@ -387,6 +399,7 @@ header.sticky .header-badge:hover {
 .report-score-overview {
   gap: 22px;
   align-items: stretch;
+  min-width: 0;
 }
 
 .report-score-overview .report-panel {
@@ -395,10 +408,17 @@ header.sticky .header-badge:hover {
 
 .report-score-detail-grid {
   gap: 22px;
+  min-width: 0;
 }
 
 .report-score-detail-grid .report-panel {
   min-height: 136px;
+}
+
+.report-table-scroll {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 #paginas .grid,
@@ -414,6 +434,13 @@ header.sticky .header-badge:hover {
 .report-header-panel {
   position: relative;
   overflow: hidden;
+}
+
+.report-header-panel .flex,
+.report-header-panel .grid,
+.report-panel .flex,
+.report-panel .grid {
+  min-width: 0;
 }
 
 .report-header-panel::after {
@@ -543,6 +570,8 @@ header.sticky .header-badge:hover {
   gap: 24px;
   width: 100%;
   padding: 24px;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .project-detail-layout {
@@ -550,6 +579,7 @@ header.sticky .header-badge:hover {
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 2.1fr);
   gap: 24px;
   align-items: start;
+  min-width: 0;
 }
 
 .project-overview-header {
@@ -1457,6 +1487,7 @@ select {
   grid-template-columns: repeat(5, minmax(120px, 1fr));
   gap: 10px;
   margin-bottom: 18px;
+  min-width: 0;
 }
 
 .report-view-mode-control {
@@ -1621,7 +1652,8 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 640px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .report-principle-row-content strong {
@@ -1658,7 +1690,8 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 620px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .report-guideline-row-content strong {
@@ -1786,6 +1819,7 @@ select {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 6px;
+  min-width: 0;
 }
 
 .report-check-item {
@@ -1826,10 +1860,12 @@ main.max-w-7xl {
 
   .report-main-content {
     max-width: none;
+    min-width: 0;
   }
 
   .report-section-stack {
     gap: 24px;
+    min-width: 0;
   }
 
   .report-applicability-summary-row {
@@ -1937,6 +1973,7 @@ main.max-w-7xl {
   .project-detail-layout {
     grid-template-columns: 1fr;
     gap: 18px;
+    min-width: 0;
   }
 
   .project-summary-grid {
@@ -1980,10 +2017,12 @@ main.max-w-7xl {
 
   .report-main-content {
     max-width: none;
+    min-width: 0;
   }
 
   .report-section-stack {
     gap: 30px;
+    min-width: 0;
   }
 
   .report-applicability-summary-row {
@@ -2062,7 +2101,18 @@ main.max-w-7xl {
 @media (min-width: 1024px) {
   /* Maintain full layout with sidebar */
   .report-shell {
-    display: block;
+    display: grid;
+    grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .report-sidebar {
+    display: flex;
+    width: 18rem;
+  }
+
+  .report-section-stack {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Apply full padding (24px) to panels */
@@ -2071,16 +2121,16 @@ main.max-w-7xl {
     padding: 24px;
   }
 
+  .report-main-content {
+    min-width: 0;
+  }
+
   /* Maintain full sidebar width */
   .report-sidebar {
-    width: 100%;
-    position: sticky;
-    top: 90px;
-    align-self: flex-start;
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 0;
   }
 
   /* Ensure optimal spacing and readability */
@@ -2129,5 +2179,36 @@ main.max-w-7xl {
     animation: none !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .report-shell {
+    display: grid !important;
+    grid-template-columns: minmax(18rem, 18rem) minmax(0, 1fr) !important;
+    gap: 24px !important;
+  }
+
+  .report-sidebar {
+    display: flex !important;
+    grid-column: 1 !important;
+    width: 18rem !important;
+  }
+
+  .report-main-content {
+    grid-column: 2 !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+}
+
+@media screen and (max-width: 1023px) {
+  .report-sidebar {
+    display: none !important;
+  }
+
+  .report-shell {
+    display: flex !important;
+    flex-direction: column !important;
   }
 }

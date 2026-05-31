@@ -43,3 +43,38 @@ The scanner SHALL attempt conservative handling of common blocking overlays befo
 #### Scenario: Blocking content remains
 - **WHEN** the page remains blocked by a modal, login gate, captcha, or terms flow after conservative handling
 - **THEN** the scanner records a `needs_review` finding instead of assuming the full page was evaluated
+
+### Requirement: Private Evidence Access
+The system SHALL keep stored evidence private and expose it only through controlled application access.
+
+#### Scenario: Evidence is requested from the UI
+- **WHEN** a user opens a report that references screenshots or HTML evidence
+- **THEN** the application serves the evidence through authenticated application logic or equivalent controlled access, not as a public bucket object
+
+### Requirement: Versioned Scan Traceability
+The system SHALL persist the normative and rule-set versions used for each scan so reports remain historically traceable.
+
+#### Scenario: Historical analysis is opened
+- **WHEN** a previously completed scan is viewed or exported
+- **THEN** the stored scan metadata includes the WCAG version, normative version, and rule-set version used for that analysis
+
+### Requirement: Structured Engine Failure Reporting
+The system SHALL record structured failure information when an individual accessibility engine fails without aborting the full scan.
+
+#### Scenario: One engine throws during analysis
+- **WHEN** a browser-based engine fails with an exception
+- **THEN** the scan result includes the engine status and error details, and the remaining engines can still complete the scan
+
+### Requirement: Controlled Engine Concurrency
+The system SHALL avoid concurrent access to the same page instance by multiple engines during a single scan.
+
+#### Scenario: Multiple engines run on the same URL
+- **WHEN** the worker executes engine checks for one page
+- **THEN** page access is serialized or otherwise constrained so engines do not race for the same browser context
+
+### Requirement: Scan Admission Guardrails
+The system SHALL validate and rate-limit scan submissions before they are enqueued for processing.
+
+#### Scenario: Public scan submission is received
+- **WHEN** an unauthenticated or repeated scan request is submitted
+- **THEN** the API validates the target URL, rejects unsupported inputs, and applies request limits before queueing the job

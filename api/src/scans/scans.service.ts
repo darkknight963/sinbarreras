@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Scan } from './entities/scan.entity';
 import { Project } from '../projects/entities/project.entity';
+import { validateScanTargetUrls } from '../security/scan-url-policy';
+import { CreateScanDto } from './dto/create-scan.dto';
 
 @Injectable()
 export class ScansService {
@@ -15,25 +18,28 @@ export class ScansService {
     private readonly projectRepository: Repository<Project>,
     @InjectQueue('scans')
     private readonly scansQueue: Queue,
+    private readonly configService: ConfigService,
   ) {}
 
-  async triggerScan(
-    projectId: string,
-    urls: string[],
-    scanMode: string,
-    ux: number,
-    preNavigationScript?: string,
-  ): Promise<Scan> {
+  async triggerScan(createScanDto: CreateScanDto): Promise<Scan> {
+    const { projectId, scanMode, ux } = createScanDto;
+    const urls = await validateScanTargetUrls(createScanDto.urls);
     const project = await this.projectRepository.findOne({ where: { id: projectId } });
     if (!project) throw new Error('Project not found');
 
     const vp = project.vo * ux;
+    const normativeVersion = this.configService.get<string>('NORMATIVE_VERSION', 'Resolucion N° 001-2025-PCM/SGTD');
+    const wcagVersion = this.configService.get<string>('WCAG_VERSION', 'WCAG 2.2');
+    const ruleSetVersion = this.configService.get<string>('RULESET_VERSION', '2026-05');
 
     const scan = this.scanRepository.create({
       status: 'pending',
       scanMode,
       ux,
       vp,
+      normativeVersion,
+      wcagVersion,
+      ruleSetVersion,
       project,
     });
 
@@ -44,7 +50,6 @@ export class ScansService {
       scanId: savedScan.id,
       urls,
       scanMode,
-      preNavigationScript,
     });
 
     return savedScan;

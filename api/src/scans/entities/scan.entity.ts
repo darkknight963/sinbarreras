@@ -1,7 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany, Index } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
 import { UrlResult } from '../../url-results/entities/url-result.entity';
 
+@Index('IDX_scans_status', ['status'])
+@Index('IDX_scans_created_at', ['createdAt'])
+@Index('IDX_scans_project_created_at', ['project', 'createdAt'])
 @Entity('scans')
 export class Scan {
   @PrimaryGeneratedColumn('uuid')
@@ -19,8 +22,17 @@ export class Scan {
   @Column({ type: 'int', nullable: true })
   vp!: number; // Calculated Vp = Vo * Ux
 
-  @Column({ default: 'estándar' }) // rápido, estándar, profundo
+  @Column({ default: 'estandar' }) // rapido, estandar, profundo
   scanMode!: string;
+
+  @Column({ default: 'Resolucion N° 001-2025-PCM/SGTD' })
+  normativeVersion!: string;
+
+  @Column({ default: 'WCAG 2.2' })
+  wcagVersion!: string;
+
+  @Column({ default: '2026-05' })
+  ruleSetVersion!: string;
 
   @CreateDateColumn()
   createdAt!: Date;

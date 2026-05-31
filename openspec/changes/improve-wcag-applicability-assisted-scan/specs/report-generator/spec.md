@@ -24,3 +24,12 @@ The report generator SHALL export WCAG level separately from severity.
 #### Scenario: Contrast failure export
 - **WHEN** a finding is WCAG `1.4.3` with severity `alto`
 - **THEN** exported reports show WCAG level `AA` and severity `alto` in separate fields
+
+### Requirement: Full WCAG Evaluation Workbook Sheet
+The report generator SHALL export a `WCAG Completa` sheet that mirrors the dashboard's complete WCAG criteria-and-findings table.
+
+#### Scenario: Exporting the full WCAG table
+- **WHEN** a user exports an Excel report
+- **THEN** the workbook includes a `WCAG Completa` sheet with per-URL principle, criterion, name, level, applicability, result, reason, finding count, severity, finding status, manual evaluation, view state, description, selector, role, and suggested fix
+- **AND** the workbook does not include empty `Normativa Peruana` or `Matriz de Priorización` tabs
+- **AND** the sheet does not expose a standalone `Pauta` column

@@ -6,11 +6,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx test/run-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.587.0",
-    "accessibility-checker": "^3.1.70",
+    "accessibility-checker": "^4.0.24",
     "axe-core": "^4.9.1",
     "bullmq": "^5.8.3",
     "dotenv": "^16.4.5",
@@ -25,5 +26,10 @@
     "@types/pg": "^8.11.6",
     "tsx": "^4.11.0",
     "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "tmp": "^0.2.6",
+    "uuid": "^11.1.1",
+    "puppeteer": "^25.1.0"
   }
 }

@@ -151,7 +151,7 @@ export class PdfService {
     doc.fontSize(24).text(reportTitle, 40, 58, { width: 430 });
     doc.fontSize(10).font('Helvetica')
       .fillColor('#DBEAFE')
-      .text('Resolución N. 001-2025-PCM/SGTD | WCAG 2.2', 40, 118);
+      .text(`${scan.normativeVersion} | ${scan.wcagVersion} | ${scan.ruleSetVersion}`, 40, 118);
 
     this.drawScoreBadge(doc, score, tone, 442, 42);
 
@@ -183,6 +183,8 @@ export class PdfService {
     );
 
     doc.addPage();
+    doc.x = doc.page.margins.left;
+    doc.y = doc.page.margins.top;
   }
 
   private drawExecutiveReport(doc: PDFKit.PDFDocument, model: ReportModel) {
@@ -259,8 +261,9 @@ export class PdfService {
       ['Páginas evaluadas', String(model.pages.length)],
       ['Hallazgos confirmados', String(model.confirmedFindings.length)],
       ['Hallazgos por revisar', String(model.reviewFindings.length)],
-      ['Estándar', 'WCAG 2.2'],
-      ['Normativa', 'Resolución N. 001-2025-PCM/SGTD'],
+      ['Estándar', model.scan.wcagVersion],
+      ['Normativa', model.scan.normativeVersion],
+      ['Versión reglas', model.scan.ruleSetVersion],
       ['Score global', `${model.scan.globalScore ?? 0}/100`],
     ]);
 
@@ -321,18 +324,30 @@ export class PdfService {
 
   private drawSectionTitle(doc: PDFKit.PDFDocument, title: string) {
     this.ensureSpace(doc, 42);
-    doc.fillColor(COLORS.blue).font('Helvetica-Bold').fontSize(14).text(title);
-    doc.moveTo(doc.page.margins.left, doc.y + 4)
+    const x = doc.page.margins.left;
+    const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const y = doc.y;
+    doc.x = x;
+    doc.fillColor(COLORS.blue).font('Helvetica-Bold').fontSize(14).text(title, x, y, {
+      width,
+      align: 'left',
+    });
+    doc.moveTo(x, doc.y + 4)
       .lineTo(doc.page.width - doc.page.margins.right, doc.y + 4)
       .strokeColor(COLORS.blueLight)
       .lineWidth(1.5)
       .stroke();
+    doc.x = x;
     doc.moveDown(0.9);
   }
 
   private drawParagraph(doc: PDFKit.PDFDocument, text: string) {
-    doc.fillColor(COLORS.slate700).font('Helvetica').fontSize(10).text(text, {
-      width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+    const x = doc.page.margins.left;
+    const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    doc.x = x;
+    doc.fillColor(COLORS.slate700).font('Helvetica').fontSize(10).text(text, x, doc.y, {
+      width,
+      align: 'left',
       lineGap: 3,
     });
   }
@@ -410,14 +425,17 @@ export class PdfService {
     const padding = 6;
     const headerHeight = 24;
     this.ensureSpace(doc, headerHeight + 28);
+    const tableWidth = widths.reduce((sum, value) => sum + value, 0);
+    const drawHeader = (y: number) => {
+      doc.rect(x, y, tableWidth, headerHeight).fill(COLORS.blue);
+      headers.forEach((header, index) => {
+        const cellX = x + widths.slice(0, index).reduce((sum, value) => sum + value, 0);
+        doc.fillColor(COLORS.white).font('Helvetica-Bold').fontSize(8)
+          .text(header, cellX + padding, y + 8, { width: widths[index] - padding * 2, align: 'left' });
+      });
+    };
     let y = doc.y;
-
-    doc.rect(x, y, widths.reduce((sum, value) => sum + value, 0), headerHeight).fill(COLORS.blue);
-    headers.forEach((header, index) => {
-      const cellX = x + widths.slice(0, index).reduce((sum, value) => sum + value, 0);
-      doc.fillColor(COLORS.white).font('Helvetica-Bold').fontSize(8)
-        .text(header, cellX + padding, y + 8, { width: widths[index] - padding * 2 });
-    });
+    drawHeader(y);
     y += headerHeight;
 
     for (const row of rows) {
@@ -428,6 +446,8 @@ export class PdfService {
       if (y + rowHeight > doc.page.height - doc.page.margins.bottom - 24) {
         doc.addPage();
         y = doc.y;
+        drawHeader(y);
+        y += headerHeight;
       }
       row.forEach((cell, index) => {
         const cellX = x + widths.slice(0, index).reduce((sum, value) => sum + value, 0);
@@ -473,10 +493,15 @@ export class PdfService {
       doc.switchToPage(i);
       doc.font('Helvetica').fontSize(8).fillColor(COLORS.slate500)
         .text(
-          `Página ${i + 1} de ${range.count}`,
+          `Página ${i + 1}`,
           doc.page.margins.left,
           doc.page.height - 28,
-          { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'right' },
+          {
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+            align: 'right',
+            lineBreak: false,
+            height: 10,
+          },
         );
     }
   }

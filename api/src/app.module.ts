@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
@@ -13,6 +14,10 @@ import { UrlResultsModule } from './url-results/url-results.module';
 import { EventsModule } from './events/events.module';
 import { ComplianceModule } from './compliance/compliance.module';
 import { ReportsModule } from './reports/reports.module';
+import { EvidenceModule } from './evidence/evidence.module';
+import { ApiTokenGuard } from './auth/api-token.guard';
+import { RequestRateLimitGuard } from './security/request-rate-limit.guard';
+import { RequestRateLimitService } from './security/request-rate-limit.service';
 
 @Module({
   imports: [
@@ -30,7 +35,7 @@ import { ReportsModule } from './reports/reports.module';
         password: config.get<string>('DB_PASSWORD', 'postgres'),
         database: config.get<string>('DB_NAME', 'accessibility_db'),
         entities: [Project, Scan, UrlResult],
-        synchronize: true, // auto-create tables in development
+        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
       }),
     }),
     BullModule.forRootAsync({
@@ -52,8 +57,20 @@ import { ReportsModule } from './reports/reports.module';
     EventsModule,
     ComplianceModule,
     ReportsModule,
+    EvidenceModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    RequestRateLimitService,
+    {
+      provide: APP_GUARD,
+      useClass: ApiTokenGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RequestRateLimitGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph update --skip-flows --repo \"C:/Users/URQUIA/Downloads/PROYECTO_ACCESIBILIDAD\" || true",
-            "timeout": 30
+            "command": "cmd /d /c \"(git rev-parse --git-dir >NUL 2>NUL && code-review-graph update --skip-flows --repo C:\\Users\\URQUIA\\Downloads\\PROYECTO_ACCESIBILIDAD) & exit /b 0\"",
+            "timeout": 120
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph status --repo \"C:/Users/URQUIA/Downloads/PROYECTO_ACCESIBILIDAD\" || echo 'Not a git repo, skipping'",
+            "command": "cmd /d /c \"(git rev-parse --git-dir >NUL 2>NUL && code-review-graph status --repo C:\\Users\\URQUIA\\Downloads\\PROYECTO_ACCESIBILIDAD || echo Not a git repo, skipping) & exit /b 0\"",
             "timeout": 10
           }
         ]

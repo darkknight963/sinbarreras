@@ -32,3 +32,6 @@ export const SOCKET_URL =
 
 export const SOCKET_PATH =
   import.meta.env.VITE_SOCKET_PATH?.trim() || '/socket.io';
+
+export const API_AUTH_TOKEN =
+  import.meta.env.VITE_API_TOKEN?.trim() || '';

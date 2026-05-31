@@ -1,19 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ScansService } from './scans.service';
+import { CreateScanDto } from './dto/create-scan.dto';
+import { RateLimit } from '../security/rate-limit.decorator';
 
 @Controller('scans')
 export class ScansController {
   constructor(private readonly scansService: ScansService) {}
 
   @Post()
-  triggerScan(
-    @Body('projectId') projectId: string,
-    @Body('urls') urls: string[],
-    @Body('scanMode') scanMode: string,
-    @Body('ux') ux: number,
-    @Body('preNavigationScript') preNavigationScript?: string,
-  ) {
-    return this.scansService.triggerScan(projectId, urls, scanMode, ux, preNavigationScript);
+  @RateLimit({ scope: 'scan', limit: 20, windowMs: 15 * 60 * 1000 })
+  triggerScan(@Body() createScanDto: CreateScanDto) {
+    return this.scansService.triggerScan(createScanDto);
   }
 
   @Get()

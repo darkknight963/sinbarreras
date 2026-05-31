@@ -31,3 +31,11 @@
 - [x] 5.3 Run API build if report generation or DTO logic changes.
 - [x] 5.4 Run frontend tests/build if dashboard code changes.
 - [x] 5.5 Run a real scan and verify known rules no longer fall back to `Otros`, WCAG level is not severity, and `frame-tested` is not a confirmed violation.
+
+## 6. Operational Hardening
+
+- [x] 6.1 Keep stored evidence private and route access through the application instead of public bucket objects.
+- [x] 6.2 Persist normative version, WCAG version, and rule-set version with each scan for historical traceability.
+- [x] 6.3 Record structured failure details when a single accessibility engine fails without aborting the full scan.
+- [x] 6.4 Serialize engine access to a page context so multiple engines do not race on the same browser instance.
+- [x] 6.5 Validate and rate-limit scan submissions before they are queued.

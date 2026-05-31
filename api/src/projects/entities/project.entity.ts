@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Index } from 'typeorm';
 import { Scan } from '../../scans/entities/scan.entity';
 
+@Index('IDX_projects_created_at', ['createdAt'])
 @Entity('projects')
 export class Project {
   @PrimaryGeneratedColumn('uuid')

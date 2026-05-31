@@ -5,6 +5,7 @@ import type { Response } from 'express';
 import { Scan } from '../scans/entities/scan.entity';
 import { ExcelService } from './excel.service';
 import { PdfService } from './pdf.service';
+import { RateLimit } from '../security/rate-limit.decorator';
 
 /**
  * Task 5.1 — JSON Export API for CI/CD integrations
@@ -26,6 +27,7 @@ export class ReportsController {
    * Returns the full scan result as structured JSON.
    */
   @Get(':scanId/json')
+  @RateLimit({ scope: 'report', limit: 120, windowMs: 15 * 60 * 1000 })
   async exportJson(@Param('scanId') scanId: string) {
     const scan = await this.scanRepository.findOne({
       where: { id: scanId },
@@ -48,8 +50,9 @@ export class ReportsController {
         entityType: scan.project?.entityType,
         scanMode: scan.scanMode,
         createdAt: scan.createdAt,
-        normativaAplicada: 'Resolución N° 001-2025-PCM/SGTD',
-        wcagVersion: 'WCAG 2.2',
+        normativaAplicada: scan.normativeVersion,
+        wcagVersion: scan.wcagVersion,
+        ruleSetVersion: scan.ruleSetVersion,
       },
       summary: {
         globalScore: scan.globalScore,
@@ -70,6 +73,7 @@ export class ReportsController {
         violationsCount: ((ur.violations as any[]) ?? []).filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed').length,
         reviewFindingsCount: ((ur.violations as any[]) ?? []).filter((v) => (v.findingStatus || v.status || 'confirmed') !== 'confirmed').length,
         applicability: ur.applicability,
+        engineReport: ur.engineReport ?? [],
         violations: ur.violations,
         manualVerifications: ur.manualVerifications,
       })),
@@ -77,6 +81,7 @@ export class ReportsController {
   }
 
   @Get(':scanId/excel')
+  @RateLimit({ scope: 'report', limit: 120, windowMs: 15 * 60 * 1000 })
   async exportExcel(@Param('scanId') scanId: string, @Res() res: Response) {
     const buffer = await this.excelService.generateExcel(scanId);
     res.setHeader(
@@ -91,6 +96,7 @@ export class ReportsController {
   }
 
   @Get(':scanId/pdf')
+  @RateLimit({ scope: 'report', limit: 120, windowMs: 15 * 60 * 1000 })
   async exportPdf(
     @Param('scanId') scanId: string,
     @Query('type') type: 'executive' | 'technical' = 'technical',

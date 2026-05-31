@@ -10,7 +10,6 @@ import {
   Settings,
   X,
   RefreshCw,
-  Lock,
   Globe,
   FileText,
   Gauge,
@@ -20,14 +19,26 @@ import {
   Trash2
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, isLocalRuntimeHost } from './config';
+import { API_AUTH_TOKEN, API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, isLocalRuntimeHost } from './config';
 
 let runtimeApiBaseUrl = API_BASE_URL;
 
 const apiUrl = (path: string) => `${runtimeApiBaseUrl}${path}`;
 
+const withAuthHeaders = (headers?: HeadersInit): HeadersInit => {
+  const nextHeaders = new Headers(headers);
+  if (API_AUTH_TOKEN) {
+    nextHeaders.set('Authorization', `Bearer ${API_AUTH_TOKEN}`);
+  }
+  return nextHeaders;
+};
+
 const fetchWithFallback = async (path: string, init?: RequestInit) => {
-  const first = await fetch(apiUrl(path), init);
+  const requestInit = {
+    ...init,
+    headers: withAuthHeaders(init?.headers),
+  };
+  const first = await fetch(apiUrl(path), requestInit);
 
   // If /api is unavailable in current runtime (common on plain localhost),
   // switch once to the direct backend URL and retry.
@@ -37,11 +48,73 @@ const fetchWithFallback = async (path: string, init?: RequestInit) => {
     isLocalRuntimeHost(window.location.hostname)
   ) {
     runtimeApiBaseUrl = API_FALLBACK_BASE_URL;
-    return fetch(apiUrl(path), init);
+    return fetch(apiUrl(path), requestInit);
   }
 
   return first;
 };
+
+function EvidencePreview({ url }: { url: string }) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    let generatedUrl: string | null = null;
+
+    const loadEvidence = async () => {
+      try {
+        const response = await fetch(url, {
+          headers: withAuthHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Evidence fetch failed: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        generatedUrl = URL.createObjectURL(blob);
+
+        if (active) {
+          setObjectUrl(generatedUrl);
+        }
+      } catch {
+        if (active) {
+          setObjectUrl(null);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    setLoading(true);
+    setObjectUrl(null);
+    loadEvidence();
+
+    return () => {
+      active = false;
+      if (generatedUrl) {
+        URL.revokeObjectURL(generatedUrl);
+      }
+    };
+  }, [url]);
+
+  if (loading) {
+    return <div className="report-no-evidence">Cargando evidencia visual...</div>;
+  }
+
+  if (!objectUrl) {
+    return <div className="report-no-evidence">Sin evidencia visual disponible</div>;
+  }
+
+  return (
+    <a href={objectUrl} target="_blank" rel="noreferrer" className="report-evidence-link">
+      <img src={objectUrl} alt="Evidencia visual" className="w-full rounded-lg border border-slate-200" />
+    </a>
+  );
+}
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -66,7 +139,6 @@ export default function App() {
   const [newScanUrls, setNewScanUrls] = useState('');
   const [newScanMode, setNewScanMode] = useState<'rápido' | 'estándar' | 'profundo'>('estándar');
   const [newScanUx, setNewScanUx] = useState(4); // default Media
-  const [preNavigationScript, setPreNavigationScript] = useState('');
 
   // Filters for the unified WCAG criteria table
   const [criterionApplicabilityFilter, setCriterionApplicabilityFilter] = useState<string>('todos');
@@ -98,6 +170,7 @@ export default function App() {
     const socket = io(SOCKET_URL, {
       path: SOCKET_PATH,
       transports: ['websocket', 'polling'],
+      auth: API_AUTH_TOKEN ? { token: API_AUTH_TOKEN } : undefined,
     });
     
     socket.on('scan-progress', ({ scanId, progress }) => {
@@ -210,14 +283,12 @@ export default function App() {
           projectId: currentProject.id,
           urls,
           scanMode: newScanMode,
-          ux: newScanUx,
-          preNavigationScript: preNavigationScript || undefined
+          ux: newScanUx
         })
       });
       if (res.ok) {
         setShowNewScan(false);
         setNewScanUrls('');
-        setPreNavigationScript('');
         // Refresh project details
         setTimeout(() => fetchProjectDetails(currentProject.id), 500);
       } else {
@@ -381,7 +452,7 @@ export default function App() {
         filename = `reporte-accesibilidad-${currentScan.id}.xlsx`;
       }
 
-      const res = await fetch(endpoint);
+      const res = await fetch(endpoint, { headers: withAuthHeaders() });
       if (!res.ok) throw new Error(`Export failed: ${res.status}`);
       const blob = await res.blob();
       downloadFile(blob, filename);
@@ -1153,19 +1224,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div>
-                      <div className="flex items-center space-x-1.5 mb-2">
-                        <label htmlFor="pre-navigation-script" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Script de Pre-Navegación</label>
-                        <Lock className="h-3 w-3 text-slate-500" />
-                      </div>
-                      <textarea 
-                        id="pre-navigation-script"
-                        rows={3}
-                        placeholder="() => { document.querySelector('#user').value = 'admin'; ... }"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-gob-dark placeholder-slate-400 font-mono text-xs focus:outline-none focus:border-gob-blue focus:ring-2 focus:ring-gob-blue/10"
-                        value={preNavigationScript}
-                        onChange={e => setPreNavigationScript(e.target.value)}
-                      />
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      La preparación automática del sitio usa cierres seguros de modales comunes. Los scripts personalizados están deshabilitados para proteger el entorno de escaneo.
                     </div>
 
 <button type="submit" className="w-full report-action-btn justify-center mt-6">
@@ -1181,7 +1241,7 @@ export default function App() {
                 {/* VIEW: SCAN ANALYSIS REPORT */}
         {view === 'scan' && currentScan && (
           <div className="report-shell">
-            <aside className="hidden lg:flex lg:w-64 lg:flex-col report-sidebar">
+            <aside className="report-sidebar">
               <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4">Navegación Informe</div>
               {[
                 { anchor: 'score', label: 'Score General', Icon: Gauge },
@@ -1322,7 +1382,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="report-table-scroll overflow-x-auto">
                       <table className="w-full report-table report-table-spacious" aria-label="Tabla unificada de criterios WCAG y hallazgos">
                         <thead>
                           <tr>
@@ -1392,20 +1452,19 @@ export default function App() {
                               </div>
                             </th>
                             <th>Solución sugerida</th>
-                            <th>Artículo legal</th>
                             <th>Evidencia</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredApplicabilityRows.length === 0 ? (
                             <tr>
-                              <td colSpan={17} className="text-center text-slate-500">No hay criterios para el filtro seleccionado.</td>
+                              <td colSpan={16} className="text-center text-slate-500">No hay criterios para el filtro seleccionado.</td>
                             </tr>
                           ) : groupedApplicabilityRows.map((item) => {
                             if (item.kind === 'principle') {
                               return (
                                 <tr key={`principle-${item.key}`} className="report-principle-row">
-                                  <td colSpan={17}>
+                                  <td colSpan={16}>
                                     <div className="report-principle-row-content">
                                       <strong>{item.key === 'otros' ? item.title : `${item.key}. ${item.title}`}</strong>
                                       <span>{item.description}</span>
@@ -1487,7 +1546,6 @@ export default function App() {
                                   <td>{finding ? <code className="report-code">{finding.selector}</code> : ''}</td>
                                   <td>{finding?.role || ''}</td>
                                   <td>{finding?.suggestedFix || ''}</td>
-                                  <td>{finding?.resolutionArticle || ''}</td>
                                   <td>
                                     {row.findings.length > 0 ? (
                                       <button onClick={() => setExpandedCriterionId(expandedCriterionId === row.id ? null : row.id)} className="report-evidence-btn">
@@ -1498,7 +1556,7 @@ export default function App() {
                                 </tr>
                                 {expandedCriterionId === row.id && row.findings.length > 0 && (
                                   <tr>
-                                    <td colSpan={17} className="report-evidence-cell">
+                                      <td colSpan={16} className="report-evidence-cell">
                                       <div className="space-y-4">
                                         {row.findings.map((item, itemIndex) => (
                                           <div key={`${row.id}-${itemIndex}`} className="grid md:grid-cols-2 gap-4">
@@ -1507,9 +1565,7 @@ export default function App() {
                                               <pre className="report-html-block"><code>{item.elementHtml}</code></pre>
                                             </div>
                                             {item.screenshotUrl ? (
-                                              <a href={item.screenshotUrl} target="_blank" rel="noreferrer" className="report-evidence-link">
-                                                <img src={item.screenshotUrl} alt="Evidencia visual" className="w-full rounded-lg border border-slate-200" />
-                                              </a>
+                                              <EvidencePreview url={item.screenshotUrl} />
                                             ) : (
                                               <div className="report-no-evidence">Sin evidencia visual disponible</div>
                                             )}

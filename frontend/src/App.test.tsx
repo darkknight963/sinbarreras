@@ -176,7 +176,8 @@ describe('App project creation experience', () => {
     expect(screen.getByLabelText(/urls a analizar/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/modo del análisis/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/impacto en experiencia/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/script de pre-navegación/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/script de pre-navegación/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/scripts personalizados están deshabilitados/i)).toBeInTheDocument()
 
     await user.type(screen.getByLabelText(/urls a analizar/i), 'example.com')
     expect(screen.getByText(/no se transfieren al navegador playwright/i)).toBeInTheDocument()

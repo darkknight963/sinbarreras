@@ -60,6 +60,11 @@ const scanFixture = {
   ],
 };
 
+function countPdfPages(buffer: Buffer): number {
+  const matches = buffer.toString('latin1').match(/\/Type\s+\/Page\b/g);
+  return matches?.length ?? 0;
+}
+
 describe('PdfService', () => {
   it('generates an executive PDF buffer with a PDF header', async () => {
     const service = new PdfService({ findOne: jest.fn().mockResolvedValue(scanFixture) } as any);
@@ -68,6 +73,7 @@ describe('PdfService', () => {
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
     expect(buffer.length).toBeGreaterThan(2500);
+    expect(countPdfPages(buffer)).toBeLessThanOrEqual(6);
   });
 
   it('generates a technical PDF buffer with a PDF header', async () => {
@@ -77,6 +83,7 @@ describe('PdfService', () => {
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
     expect(buffer.length).toBeGreaterThan(3000);
+    expect(countPdfPages(buffer)).toBeLessThanOrEqual(7);
   });
 
   it('throws NotFoundException when the scan does not exist', async () => {

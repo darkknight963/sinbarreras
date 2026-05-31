@@ -53,8 +53,8 @@ export default {
       },
       // Typography tokens: font families, sizes, and weights
       fontFamily: {
-        // Primary font family: Outfit with Inter as fallback
-        sans: ['Outfit', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'sans-serif'],
+        // Primary font family: Inter with system fallbacks
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'sans-serif'],
         // Monospace fonts for code blocks and HTML evidence
         mono: ['IBM Plex Mono', 'JetBrains Mono', 'Consolas', 'monospace'],
       },

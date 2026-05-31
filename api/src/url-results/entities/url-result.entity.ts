@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Index } from 'typeorm';
 import { Scan } from '../../scans/entities/scan.entity';
 
+@Index('IDX_url_results_scan_created_at', ['scan', 'createdAt'])
 @Entity('url_results')
 export class UrlResult {
   @PrimaryGeneratedColumn('uuid')
@@ -20,6 +21,9 @@ export class UrlResult {
 
   @Column({ type: 'jsonb', nullable: true })
   applicability!: any; // WCAG criteria applicability matrix and summary
+
+  @Column({ type: 'jsonb', nullable: true })
+  engineReport!: any; // structured per-engine execution summary
 
   @Column({ default: 'completed' }) // pending, scanning, completed, failed
   status!: string;

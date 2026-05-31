@@ -1,6 +1,7 @@
 import { Job } from 'bullmq';
 import pg from 'pg';
 import { scanUrl } from './scanner.js';
+import { validateScanTargetUrls } from './urlPolicy.js';
 
 const { Pool } = pg;
 
@@ -14,6 +15,7 @@ const pool = new Pool({
 
 async function ensureUrlResultSchema(): Promise<void> {
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS applicability jsonb`);
+  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "engineReport" jsonb`);
 }
 
 export async function processScan(job: Job): Promise<void> {
@@ -27,11 +29,26 @@ export async function processScan(job: Job): Promise<void> {
     [scanId]
   );
 
-  const totalUrls = urls.length;
+  let validatedUrls: string[];
+  try {
+    validatedUrls = await validateScanTargetUrls(urls);
+  } catch (err) {
+    console.error(`Rejected unsafe scan payload for Scan ID ${scanId}:`, err);
+    await pool.query(
+      `UPDATE scans SET status = 'failed' WHERE id = $1`,
+      [scanId]
+    );
+    throw err;
+  }
+  if (preNavigationScript) {
+    console.warn('Ignoring preNavigationScript from queue payload; scripts are disabled by default.');
+  }
+
+  const totalUrls = validatedUrls.length;
   const results = [];
 
   for (let i = 0; i < totalUrls; i++) {
-    const url = urls[i];
+    const url = validatedUrls[i];
 
     try {
       console.log(`Scanning URL [${i + 1}/${totalUrls}]: ${url}`);
@@ -58,7 +75,6 @@ export async function processScan(job: Job): Promise<void> {
         await updateViewportProgress(0);
         const res = await scanUrl(url, {
           viewport: vp,
-          preNavigationScript,
           onProgress: updateViewportProgress,
         });
         viewportResults.push(res);
@@ -83,6 +99,12 @@ export async function processScan(job: Job): Promise<void> {
 
       const applicability = viewportResults[0]?.applicability || [];
       const applicabilitySummary = viewportResults[0]?.applicabilitySummary || null;
+      const engineReport = viewportResults.flatMap((result, viewportIndex) =>
+        (result.engineReport || []).map((entry) => ({
+          ...entry,
+          viewport: viewports[viewportIndex],
+        }))
+      );
 
       // Detect .gob.pe for Peruvian specific compliance
       const isGobPe = url.includes('.gob.pe');
@@ -95,8 +117,8 @@ export async function processScan(job: Job): Promise<void> {
       ];
 
       const insertQuery = `
-        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, status, "scanId")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, "engineReport", status, "scanId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `;
       
       await pool.query(insertQuery, [
@@ -105,6 +127,7 @@ export async function processScan(job: Job): Promise<void> {
         JSON.stringify(allViolations),
         JSON.stringify(manualVerifications),
         JSON.stringify({ criteria: applicability, summary: applicabilitySummary }),
+        JSON.stringify(engineReport),
         'completed',
         scanId,
       ]);
@@ -113,8 +136,8 @@ export async function processScan(job: Job): Promise<void> {
     } catch (urlErr) {
       console.error(`Error scanning URL ${url}:`, urlErr);
       await pool.query(
-        `INSERT INTO url_results (url, score, status, "scanId") VALUES ($1, $2, $3, $4)`,
-        [url, 0, 'failed', scanId]
+        `INSERT INTO url_results (url, score, status, "engineReport", "scanId") VALUES ($1, $2, $3, $4, $5)`,
+        [url, 0, 'failed', JSON.stringify([]), scanId]
       );
     }
   }
