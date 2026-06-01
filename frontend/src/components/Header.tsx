@@ -1,6 +1,9 @@
 import React from 'react'
 import { Shield, Settings } from 'lucide-react'
 
+const BRAND_NAME = 'sin barreras'
+const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos'
+
 interface HeaderProps {
   sticky?: boolean
 }
@@ -13,8 +16,8 @@ export const Header: React.FC<HeaderProps> = ({ sticky = true }) => {
           <Shield className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="font-bold text-lg tracking-wide text-white">Plataforma de Accesibilidad Web</h1>
-          <p className="text-xs text-white/70">Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú</p>
+          <h1 className="font-bold text-lg tracking-wide text-white">{BRAND_NAME}</h1>
+          <p className="text-xs text-white/70">{BRAND_SLOGAN}</p>
         </div>
       </div>
       

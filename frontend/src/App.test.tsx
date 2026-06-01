@@ -186,6 +186,72 @@ describe('App project creation experience', () => {
 
     openSpy.mockRestore()
   })
+
+  it('parses scan URLs separated by commas or line breaks before submitting', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url.endsWith('/projects')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => projectsResponse,
+        }
+      }
+
+      if (url.endsWith('/projects/project-1')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => projectsResponse[0],
+        }
+      }
+
+      if (url.endsWith('/scans') && init?.method === 'POST') {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ id: 'scan-new' }),
+        }
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      }
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await screen.findByText('Portal de Servicios')
+    await user.click(screen.getByRole('button', { name: /ver detalles del proyecto portal de servicios/i }))
+    await screen.findByRole('heading', { name: /portal de servicios/i })
+    await user.click(screen.getByRole('button', { name: /nuevo análisis/i }))
+
+    await user.type(
+      screen.getByLabelText(/urls a analizar/i),
+      'https://a.example, https://b.example\nhttps://c.example',
+    )
+
+    await user.click(screen.getByRole('button', { name: /iniciar escaneo/i }))
+
+    const postCall = fetchMock.mock.calls.find(
+      ([input, init]) => String(input).endsWith('/scans') && init?.method === 'POST',
+    )
+
+    expect(postCall).toBeTruthy()
+    expect(JSON.parse(String(postCall?.[1]?.body))).toEqual({
+      projectId: 'project-1',
+      urls: ['https://a.example', 'https://b.example', 'https://c.example'],
+      scanMode: 'estándar',
+      ux: 4,
+    })
+  })
+
   it('treats loopback hosts as local runtimes for API fallback', () => {
     expect(isLocalRuntimeHost('localhost')).toBe(true)
     expect(isLocalRuntimeHost('127.0.0.1')).toBe(true)

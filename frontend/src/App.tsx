@@ -22,6 +22,8 @@ import type { Project, Scan, UrlResult } from './types';
 import { API_AUTH_TOKEN, API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, isLocalRuntimeHost } from './config';
 
 let runtimeApiBaseUrl = API_BASE_URL;
+const BRAND_NAME = 'sin barreras';
+const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
 
 const apiUrl = (path: string) => `${runtimeApiBaseUrl}${path}`;
 
@@ -32,6 +34,12 @@ const withAuthHeaders = (headers?: HeadersInit): HeadersInit => {
   }
   return nextHeaders;
 };
+
+const parseScanUrls = (value: string) =>
+  value
+    .split(/[\n,]+/)
+    .map((url) => url.trim())
+    .filter(Boolean);
 
 const fetchWithFallback = async (path: string, init?: RequestInit) => {
   const requestInit = {
@@ -268,11 +276,11 @@ export default function App() {
     e.preventDefault();
     if (!currentProject) return;
 
-    // Parse URLs from text input (split by line or comma)
-    const urls = newScanUrls
-      .split('\n')
-      .map(url => url.trim())
-      .filter(url => url.length > 0);
+    const urls = parseScanUrls(newScanUrls);
+    if (urls.length === 0) {
+      setAppError('Ingresa al menos una URL válida para iniciar el escaneo.');
+      return;
+    }
 
     try {
       setAppError(null);
@@ -627,7 +635,7 @@ export default function App() {
 
   useEffect(() => {
     const section = view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle del Proyecto' : 'Informe de Escaneo';
-    document.title = `Plataforma de Accesibilidad Web | ${section}`;
+    document.title = `${BRAND_NAME} | ${section}`;
   }, [view]);
 
   const latestScans = projects
@@ -641,10 +649,7 @@ export default function App() {
     : 0;
   const projectsAtRisk = latestScans.filter((scan) => (scan.globalScore ?? 0) < 50).length;
   const runningAnalyses = latestScans.filter((scan) => scan.status === 'running' || scan.status === 'pending').length;
-  const parsedNewScanUrls = newScanUrls
-    .split(/[\n,]+/)
-    .map(url => url.trim())
-    .filter(Boolean);
+  const parsedNewScanUrls = parseScanUrls(newScanUrls);
   const applicabilityRows = selectedUrlResult ? getApplicabilityRows(selectedUrlResult) : [];
   const filteredApplicabilityRows = applicabilityRows.filter((row) => {
     if (criterionApplicabilityFilter !== 'todos' && row.estado !== criterionApplicabilityFilter) return false;
@@ -693,8 +698,8 @@ export default function App() {
             <Shield className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg tracking-wide text-white">Plataforma de Accesibilidad Web</h1>
-            <p className="text-xs text-white/70">Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú</p>
+            <h1 className="font-bold text-lg tracking-wide text-white">{BRAND_NAME}</h1>
+            <p className="text-xs text-white/70">{BRAND_SLOGAN}</p>
           </div>
         </div>
         
@@ -1164,7 +1169,7 @@ export default function App() {
                   </div>
                   <form onSubmit={handleTriggerScan} className="space-y-4">
                     <div>
-                      <label htmlFor="new-scan-urls" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">URLs a analizar (Una por línea)</label>
+                      <label htmlFor="new-scan-urls" className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">URLs a analizar (Una por línea o separadas por coma)</label>
                       <textarea 
                         id="new-scan-urls"
                         required
@@ -1228,7 +1233,11 @@ export default function App() {
                       La preparación automática del sitio usa cierres seguros de modales comunes. Los scripts personalizados están deshabilitados para proteger el entorno de escaneo.
                     </div>
 
-<button type="submit" className="w-full report-action-btn justify-center mt-6">
+                    <button
+                      type="submit"
+                      className="w-full report-action-btn justify-center mt-6"
+                      disabled={parsedNewScanUrls.length === 0}
+                    >
                       Iniciar Escaneo
                     </button>
                   </form>

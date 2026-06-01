@@ -32,7 +32,7 @@ exports[`Visual Regression Tests - Header Component > should maintain gradient b
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
@@ -112,7 +112,7 @@ exports[`Visual Regression Tests - Header Component > should maintain gradient b
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
@@ -192,7 +192,7 @@ exports[`Visual Regression Tests - Header Component > should maintain gradient b
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
@@ -272,7 +272,7 @@ exports[`Visual Regression Tests - Header Component > should render header corre
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
@@ -352,7 +352,7 @@ exports[`Visual Regression Tests - Header Component > should render header corre
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
@@ -432,7 +432,7 @@ exports[`Visual Regression Tests - Header Component > should render header corre
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"

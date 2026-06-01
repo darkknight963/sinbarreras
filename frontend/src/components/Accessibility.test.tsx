@@ -30,7 +30,7 @@ describe('Accessibility: Semantic HTML and ARIA', () => {
       const h1 = screen.getByRole('heading', { level: 1 })
       
       expect(h1).toBeInTheDocument()
-      expect(h1.textContent).toBe('Plataforma de Accesibilidad Web')
+      expect(h1.textContent).toBe('sin barreras')
     })
 
     it('should have proper heading hierarchy in header', () => {
@@ -38,7 +38,7 @@ describe('Accessibility: Semantic HTML and ARIA', () => {
       const h1 = container.querySelector('h1')
       
       expect(h1).toBeInTheDocument()
-      expect(h1?.textContent).toBe('Plataforma de Accesibilidad Web')
+      expect(h1?.textContent).toBe('sin barreras')
     })
 
     it('should render subtitle as paragraph element', () => {
@@ -46,7 +46,7 @@ describe('Accessibility: Semantic HTML and ARIA', () => {
       const paragraph = container.querySelector('p')
       
       expect(paragraph).toBeInTheDocument()
-      expect(paragraph?.textContent).toContain('Resolución N° 001-2025-PCM/SGTD')
+      expect(paragraph?.textContent).toContain('Convierte tu web en un lugar para todos')
     })
 
     it('should have proper semantic structure with flex layout', () => {

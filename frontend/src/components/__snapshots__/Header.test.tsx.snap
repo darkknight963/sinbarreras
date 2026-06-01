@@ -45,12 +45,12 @@ exports[`Header Component > should render gradient background and shadow 1`] = `
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
       >
-        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+        Convierte tu web en un lugar para todos
       </p>
     </div>
   </div>
@@ -97,7 +97,7 @@ exports[`Header Component > should render header subtitle with correct styling 1
 <p
   class="text-xs text-white/70"
 >
-  Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+  Convierte tu web en un lugar para todos
 </p>
 `;
 
@@ -105,7 +105,7 @@ exports[`Header Component > should render header title with correct styling 1`] 
 <h1
   class="font-bold text-lg tracking-wide text-white"
 >
-  Plataforma de Accesibilidad Web
+  sin barreras
 </h1>
 `;
 
@@ -141,12 +141,12 @@ exports[`Header Component > should render header with all elements 1`] = `
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
       >
-        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+        Convierte tu web en un lugar para todos
       </p>
     </div>
   </div>
@@ -221,12 +221,12 @@ exports[`Header Component > should render header with sticky state 1`] = `
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
       >
-        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+        Convierte tu web en un lugar para todos
       </p>
     </div>
   </div>
@@ -301,12 +301,12 @@ exports[`Header Component > should render header without sticky state 1`] = `
       <h1
         class="font-bold text-lg tracking-wide text-white"
       >
-        Plataforma de Accesibilidad Web
+        sin barreras
       </h1>
       <p
         class="text-xs text-white/70"
       >
-        Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
+        Convierte tu web en un lugar para todos
       </p>
     </div>
   </div>

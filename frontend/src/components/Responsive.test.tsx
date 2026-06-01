@@ -294,13 +294,13 @@ describe('Mobile Breakpoint Tests (< 768px)', () => {
     it('should render header title with reduced font-size on mobile', () => {
       const { container } = render(
         <header className="sticky">
-          <h1>Plataforma de Accesibilidad Web</h1>
+          <h1>sin barreras</h1>
         </header>
       )
 
       const title = container.querySelector('header.sticky h1')
       expect(title).toBeInTheDocument()
-      expect(title?.textContent).toBe('Plataforma de Accesibilidad Web')
+      expect(title?.textContent).toBe('sin barreras')
       expect(title).toMatchSnapshot()
     })
 
@@ -805,7 +805,7 @@ describe('Desktop Breakpoint Tests (≥ 1024px)', () => {
     it('should render header with full padding on desktop', () => {
       const { container } = render(
         <header className="sticky">
-          <h1>Plataforma de Accesibilidad Web</h1>
+          <h1>sin barreras</h1>
           <p>Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú</p>
           <div className="header-badge">Normativa Peruana 2026</div>
         </header>
@@ -820,13 +820,13 @@ describe('Desktop Breakpoint Tests (≥ 1024px)', () => {
     it('should render header title with full font-size on desktop', () => {
       const { container } = render(
         <header className="sticky">
-          <h1>Plataforma de Accesibilidad Web</h1>
+          <h1>sin barreras</h1>
         </header>
       )
 
       const title = container.querySelector('header.sticky h1')
       expect(title).toBeInTheDocument()
-      expect(title?.textContent).toBe('Plataforma de Accesibilidad Web')
+      expect(title?.textContent).toBe('sin barreras')
       expect(title).toMatchSnapshot()
     })
 

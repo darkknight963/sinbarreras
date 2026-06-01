@@ -28,7 +28,7 @@ describe('Header Component', () => {
 
   it('should render header title with correct styling', () => {
     const { getByText } = render(<Header />)
-    const title = getByText('Plataforma de Accesibilidad Web')
+    const title = getByText('sin barreras')
     
     expect(title).toHaveClass('font-bold')
     expect(title).toHaveClass('text-lg')
@@ -38,7 +38,7 @@ describe('Header Component', () => {
 
   it('should render header subtitle with correct styling', () => {
     const { getByText } = render(<Header />)
-    const subtitle = getByText('Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú')
+    const subtitle = getByText('Convierte tu web en un lugar para todos')
     
     expect(subtitle).toHaveClass('text-xs')
     expect(subtitle).toHaveClass('text-white/70')

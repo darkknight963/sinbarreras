@@ -536,7 +536,7 @@ exports[`Desktop Breakpoint Tests (≥ 1024px) > No Layout Shifts > should not s
 
 exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability > should render header title with full font-size on desktop 1`] = `
 <h1>
-  Plataforma de Accesibilidad Web
+  sin barreras
 </h1>
 `;
 
@@ -545,7 +545,7 @@ exports[`Desktop Breakpoint Tests (≥ 1024px) > Optimal Spacing and Readability
   class="sticky"
 >
   <h1>
-    Plataforma de Accesibilidad Web
+    sin barreras
   </h1>
   <p>
     Resolución N° 001-2025-PCM/SGTD — Estándar Oficial Perú
@@ -1013,7 +1013,7 @@ exports[`Mobile Breakpoint Tests (< 768px) > Header Responsive Behavior > should
 
 exports[`Mobile Breakpoint Tests (< 768px) > Header Responsive Behavior > should render header title with reduced font-size on mobile 1`] = `
 <h1>
-  Plataforma de Accesibilidad Web
+  sin barreras
 </h1>
 `;
 
