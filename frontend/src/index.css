@@ -16226,6 +16226,82 @@ html body .auth-flow-extension button {
 }
 
 @media (max-width: 760px) {
+  html body .auth-landing-nav {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    min-height: 64px !important;
+    padding: 8px 14px !important;
+  }
+
+  html body .auth-landing-brand {
+    min-width: 0 !important;
+    gap: 8px !important;
+    font-size: 0.98rem !important;
+    line-height: 1 !important;
+  }
+
+  html body .auth-landing-logo {
+    width: 34px !important;
+    height: 34px !important;
+    flex: 0 0 34px !important;
+  }
+
+  html body .auth-landing-nav nav {
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
+  }
+
+  html body .auth-landing-nav nav a,
+  html body .auth-landing-nav nav button:not(.auth-nav-primary) {
+    display: none !important;
+  }
+
+  html body .auth-landing-nav nav button {
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-width: 1px !important;
+    border-radius: 8px !important;
+    font-size: 0.88rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  html body .auth-landing-nav .auth-nav-primary {
+    padding: 0 14px !important;
+  }
+
+  html body .auth-landing-brand > span:last-child {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  html body .auth-landing-main {
+    width: min(100% - 28px, 720px) !important;
+    padding-top: 36px !important;
+  }
+
+  html body .auth-landing-hero {
+    padding-bottom: 44px !important;
+  }
+
+  html body .auth-landing-hero h1 {
+    max-width: 100% !important;
+    margin-top: 20px !important;
+    font-size: clamp(2.55rem, 12vw, 3.25rem) !important;
+    line-height: 1.06 !important;
+  }
+
+  html body .auth-landing-hero p {
+    margin-top: 18px !important;
+    font-size: 1rem !important;
+    line-height: 1.55 !important;
+  }
+
   html body .auth-standards-block {
     padding: 48px 16px !important;
   }
