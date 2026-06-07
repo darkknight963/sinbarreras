@@ -7,8 +7,10 @@ dotenv.config();
 
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+const redisUrl = process.env.REDIS_URL;
+const redisPassword = process.env.REDIS_PASSWORD || process.env.REDISPASSWORD;
 
-console.log(`Starting worker. Connecting to Redis at ${redisHost}:${redisPort}`);
+console.log(`Starting worker. Connecting to Redis at ${redisUrl ? 'REDIS_URL' : `${redisHost}:${redisPort}`}`);
 
 async function bootstrap() {
   await initializeStorage();
@@ -29,10 +31,13 @@ async function bootstrap() {
       }
     },
     {
-      connection: {
-        host: redisHost,
-        port: redisPort,
-      },
+      connection: redisUrl
+        ? { url: redisUrl }
+        : {
+            host: process.env.REDIS_HOST || process.env.REDISHOST || redisHost,
+            port: parseInt(process.env.REDIS_PORT || process.env.REDISPORT || String(redisPort), 10),
+            ...(redisPassword ? { password: redisPassword } : {}),
+          },
       concurrency: 2,
     }
   );

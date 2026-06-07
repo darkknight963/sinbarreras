@@ -47,12 +47,22 @@ import { RequestRateLimitService } from './security/request-rate-limit.service';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        const redisPassword = config.get<string>('REDIS_PASSWORD') || config.get<string>('REDISPASSWORD');
+
+        return {
+          connection: redisUrl
+            ? {
+                url: redisUrl,
+              }
+            : {
+                host: config.get<string>('REDIS_HOST') || config.get<string>('REDISHOST') || 'localhost',
+                port: Number(config.get<string>('REDIS_PORT') || config.get<string>('REDISPORT') || 6379),
+                ...(redisPassword ? { password: redisPassword } : {}),
+              },
+        };
+      },
     }),
     BullModule.registerQueue({
       name: 'scans',
