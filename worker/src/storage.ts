@@ -115,3 +115,37 @@ export async function uploadEvidence(
   const publicApiEndpoint = process.env.PUBLIC_API_ENDPOINT || 'http://localhost:3000';
   return `${publicApiEndpoint}/evidence/${encodeURIComponent(key)}`;
 }
+
+export async function deleteEvidenceUrls(urls: string[]): Promise<number> {
+  const keys = Array.from(new Set(urls.map((url) => {
+    try {
+      const parsed = new URL(url);
+      const match = parsed.pathname.match(/\/evidence\/(.+)$/);
+      return match ? decodeURIComponent(match[1]) : '';
+    } catch {
+      const match = url.match(/\/evidence\/([^?#]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+  }).filter(Boolean)));
+
+  if (keys.length === 0) {
+    return 0;
+  }
+
+  let deletedObjects = 0;
+  for (let index = 0; index < keys.length; index += 1000) {
+    const batch = keys.slice(index, index + 1000);
+    await s3Client.send(
+      new DeleteObjectsCommand({
+        Bucket: bucketName,
+        Delete: {
+          Objects: batch.map((Key) => ({ Key })),
+          Quiet: true,
+        },
+      })
+    );
+    deletedObjects += batch.length;
+  }
+
+  return deletedObjects;
+}

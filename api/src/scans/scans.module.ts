@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { Scan } from './entities/scan.entity';
 import { Project } from '../projects/entities/project.entity';
+import { UrlResult } from '../url-results/entities/url-result.entity';
 import { ScansService } from './scans.service';
 import { ScansController } from './scans.controller';
 import { ScansEventsListener } from './scans-events.listener';
@@ -10,7 +11,7 @@ import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Scan, Project]),
+    TypeOrmModule.forFeature([Scan, Project, UrlResult]),
     BullModule.registerQueue({
       name: 'scans',
     }),

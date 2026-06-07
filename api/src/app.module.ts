@@ -8,6 +8,9 @@ import { AppService } from './app.service';
 import { Project } from './projects/entities/project.entity';
 import { Scan } from './scans/entities/scan.entity';
 import { UrlResult } from './url-results/entities/url-result.entity';
+import { User } from './auth/entities/user.entity';
+import { Session } from './auth/entities/session.entity';
+import { BillingSubscription } from './billing/entities/billing-subscription.entity';
 import { ProjectsModule } from './projects/projects.module';
 import { ScansModule } from './scans/scans.module';
 import { UrlResultsModule } from './url-results/url-results.module';
@@ -15,6 +18,8 @@ import { EventsModule } from './events/events.module';
 import { ComplianceModule } from './compliance/compliance.module';
 import { ReportsModule } from './reports/reports.module';
 import { EvidenceModule } from './evidence/evidence.module';
+import { AuthModule } from './auth/auth.module';
+import { BillingModule } from './billing/billing.module';
 import { ApiTokenGuard } from './auth/api-token.guard';
 import { RequestRateLimitGuard } from './security/request-rate-limit.guard';
 import { RequestRateLimitService } from './security/request-rate-limit.service';
@@ -34,10 +39,11 @@ import { RequestRateLimitService } from './security/request-rate-limit.service';
         username: config.get<string>('DB_USER', 'postgres'),
         password: config.get<string>('DB_PASSWORD', 'postgres'),
         database: config.get<string>('DB_NAME', 'accessibility_db'),
-        entities: [Project, Scan, UrlResult],
+        entities: [Project, Scan, UrlResult, User, Session, BillingSubscription],
         synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
       }),
     }),
+    TypeOrmModule.forFeature([User, Session, BillingSubscription]),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -58,6 +64,8 @@ import { RequestRateLimitService } from './security/request-rate-limit.service';
     ComplianceModule,
     ReportsModule,
     EvidenceModule,
+    AuthModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [

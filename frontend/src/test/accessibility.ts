@@ -108,14 +108,14 @@ export async function runAccessibilityAudit(container: HTMLElement) {
 export const COLOR_COMBINATIONS = {
   // Primary colors
   primaryBlueOnWhite: {
-    foreground: '#002C76',
+    foreground: '#1E40AF',
     background: '#ffffff',
-    expectedRatio: 8.6,
+    expectedRatio: 7.6,
   },
   primaryBlueOnLightBlue: {
-    foreground: '#002C76',
-    background: '#f0f4ff',
-    expectedRatio: 4.8,
+    foreground: '#1E40AF',
+    background: '#eff6ff',
+    expectedRatio: 6.8,
   },
 
   // Error colors
@@ -148,9 +148,9 @@ export const COLOR_COMBINATIONS = {
 
   // Neutral colors
   darkTextOnWhite: {
-    foreground: '#1f2937',
+    foreground: '#0F172A',
     background: '#ffffff',
-    expectedRatio: 16.0,
+    expectedRatio: 17.0,
   },
   mediumTextOnWhite: {
     foreground: '#374151',

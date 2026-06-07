@@ -15,6 +15,30 @@ describe('CreateScanDto', () => {
     await expect(validate(dto)).resolves.toHaveLength(0);
   });
 
+  it('accepts the complete critical flow UX depth', async () => {
+    const dto = plainToInstance(CreateScanDto, {
+      projectId: 'project-1',
+      urls: ['https://public.example'],
+      scanMode: 'profundo',
+      ux: 6,
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+  });
+
+  it('rejects unsupported UX depth values', async () => {
+    const dto = plainToInstance(CreateScanDto, {
+      projectId: 'project-1',
+      urls: ['https://public.example'],
+      scanMode: 'profundo',
+      ux: 7,
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors.some((error) => error.property === 'ux')).toBe(true);
+  });
+
   it('rejects user-controlled pre-navigation scripts', async () => {
     const dto = plainToInstance(CreateScanDto, {
       projectId: 'project-1',

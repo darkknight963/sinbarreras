@@ -1,4 +1,5 @@
-import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, NotFoundException, Param, Query, Req, Res } from '@nestjs/common';
+import type { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Response } from 'express';
@@ -6,6 +7,20 @@ import { Scan } from '../scans/entities/scan.entity';
 import { ExcelService } from './excel.service';
 import { PdfService } from './pdf.service';
 import { RateLimit } from '../security/rate-limit.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+
+type BillingAwareUser = {
+  id: string;
+  billingPlan?: string | null;
+  billingStatus?: string | null;
+};
+
+type AuthRequest = Request & {
+  authMode?: 'service' | 'session';
+};
+
+const hasPaidBillingAccess = (user: BillingAwareUser | null | undefined) =>
+  Boolean(user?.billingPlan && user.billingStatus === 'active');
 
 /**
  * Task 5.1 — JSON Export API for CI/CD integrations
@@ -28,19 +43,23 @@ export class ReportsController {
    */
   @Get(':scanId/json')
   @RateLimit({ scope: 'report', limit: 120, windowMs: 15 * 60 * 1000 })
-  async exportJson(@Param('scanId') scanId: string) {
-    const scan = await this.scanRepository.findOne({
-      where: { id: scanId },
-      relations: { project: true, urlResults: true },
-    });
+  async exportJson(
+    @Param('scanId') scanId: string,
+    @CurrentUser() user: BillingAwareUser | null,
+    @Req() request?: AuthRequest,
+  ) {
+    this.assertExportAccess(user);
+    const ownerId = this.resolveOwnerId(request, user);
+    const scan = await this.findScanForExport(scanId, ownerId);
 
     if (!scan) {
       throw new NotFoundException('Scan not found');
     }
 
-    const allFindings = (scan.urlResults ?? []).flatMap((ur) => (ur.violations as any[]) ?? []);
+    const allFindings = (scan.urlResults ?? []).flatMap((ur) => this.uniquePageFindings((ur.violations as any[]) ?? []));
+    const totalFindings = allFindings.length;
     const totalViolations = allFindings.filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed').length;
-    const reviewFindings = allFindings.length - totalViolations;
+    const reviewFindings = totalFindings - totalViolations;
 
     return {
       metadata: {
@@ -57,6 +76,7 @@ export class ReportsController {
       summary: {
         globalScore: scan.globalScore,
         totalPages: scan.urlResults?.length || 0,
+        totalFindings,
         totalViolations,
         reviewFindings,
         vp: {
@@ -66,24 +86,35 @@ export class ReportsController {
           category: (scan.vp ?? 0) >= 24 ? 'Alta' : (scan.vp ?? 0) >= 12 ? 'Media' : 'Baja',
         },
       },
-      pages: scan.urlResults?.map(ur => ({
+      pages: scan.urlResults?.map(ur => {
+        const pageFindings = this.uniquePageFindings((ur.violations as any[]) ?? []);
+        return {
         url: ur.url,
         score: ur.score,
         status: ur.status,
-        violationsCount: ((ur.violations as any[]) ?? []).filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed').length,
-        reviewFindingsCount: ((ur.violations as any[]) ?? []).filter((v) => (v.findingStatus || v.status || 'confirmed') !== 'confirmed').length,
+        findingsCount: pageFindings.length,
+        violationsCount: pageFindings.filter((v) => (v.findingStatus || v.status || 'confirmed') === 'confirmed').length,
+        reviewFindingsCount: pageFindings.filter((v) => (v.findingStatus || v.status || 'confirmed') !== 'confirmed').length,
         applicability: ur.applicability,
         engineReport: ur.engineReport ?? [],
         violations: ur.violations,
         manualVerifications: ur.manualVerifications,
-      })),
+        };
+      }),
     };
   }
 
   @Get(':scanId/excel')
   @RateLimit({ scope: 'report', limit: 120, windowMs: 15 * 60 * 1000 })
-  async exportExcel(@Param('scanId') scanId: string, @Res() res: Response) {
-    const buffer = await this.excelService.generateExcel(scanId);
+  async exportExcel(
+    @Param('scanId') scanId: string,
+    @Res() res: Response,
+    @CurrentUser() user: BillingAwareUser | null,
+    @Req() request?: AuthRequest,
+  ) {
+    this.assertExportAccess(user);
+    const ownerId = this.resolveOwnerId(request, user);
+    const buffer = await this.excelService.generateExcel(scanId, ownerId);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="reporte-accesibilidad-${scanId}.xlsx"`,
@@ -101,14 +132,70 @@ export class ReportsController {
     @Param('scanId') scanId: string,
     @Query('type') type: 'executive' | 'technical' = 'technical',
     @Res() res: Response,
+    @CurrentUser() user: BillingAwareUser | null,
+    @Req() request?: AuthRequest,
   ) {
+    this.assertExportAccess(user);
     const reportType = type === 'executive' ? 'executive' : 'technical';
-    const buffer = await this.pdfService.generatePdf(scanId, reportType);
+    const ownerId = this.resolveOwnerId(request, user);
+    const buffer = await this.pdfService.generatePdf(scanId, reportType, ownerId);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="reporte-${reportType}-${scanId}.pdf"`,
     );
     res.setHeader('Content-Type', 'application/pdf');
     return res.send(buffer);
+  }
+
+  private uniquePageFindings(findings: any[]): any[] {
+    const map = new Map<string, any>();
+
+    for (const finding of findings) {
+      const key = `${String(finding.normalizedRuleId || finding.ruleId || finding.criterion || 'unknown')}::${String(finding.selector || '')}`;
+      const current = map.get(key);
+
+      if (!current) {
+        map.set(key, finding);
+        continue;
+      }
+
+      const currentStatus = current.findingStatus || current.status || 'confirmed';
+      const nextStatus = finding.findingStatus || finding.status || 'confirmed';
+      if (currentStatus !== 'confirmed' && nextStatus === 'confirmed') {
+        map.set(key, finding);
+      }
+    }
+
+    return Array.from(map.values());
+  }
+
+  private assertExportAccess(user: BillingAwareUser | null | undefined) {
+    if (user && !hasPaidBillingAccess(user)) {
+      throw new ForbiddenException('Los exportes están disponibles en Pro.');
+    }
+  }
+
+  private resolveOwnerId(request: AuthRequest | undefined, user: BillingAwareUser | null) {
+    return request?.authMode === 'service' ? null : user?.id ?? null;
+  }
+
+  private async findScanForExport(scanId: string, ownerId: string | null) {
+    const query = this.scanRepository
+      .createQueryBuilder('scan')
+      .leftJoinAndSelect('scan.project', 'project')
+      .leftJoinAndSelect('scan.urlResults', 'urlResults')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .where('scan.id = :scanId', { scanId });
+
+    if (ownerId) {
+      query.andWhere('owner.id = :ownerId', { ownerId });
+    }
+
+    const scan = await query.getOne();
+    if (!scan) {
+      throw new NotFoundException('Scan not found');
+    }
+
+    return scan;
   }
 }

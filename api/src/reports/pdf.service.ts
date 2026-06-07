@@ -33,6 +33,7 @@ interface PageSummary {
   url: string;
   score: number | null;
   status: string;
+  totalCount: number;
   confirmedCount: number;
   reviewCount: number;
 }
@@ -84,15 +85,8 @@ export class PdfService {
     private readonly scanRepository: Repository<Scan>,
   ) {}
 
-  async generatePdf(scanId: string, type: ReportType): Promise<Buffer> {
-    const scan = await this.scanRepository.findOne({
-      where: { id: scanId },
-      relations: { project: true, urlResults: true },
-    });
-
-    if (!scan) {
-      throw new NotFoundException('Scan not found');
-    }
+  async generatePdf(scanId: string, type: ReportType, ownerId: string | null = null): Promise<Buffer> {
+    const scan = await this.findScanForReport(scanId, ownerId);
 
     const model = this.buildReportModel(scan);
 
@@ -106,24 +100,58 @@ export class PdfService {
     });
   }
 
+  private async findScanForReport(scanId: string, ownerId: string | null) {
+    if (!ownerId && typeof (this.scanRepository as any).findOne === 'function') {
+      const scan = await this.scanRepository.findOne({
+        where: { id: scanId },
+        relations: { project: true, urlResults: true },
+      });
+
+      if (!scan) {
+        throw new NotFoundException('Scan not found');
+      }
+
+      return scan;
+    }
+
+    const query = this.scanRepository
+      .createQueryBuilder('scan')
+      .leftJoinAndSelect('scan.project', 'project')
+      .leftJoinAndSelect('scan.urlResults', 'urlResults')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .where('scan.id = :scanId', { scanId });
+
+    if (ownerId) {
+      query.andWhere('owner.id = :ownerId', { ownerId });
+    }
+
+    const scan = await query.getOne();
+    if (!scan) {
+      throw new NotFoundException('Scan not found');
+    }
+
+    return scan;
+  }
+
   private buildReportModel(scan: Scan): ReportModel {
     const findings = (scan.urlResults ?? []).flatMap((ur) =>
-      (((ur.violations as PdfFinding[]) ?? [])).map((v) => ({
+      this.uniquePageFindings(((ur.violations as PdfFinding[]) ?? [])).map((v) => ({
         ...v,
         url: ur.url,
         pageScore: ur.score,
       })),
     );
     const confirmedFindings = findings.filter((v) => this.findingStatus(v) === 'confirmed');
-    const reviewFindings = findings.filter((v) => this.findingStatus(v) !== 'confirmed');
+    const reviewFindings = findings.filter((v) => this.isReviewFinding(v));
     const pages = (scan.urlResults ?? []).map((ur) => {
-      const pageFindings = ((ur.violations as PdfFinding[]) ?? []);
+      const pageFindings = this.uniquePageFindings((ur.violations as PdfFinding[]) ?? []);
       return {
         url: ur.url,
         score: ur.score ?? null,
         status: ur.status,
+        totalCount: pageFindings.length,
         confirmedCount: pageFindings.filter((v) => this.findingStatus(v) === 'confirmed').length,
-        reviewCount: pageFindings.filter((v) => this.findingStatus(v) !== 'confirmed').length,
+        reviewCount: pageFindings.filter((v) => this.isReviewFinding(v)).length,
       };
     });
 
@@ -171,7 +199,7 @@ export class PdfService {
       { label: 'Puntaje global', value: `${score}/100`, tone },
       { label: 'Páginas auditadas', value: String(model.pages.length), tone: 'neutral' },
       { label: 'Hallazgos confirmados', value: String(model.confirmedFindings.length), tone: model.confirmedFindings.length > 0 ? 'danger' : 'good' },
-      { label: 'En revision', value: String(model.reviewFindings.length), tone: model.reviewFindings.length > 0 ? 'warning' : 'neutral' },
+      { label: 'En revisión', value: String(model.reviewFindings.length), tone: model.reviewFindings.length > 0 ? 'warning' : 'neutral' },
     ]);
 
     doc.moveDown(1.4);
@@ -240,9 +268,9 @@ export class PdfService {
     doc.moveDown(1.1);
     this.drawSectionTitle(doc, 'Plan recomendado');
     this.drawBulletList(doc, [
-      'Cerrar primero hallazgos criticos y altos en paginas con menor puntaje o mayor valor Vp.',
-      'Asignar responsables por rol: desarrollo para semantica/teclado, UX/UI para contraste y componentes, redaccion UX para textos y proposito de enlaces.',
-      'Reejecutar el escaneo despues de cada lote de correcciones y conservar evidencia de remediacion.',
+      'Cerrar primero hallazgos críticos y altos en páginas con menor puntaje o mayor valor Vp.',
+      'Asignar responsables por rol: desarrollo para semántica/teclado, UX/UI para contraste y componentes, redacción UX para textos y propósito de enlaces.',
+      'Reejecutar el escaneo después de cada lote de correcciones y conservar evidencia de remediación.',
       'Completar verificaciones manuales pendientes antes de usar el resultado como sustento de cumplimiento.',
     ]);
 
@@ -251,14 +279,20 @@ export class PdfService {
     const riskyPages = [...model.pages]
       .sort((a, b) => (a.score ?? 101) - (b.score ?? 101))
       .slice(0, 8)
-      .map((page) => [page.url, page.score === null ? '-' : `${page.score}/100`, String(page.confirmedCount)]);
-    this.drawTable(doc, ['URL', 'Score', 'Hallazgos'], riskyPages.length ? riskyPages : [['Sin paginas auditadas', '-', '-']], [310, 80, 100]);
+      .map((page) => [
+        page.url,
+        page.score === null ? '-' : `${page.score}/100`,
+        String(page.totalCount),
+        String(page.confirmedCount),
+      ]);
+    this.drawTable(doc, ['URL', 'Score', 'Hallazgos', 'Confirmados'], riskyPages.length ? riskyPages : [['Sin paginas auditadas', '-', '-', '-']], [275, 70, 85, 60]);
   }
 
   private drawTechnicalReport(doc: PDFKit.PDFDocument, model: ReportModel) {
-    this.drawSectionTitle(doc, 'Alcance tecnico');
+    this.drawSectionTitle(doc, 'Alcance técnico');
     this.drawKeyValueGrid(doc, [
       ['Páginas evaluadas', String(model.pages.length)],
+      ['Hallazgos totales', String(model.findings.length)],
       ['Hallazgos confirmados', String(model.confirmedFindings.length)],
       ['Hallazgos por revisar', String(model.reviewFindings.length)],
       ['Estándar', model.scan.wcagVersion],
@@ -269,19 +303,24 @@ export class PdfService {
 
     doc.moveDown(1.1);
     this.drawSectionTitle(doc, 'Resumen por página');
-    this.drawTable(doc, ['URL', 'Score', 'Confirmados', 'Revision'], model.pages.map((page) => [
+    this.drawTable(doc, ['URL', 'Score', 'Hallazgos', 'Confirmados', 'Revisión'], model.pages.map((page) => [
       page.url,
       page.score === null ? '-' : `${page.score}/100`,
+      String(page.totalCount),
       String(page.confirmedCount),
       String(page.reviewCount),
-    ]), [280, 70, 80, 80]);
+    ]), [250, 60, 70, 70, 70]);
 
     doc.moveDown(1.1);
     this.drawSectionTitle(doc, 'Matriz de remediación');
     const sortedFindings = [...model.findings].sort((a, b) => {
       const severityDelta = this.severityRank(b.severity) - this.severityRank(a.severity);
       if (severityDelta !== 0) return severityDelta;
-      return this.findingStatus(a) === 'confirmed' ? -1 : 1;
+      if (this.findingStatus(a) === 'confirmed' && this.findingStatus(b) !== 'confirmed') return -1;
+      if (this.findingStatus(b) === 'confirmed' && this.findingStatus(a) !== 'confirmed') return 1;
+      if (this.isReviewFinding(a) && !this.isReviewFinding(b)) return -1;
+      if (this.isReviewFinding(b) && !this.isReviewFinding(a)) return 1;
+      return 0;
     });
 
     if (sortedFindings.length === 0) {
@@ -315,7 +354,7 @@ export class PdfService {
     doc.font('Helvetica').fontSize(8.5).fillColor(COLORS.slate600)
       .text(`URL: ${finding.url}`, x + 14, doc.y + 3, { width: width - 28 });
     doc.text(`Nivel: ${finding.level ?? finding.wcagLevel ?? 'N/A'} | Severidad: ${finding.severity ?? 'N/A'} | Estado: ${finding.statusLabel ?? this.findingStatusLabel(finding)} | Rol: ${finding.role ?? '-'}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.text(`Vista: ${finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales')}`, x + 14, doc.y + 3, { width: width - 28 });
+    doc.text(`Vista: ${finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales')}`, x + 14, doc.y + 3, { width: width - 28 });
     doc.text(`Selector: ${finding.selector ?? '-'}`, x + 14, doc.y + 3, { width: width - 28 });
     doc.text(`Acción: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`, x + 14, doc.y + 3, { width: width - 28 });
     doc.text(`Referencia: ${finding.resolutionArticle ?? '-'}`, x + 14, doc.y + 3, { width: width - 28 });
@@ -624,11 +663,36 @@ export class PdfService {
     return String(v.findingStatus || v.status || 'confirmed');
   }
 
+  private isReviewFinding(v: PdfFinding): boolean {
+    const status = this.findingStatus(v);
+    return status === 'needs_review' || status === 'not_evaluated';
+  }
+
+  private uniquePageFindings(findings: PdfFinding[]): PdfFinding[] {
+    const map = new Map<string, PdfFinding>();
+
+    for (const finding of findings) {
+      const key = `${String((finding as any).normalizedRuleId || finding.ruleId || finding.criterion || 'unknown')}::${String(finding.selector || '')}`;
+      const current = map.get(key);
+
+      if (!current) {
+        map.set(key, finding);
+        continue;
+      }
+
+      if (this.findingStatus(current) !== 'confirmed' && this.findingStatus(finding) === 'confirmed') {
+        map.set(key, finding);
+      }
+    }
+
+    return Array.from(map.values());
+  }
+
   private findingStatusLabel(v: PdfFinding): string {
     const status = this.findingStatus(v);
     if (status === 'not_evaluated') return 'No evaluado';
     if (status === 'not_applicable') return 'No aplicable';
-    if (status === 'needs_review') return 'Requiere revision';
+    if (status === 'needs_review') return 'Requiere revisión';
     return 'Confirmado';
   }
 }

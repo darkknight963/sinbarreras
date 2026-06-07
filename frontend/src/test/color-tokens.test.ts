@@ -14,14 +14,14 @@ import { describe, it, expect } from 'vitest'
  * These are the source of truth for all colors in the application
  */
 const colorTokens = {
-  // Primary colors - Institutional Peruvian blue
+  // Primary colors - Institutional royal blue for buttons and links
   primary: {
-    900: '#002C76', // Institutional blue, brand primary
-    50: '#f0f4ff',  // Very light blue for hover states
+    900: '#1E40AF', // Royal blue, buttons and links
+    50: '#eff6ff',  // Very light blue for hover states
   },
-  // Secondary colors - Green for success/approval
+  // Secondary colors - Green reserved for success/approval only
   secondary: {
-    600: '#059669', // Green for success/approval
+    600: '#065F46', // Green for success/approval
     50: '#d1fae5',  // Light green for badges
   },
   // Semantic color tokens for severity and status indicators
@@ -43,13 +43,13 @@ const colorTokens = {
   },
   // Neutral color tokens for text and backgrounds
   neutral: {
-    900: '#1f2937', // dark text
+    900: '#0F172A', // primary dark text
     700: '#374151', // medium text
     600: '#4b5563', // secondary text
     500: '#64748b', // tertiary text
     200: '#e8ecf1', // subtle borders
     100: '#f3f4f6', // light backgrounds
-    50: '#f8fafc',  // very light backgrounds
+    50: '#F8FAFC',  // global page background
   },
   white: '#ffffff', // pure white
 }
@@ -147,13 +147,13 @@ describe('Color Token Application', () => {
   describe('Token Definition', () => {
     it('should define all primary color tokens', () => {
       expect(colorTokens.primary).toBeDefined()
-      expect(colorTokens.primary[900]).toBe('#002C76')
-      expect(colorTokens.primary[50]).toBe('#f0f4ff')
+      expect(colorTokens.primary[900]).toBe('#1E40AF')
+      expect(colorTokens.primary[50]).toBe('#eff6ff')
     })
 
     it('should define all secondary color tokens', () => {
       expect(colorTokens.secondary).toBeDefined()
-      expect(colorTokens.secondary[600]).toBe('#059669')
+      expect(colorTokens.secondary[600]).toBe('#065F46')
       expect(colorTokens.secondary[50]).toBe('#d1fae5')
     })
 
@@ -177,13 +177,13 @@ describe('Color Token Application', () => {
 
     it('should define all neutral color tokens', () => {
       expect(colorTokens.neutral).toBeDefined()
-      expect(colorTokens.neutral[900]).toBe('#1f2937')
+      expect(colorTokens.neutral[900]).toBe('#0F172A')
       expect(colorTokens.neutral[700]).toBe('#374151')
       expect(colorTokens.neutral[600]).toBe('#4b5563')
       expect(colorTokens.neutral[500]).toBe('#64748b')
       expect(colorTokens.neutral[200]).toBe('#e8ecf1')
       expect(colorTokens.neutral[100]).toBe('#f3f4f6')
-      expect(colorTokens.neutral[50]).toBe('#f8fafc')
+      expect(colorTokens.neutral[50]).toBe('#F8FAFC')
     })
 
     it('should define white color token', () => {
@@ -331,12 +331,12 @@ describe('Color Token Application', () => {
         ...colorTokens,
         primary: {
           ...colorTokens.primary,
-          900: '#003a94', // Updated value
+          900: '#1E3A8A', // Updated value
         },
       }
 
       expect(updatedTokens.primary[900]).not.toBe(originalPrimary)
-      expect(updatedTokens.primary[900]).toBe('#003a94')
+      expect(updatedTokens.primary[900]).toBe('#1E3A8A')
     })
 
     it('should maintain token references after updates', () => {
@@ -344,7 +344,7 @@ describe('Color Token Application', () => {
         ...colorTokens,
         primary: {
           ...colorTokens.primary,
-          900: '#003a94',
+          900: '#1E3A8A',
         },
       }
 

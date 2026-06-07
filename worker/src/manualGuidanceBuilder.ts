@@ -17,8 +17,8 @@ export interface ManualGuidance {
 }
 
 const RULE_GUIDANCE: Record<string, string> = {
-  'landmark-main-missing': 'Verificar que exista una region principal con <main> o role="main" para navegacion asistida.',
-  'landmark-nav-missing': 'Verificar que la navegacion principal use <nav> o role="navigation".',
+  'landmark-main-missing': 'Verificar que exista una región principal con <main> o role="main" para navegación asistida.',
+  'landmark-nav-missing': 'Verificar que la navegación principal use <nav> o role="navigation".',
   'bypass-missing': 'Verificar un mecanismo de salto al contenido principal (skip link).',
   'autocomplete-missing': 'Verificar que los campos de datos personales usen autocomplete especifico (name, email, tel, etc.).',
   'form-control-multiple-labels': 'Verificar que cada control tenga una sola etiqueta principal consistente.',

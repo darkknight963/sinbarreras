@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsEmpty,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -27,8 +28,12 @@ export class CreateScanDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(5)
+  @Max(6)
   ux!: number;
+
+  @IsOptional()
+  @IsIn(['none', 'manual_assisted'])
+  loginMode?: 'none' | 'manual_assisted';
 
   @IsOptional()
   @IsEmpty({ message: 'preNavigationScript is disabled for security reasons' })

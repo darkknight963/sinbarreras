@@ -1,28 +1,73 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { AUTH_ROUTE_KEY } from './auth.constants';
+import { AuthService } from './auth.service';
 
 @Injectable()
 export class ApiTokenGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<{ method?: string; headers: Record<string, string | string[] | undefined> }>();
+  constructor(
+    private readonly reflector?: Reflector,
+    private readonly authService?: AuthService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<{
+      method?: string;
+      headers: Record<string, string | string[] | undefined>;
+      authMode?: 'service' | 'session';
+      user?: {
+        id: string;
+        email?: string;
+        fullName?: string | null;
+        role?: string;
+        companyName?: string | null;
+        billingStatus?: string | null;
+        billingPlan?: string | null;
+      };
+      authSessionToken?: string;
+    }>();
+    const isPublic = this.reflector?.getAllAndOverride<boolean>(AUTH_ROUTE_KEY, [context.getHandler(), context.getClass()]) ?? false;
 
     if (request.method === 'OPTIONS') {
       return true;
     }
 
-    const configuredToken = process.env.API_AUTH_TOKEN?.trim();
-
-    if (!configuredToken) {
+    if (isPublic) {
       return true;
     }
 
+    const configuredToken = process.env.API_AUTH_TOKEN?.trim();
     const rawAuthorization = request.headers.authorization;
     const authorization = Array.isArray(rawAuthorization) ? rawAuthorization[0] : rawAuthorization;
-    const expected = `Bearer ${configuredToken}`;
+    const normalizedAuthorization = typeof authorization === 'string' ? authorization.replace(/^Bearer\s+/i, '').trim() : '';
 
-    if (authorization !== expected) {
-      throw new UnauthorizedException('Valid API bearer token required');
+    if (configuredToken && authorization === `Bearer ${configuredToken}`) {
+      request.authMode = 'service';
+      return true;
     }
 
-    return true;
+    if (normalizedAuthorization) {
+      const session = await this.authService?.validateSessionToken(normalizedAuthorization);
+      if (session) {
+        request.authMode = 'session';
+        request.user = {
+          id: session.user.id,
+          email: session.user.email,
+          fullName: session.user.fullName,
+          role: session.user.role,
+          companyName: session.user.companyName,
+          billingStatus: session.user.billingStatus,
+          billingPlan: session.user.billingPlan,
+        };
+        request.authSessionToken = normalizedAuthorization;
+        return true;
+      }
+    }
+
+    if (!configuredToken && process.env.NODE_ENV !== 'production') {
+      return true;
+    }
+
+    throw new UnauthorizedException('Valid session or API bearer token required');
   }
 }

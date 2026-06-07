@@ -108,17 +108,23 @@ export function conservativeApplicability(): CriterionApplicability[] {
   }));
 }
 
-export function summarizeApplicability(applicability: CriterionApplicability[], failedCriterionIds: Set<string>) {
+export function summarizeApplicability(
+  applicability: CriterionApplicability[],
+  failedCriterionIds: Set<string>,
+  reviewCriterionIds = new Set<string>(),
+) {
   const applies = applicability.filter((item) => item.estado === 'aplica');
   const notApplicable = applicability.filter((item) => item.estado === 'no_aplica');
   const failed = applies.filter((item) => failedCriterionIds.has(item.id));
-  const passed = applies.length - failed.length;
+  const review = applies.filter((item) => !failedCriterionIds.has(item.id) && reviewCriterionIds.has(item.id));
+  const passed = applies.length - failed.length - review.length;
   const denominator = Math.max(1, applies.length);
   return {
     totalCriteria: applicability.length,
     applicableCount: applies.length,
     notApplicableCount: notApplicable.length,
     failedCount: failed.length,
+    reviewCount: review.length,
     passedCount: passed,
     score: Math.max(0, Math.round((passed / denominator) * 100)),
   };

@@ -28,20 +28,32 @@ export function normalizeRuleId(ruleId: string, description: string): string {
   const d = (description || '').toLowerCase();
 
   if (r.includes('duplicate-id') || d.includes('id attribute is not unique')) return 'duplicate-id';
+  if (r.includes('html-lang-missing') || (d.includes('html') && d.includes('lang'))) return 'html-lang-missing';
   if (r.includes('aria-dialog-name') || (d.includes('dialog') && d.includes('accessible name'))) return 'aria-dialog-name';
+  if (r.includes('aria-widget-name-missing') || (d.includes('aria') && d.includes('accessible name'))) return 'aria-widget-name-missing';
+  if (r.includes('aria-required-owned-element') || d.includes('required owned') || d.includes('owned element')) return 'aria-required-owned-element';
   if (r.includes('aria-valid-attr-value') || (d.includes('aria attributes') && d.includes('valid values'))) return 'aria-valid-attr-value';
   if (r.includes('scrollable-region-focusable') || (d.includes('scrollable region') && d.includes('keyboard'))) return 'scrollable-region-focusable';
+  if (r.includes('h1-in-header') || (d.includes('h1') && d.includes('header'))) return 'h1-in-header';
+  if (r.includes('content-behind-dialog-accessible') || (d.includes('content behind') && d.includes('dialog')) || (d.includes('contenido detras') && d.includes('dialogo'))) return 'content-behind-dialog-accessible';
   if (r.includes('frame-tested')) return 'frame-tested';
   if (r.includes('region') || d.includes('contained by landmarks')) return 'region';
   if (r.includes('main') && (r.includes('landmark') || d.includes('main landmark'))) return 'landmark-main-missing';
   if (r.includes('nav') && (r.includes('landmark') || d.includes('navigation'))) return 'landmark-nav-missing';
   if (r.includes('bypass') || d.includes('skip to main') || d.includes('bypass blocks')) return 'bypass-missing';
+  if (r.includes('empty-list-item') || (d.includes('list') && d.includes('empty'))) return 'empty-list-item';
+  if (r.includes('link-href-missing') || d.includes('missing href')) return 'link-href-missing';
+  if (r.includes('link-name-missing') || (d.includes('link') && (d.includes('no text') || d.includes('discernible text') || d.includes('accessible name')))) return 'link-name-missing';
+  if (r.includes('button-name-missing') || (d.includes('button') && (d.includes('label') || d.includes('accessible name') || d.includes('programmatic name')))) return 'button-name-missing';
+  if (r.includes('input-name-missing') || (d.includes('input') && d.includes('accessible name'))) return 'input-name-missing';
   if (r.includes('multiple-labels') || (r.includes('label') && d.includes('more than one'))) return 'form-control-multiple-labels';
   if (r.includes('form-field-multiple-labels')) return 'form-control-multiple-labels';
   if (r.includes('label') && d.includes('empty')) return 'label-empty-text';
   if (d.includes('autocomplete') && d.includes('missing')) return 'autocomplete-missing';
   if (r.includes('required-html5-attribute') || (d.includes('required') && d.includes('html5'))) return 'required-html5-indicator';
   if (d.includes('contrast') && d.includes('image background')) return 'contrast-image-background-undetermined';
+  if (r.includes('table-purpose-review') || d.includes('unknown table') || d.includes('determine if the table')) return 'table-purpose-review';
+  if (r.includes('title-non-interactive') || (d.includes('title') && d.includes('non-interactive'))) return 'title-non-interactive';
   if (r.includes('f24.fgcolour') || d.includes('inherited background colour')) return 'contrast-image-background-undetermined';
   if (d.includes('checkbox') && d.includes('no text in label')) return 'checkbox-label-missing';
   if (r.includes('h91.select.value')) return 'select-value';
@@ -74,7 +86,9 @@ export function toCategoryFromLighthouse(audit: any): FindingCategory {
 }
 
 export function labelPageState(state: PageState): string {
-  return state === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales';
+  if (state === 'initial') return 'Estado inicial';
+  if (state === 'interactive_state') return 'Estado interactivo';
+  return 'Después de cerrar modales';
 }
 
 export function tagFindingsWithPageState(findings: RawFinding[], pageState: PageState): RawFinding[] {
@@ -166,5 +180,5 @@ export function resolveStatusLabel(status: FindingStatus): string {
   if (status === 'confirmed') return 'Confirmado';
   if (status === 'not_evaluated') return 'No evaluado';
   if (status === 'not_applicable') return 'No aplicable';
-  return 'Requiere revision';
+  return 'Requiere revisión';
 }

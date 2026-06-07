@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sin Barreras</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="extension-shell">
+      <header class="extension-header">
+        <span class="extension-logo" aria-hidden="true">SB</span>
+        <div>
+          <p>Auditoria autenticada</p>
+          <h1>Sin Barreras</h1>
+        </div>
+      </header>
+
+      <form id="settings-form" class="extension-form">
+        <label>
+          <span>API del sistema</span>
+          <input id="api-base" type="url" autocomplete="url" placeholder="http://localhost:3000" required />
+        </label>
+        <label>
+          <span>Token de acceso</span>
+          <input id="api-token" type="password" autocomplete="off" placeholder="Bearer token o API token" required />
+        </label>
+        <label>
+          <span>ID del escaneo</span>
+          <input id="scan-id" type="text" autocomplete="off" placeholder="UUID del escaneo manual" required />
+        </label>
+      </form>
+
+      <section class="extension-current" aria-live="polite">
+        <span>Pagina actual</span>
+        <strong id="current-url">Detectando...</strong>
+      </section>
+
+      <button id="run-audit" type="button" class="extension-primary">
+        Analizar pestana y enviar
+      </button>
+
+      <p id="status" class="extension-status" role="status">No se guardan contrasenas, cookies ni sesiones.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

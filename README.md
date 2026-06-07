@@ -35,6 +35,9 @@ Desde la raiz del proyecto:
 docker compose up -d --build
 ```
 
+administrador@sinbarreras.com
+12345678
+
 Servicios expuestos:
 - Frontend: `http://localhost` (puerto 80)
 - API: `http://localhost:3000`
@@ -72,6 +75,21 @@ El `docker-compose.yml` ya trae valores por defecto:
 - `MINIO_ROOT_PASSWORD=admin123`
 
 Si deseas personalizar, crea un archivo `.env` en la raiz con esos valores.
+
+## Culqi
+
+El flujo de suscripciones usa:
+
+- Culqi Checkout para capturar la tarjeta.
+- Culqi Suscripciones para crear y mantener los cobros recurrentes.
+- Culqi API para crear cliente, tarjeta y suscripción desde el backend.
+
+Guía completa:
+- [`docs/culqi-setup.md`](docs/culqi-setup.md)
+
+Archivos de configuración:
+- [`api/.env.example`](api/.env.example)
+- [`frontend/.env.example`](frontend/.env.example)
 
 ## Ejecucion en local (sin Docker para app)
 

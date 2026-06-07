@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq';
 import * as dotenv from 'dotenv';
-import { processScan } from './processor.js';
+import { cleanupPublicScan, processScan } from './processor.js';
 import { initializeStorage } from './storage.js';
 
 dotenv.config();
@@ -16,8 +16,12 @@ async function bootstrap() {
   const worker = new Worker(
     'scans',
     async (job: Job) => {
-      console.log(`Processing job ${job.id} for project scan`);
+      console.log(`Processing job ${job.id} (${job.name})`);
       try {
+        if (job.name === 'cleanup-public-scan') {
+          await cleanupPublicScan(String(job.data?.scanId || ''));
+          return;
+        }
         await processScan(job);
       } catch (err) {
         console.error(`Failed to process job ${job.id}:`, err);

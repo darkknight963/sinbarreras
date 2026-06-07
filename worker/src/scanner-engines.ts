@@ -8,6 +8,8 @@ import type {
   EngineRunResult,
   EngineRunSummary,
   FindingCategory,
+  OverlayAction,
+  OverlayCandidate,
   PageState,
   RawFinding,
   ScannerEngineName,
@@ -78,12 +80,219 @@ export async function runEngineSeries(steps: EngineStep[]): Promise<EngineRunRes
   return { findings, report };
 }
 
-export async function handleCommonOverlays(page: Page) {
+export async function detectOverlayCandidates(page: Page): Promise<OverlayCandidate[]> {
+  return await page.evaluate(`(() => {
+    const viewportArea = Math.max(1, window.innerWidth * window.innerHeight);
+    const escapeRe = (value) => String(value || '').replace(/[.*+?^\\x24{}()|[\\]\\\\]/g, '\\\\$&');
+    const classOrIdHasToken = (el, tokens) => {
+      const text = [
+        el.getAttribute('class') || '',
+        el.getAttribute('id') || '',
+        el.getAttribute('data-testid') || '',
+        el.getAttribute('aria-label') || ''
+      ].join(' ').toLowerCase();
+      return tokens.some((token) => new RegExp('(^|[^a-z0-9])' + escapeRe(token) + '([^a-z0-9]|$)', 'i').test(text));
+    };
+    const isVisible = (el) => {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number(style.opacity || '1') > 0.05
+        && rect.width > 120
+        && rect.height > 80;
+    };
+    const isInViewport = (rect) => rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth;
+    const isBlockingOverlay = (el) => {
+      if (!isVisible(el)) return false;
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      if (!isInViewport(rect)) return false;
+      const area = Math.max(0, rect.width) * Math.max(0, rect.height);
+      const areaRatio = area / viewportArea;
+      const position = style.position;
+      const zIndex = Number.parseInt(style.zIndex || '0', 10);
+      const hasDialogSemantics = el.getAttribute('role') === 'dialog'
+        || el.getAttribute('role') === 'alertdialog'
+        || el.getAttribute('aria-modal') === 'true';
+      const hasOverlayToken = classOrIdHasToken(el, ['modal', 'dialog', 'popup', 'popover', 'cookie', 'cookies', 'consent', 'banner']);
+      const bodyModalOpen = /(^|\\s)(modal-open|overflow-hidden|no-scroll)(\\s|$)/i.test(document.body?.className || '');
+      const coversViewport = areaRatio >= 0.35;
+      const cookieBar = hasOverlayToken && rect.width / window.innerWidth >= 0.72 && rect.height >= 70 && (rect.top < 80 || rect.bottom > window.innerHeight - 80);
+      const visuallyFloats = position === 'fixed' || (position === 'absolute' && (Number.isFinite(zIndex) ? zIndex >= 100 : false));
+      return hasDialogSemantics
+        || bodyModalOpen && hasOverlayToken && areaRatio >= 0.08
+        || cookieBar
+        || (hasOverlayToken && visuallyFloats && areaRatio >= 0.12)
+        || (position === 'fixed' && coversViewport && (Number.isFinite(zIndex) ? zIndex >= 50 : true));
+    };
+    const keywordSelector = [
+      '[role="dialog"]',
+      '[role="alertdialog"]',
+      '[aria-modal="true"]',
+      '.modal',
+      '.modal-dialog',
+      '[class*="modal" i]',
+      '[class*="popup" i]',
+      '[class*="cookie" i]',
+      '[class*="banner" i]',
+      '[id*="cookie" i]',
+      '[id*="popup" i]'
+    ].join(',');
+
+    const explicit = Array.from(document.querySelectorAll(keywordSelector));
+    const positioned = Array.from(document.querySelectorAll('body *')).filter((el) => {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      const position = style.position;
+      const zIndex = Number.parseInt(style.zIndex || '0', 10);
+      const area = Math.max(0, rect.width) * Math.max(0, rect.height);
+      return isVisible(el)
+        && ['fixed', 'absolute'].includes(position)
+        && area / viewportArea >= 0.12
+        && (Number.isFinite(zIndex) ? zIndex >= 50 : position === 'fixed');
+    });
+
+    const candidates = Array.from(new Set([...explicit, ...positioned]));
+    return candidates
+      .filter(isBlockingOverlay)
+      .slice(0, 3)
+      .map((el, index) => {
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        const text = (el.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 500);
+        const lower = text.toLowerCase();
+        const id = 'sb-overlay-' + index;
+        el.setAttribute('data-sb-overlay-id', id);
+        const attrText = [
+          el.getAttribute('id') || '',
+          el.getAttribute('role') || '',
+          el.getAttribute('aria-label') || '',
+          el.getAttribute('class') || '',
+          lower
+        ].join(' ').toLowerCase();
+        let kind = 'overlay';
+        if (/cookie|cookies|galleta|consent|privacidad/.test(attrText)) kind = 'cookie';
+        else if (/terminos|términos|condiciones|legal|acepto|acuerdo/.test(attrText)) kind = 'terms';
+        else if (/edad|age|mayor de edad|18\\+/.test(attrText)) kind = 'age_gate';
+        else if (/bienvenida|welcome|anuncio|promo|newsletter/.test(attrText)) kind = 'announcement';
+        else if (/dialog|modal/.test(attrText)) kind = 'dialog';
+        const zIndex = Number.parseInt(style.zIndex || '0', 10);
+        return {
+          id,
+          selector: '[data-sb-overlay-id="' + id + '"]',
+          html: el.outerHTML.slice(0, 2000),
+          text,
+          kind,
+          blocksViewport: rect.width * rect.height / viewportArea >= 0.35 || style.position === 'fixed',
+          zIndex: Number.isFinite(zIndex) ? zIndex : 0
+        };
+      });
+  })()`) as OverlayCandidate[];
+}
+
+function overlayFindingDescription(overlay: OverlayCandidate): string {
+  const labels: Record<OverlayCandidate['kind'], string> = {
+    cookie: 'banner o modal de cookies',
+    terms: 'modal de terminos o condiciones',
+    age_gate: 'bloqueo de verificacion de edad',
+    announcement: 'popup de anuncio o bienvenida',
+    dialog: 'dialogo modal',
+    overlay: 'overlay visible',
+  };
+  return `Se detecto un ${labels[overlay.kind]} que bloquea o condiciona la lectura del contenido principal.`;
+}
+
+function overlayReviewFinding(overlay: OverlayCandidate): RawFinding {
+  return {
+    tool: 'heuristic-dom',
+    ruleId: 'blocking-overlay-needs-review',
+    normalizedRuleId: 'blocking-overlay-needs-review',
+    category: 'manual_check',
+    wcagCriterion: 'Revision manual',
+    findingStatus: 'needs_review',
+    description: overlayFindingDescription(overlay),
+    selector: normalizeSelector(overlay.selector),
+    elementHtml: overlay.html,
+    severity: overlay.blocksViewport ? 'alto' : 'medio',
+    suggestedFix: 'Asegurar que el overlay tenga nombre accesible, foco gestionado, operacion por teclado, contraste suficiente y una accion clara para cerrarlo o continuar.',
+  };
+}
+
+export async function closeDetectedOverlays(page: Page): Promise<OverlayAction> {
+  const overlays = await detectOverlayCandidates(page);
+  if (overlays.length === 0) return 'not_found';
+
+  let skippedSensitive = false;
+  for (const overlay of overlays) {
+    const selectorPrefix = `${overlay.selector} `;
+    const safeCandidates = [
+      `${selectorPrefix}button:has-text("Cerrar")`,
+      `${selectorPrefix}button:has-text("Cerrar ventana")`,
+      `${selectorPrefix}button:has-text("Continuar")`,
+      `${selectorPrefix}button:has-text("Entendido")`,
+      `${selectorPrefix}button:has-text("OK")`,
+      `${selectorPrefix}button:has-text("Omitir")`,
+      `${selectorPrefix}button:has-text("Rechazar")`,
+      `${selectorPrefix}button:has-text("Solo necesarias")`,
+      `${selectorPrefix}a:has-text("Cerrar")`,
+      `${selectorPrefix}[aria-label*="cerrar" i]`,
+      `${selectorPrefix}[aria-label*="close" i]`,
+      `${selectorPrefix}[data-testid*="close" i]`,
+    ];
+    const acceptCandidates = [
+      `${selectorPrefix}button:has-text("Aceptar")`,
+      `${selectorPrefix}button:has-text("Acepto")`,
+      `${selectorPrefix}button:has-text("Aceptar todo")`,
+      `${selectorPrefix}button:has-text("Aceptar todas")`,
+      `${selectorPrefix}button:has-text("De acuerdo")`,
+      `${selectorPrefix}button:has-text("Estoy de acuerdo")`,
+      `${selectorPrefix}a:has-text("Aceptar")`,
+      `${selectorPrefix}.cookie-accept`,
+      `${selectorPrefix}.cookies-accept`,
+      `${selectorPrefix}.accept-cookies`,
+    ];
+
+    for (const selector of safeCandidates) {
+      const locator = page.locator(selector).first();
+      if (!(await locator.count())) continue;
+      try {
+        await locator.click({ timeout: 1000 });
+        await page.waitForTimeout(500);
+        return 'closed';
+      } catch {
+      }
+    }
+
+    if (overlay.kind === 'terms' || overlay.kind === 'age_gate') {
+      skippedSensitive = true;
+      continue;
+    }
+
+    for (const selector of acceptCandidates) {
+      const locator = page.locator(selector).first();
+      if (!(await locator.count())) continue;
+      try {
+        await locator.click({ timeout: 1000 });
+        await page.waitForTimeout(500);
+        return 'accepted';
+      } catch {
+      }
+    }
+  }
+
+  return skippedSensitive ? 'skipped_sensitive' : 'not_found';
+}
+
+export async function handleCommonOverlays(page: Page): Promise<OverlayAction> {
+  const action = await closeDetectedOverlays(page);
+  if (action !== 'not_found') return action;
+
   const candidates = [
     'button:has-text("Aceptar")',
     'button:has-text("Acepto")',
-    'button:has-text("Acepto los tÃ©rminos")',
-    'button:has-text("Aceptar tÃ©rminos")',
+    'button:has-text("Acepto los términos")',
+    'button:has-text("Aceptar términos")',
     'button:has-text("Aceptar todo")',
     'button:has-text("Aceptar todas")',
     'button:has-text("Cerrar")',
@@ -110,61 +319,173 @@ export async function handleCommonOverlays(page: Page) {
       try {
         await locator.click({ timeout: 1000 });
         await page.waitForTimeout(400);
+        return 'closed';
       } catch {
       }
     }
   }
+
+  return 'not_found';
+}
+
+async function discoverInteractiveTriggers(page: Page): Promise<Array<{ selector: string; label: string }>> {
+  return await page.evaluate(`(() => {
+    const escapeCss = window.CSS && CSS.escape ? CSS.escape : (value) => String(value).replace(/"/g, '\\\\"');
+    const riskyText = /\\b(eliminar|borrar|delete|remove|pagar|comprar|checkout|salir|logout|cerrar sesi[oó]n|descargar|download|pdf|excel|enviar|submit|guardar|save|crear|create|registrar|register)\\b/i;
+    const triggerHints = /\\b(menu|men[uú]|modal|dialog|di[aá]logo|popup|abrir|open|ver m[aá]s|m[aá]s|filtro|filter|opciones|cuenta|perfil|ayuda|soporte|accordion|acorde[oó]n|detalle|detalles)\\b/i;
+    const selectors = [
+      'button',
+      '[role="button"]',
+      'summary',
+      'a[href^="#"]',
+      '[aria-haspopup]',
+      '[aria-controls]',
+      '[data-toggle]',
+      '[data-bs-toggle]',
+      '[data-modal]',
+      '[class*="dropdown" i]',
+      '[class*="accordion" i]',
+      '[class*="popover" i]'
+    ].join(',');
+
+    const controls = Array.from(document.querySelectorAll(selectors));
+    const results = [];
+    const seen = new Set();
+
+    for (const el of controls) {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      const visible = style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number(style.opacity || '1') > 0.05
+        && rect.width >= 12
+        && rect.height >= 12;
+      if (!visible) continue;
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') continue;
+
+      const tag = el.tagName.toLowerCase();
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if (tag === 'button' && ['submit', 'reset'].includes(type)) continue;
+
+      if (tag === 'a') {
+        const href = el.getAttribute('href') || '';
+        if (!href.startsWith('#') && !href.startsWith('javascript:')) continue;
+      }
+
+      const text = [
+        el.textContent || '',
+        el.getAttribute('aria-label') || '',
+        el.getAttribute('title') || '',
+        el.getAttribute('class') || '',
+        el.getAttribute('id') || '',
+        el.getAttribute('aria-haspopup') || '',
+        el.getAttribute('aria-controls') || '',
+        el.getAttribute('data-toggle') || '',
+        el.getAttribute('data-bs-toggle') || '',
+        el.getAttribute('data-modal') || ''
+      ].join(' ').replace(/\\s+/g, ' ').trim();
+
+      if (riskyText.test(text)) continue;
+      const hasProgrammaticHint = el.hasAttribute('aria-haspopup')
+        || el.hasAttribute('aria-controls')
+        || el.hasAttribute('data-toggle')
+        || el.hasAttribute('data-bs-toggle')
+        || el.hasAttribute('data-modal')
+        || tag === 'summary';
+      if (!hasProgrammaticHint && !triggerHints.test(text)) continue;
+
+      const id = 'sb-interactive-trigger-' + results.length;
+      el.setAttribute('data-sb-interactive-trigger', id);
+      const selector = '[data-sb-interactive-trigger="' + escapeCss(id) + '"]';
+      if (seen.has(selector)) continue;
+      seen.add(selector);
+      results.push({ selector, label: text.slice(0, 120) || tag });
+      if (results.length >= 12) break;
+    }
+
+    return results;
+  })()`) as Array<{ selector: string; label: string }>;
+}
+
+function sameDocumentLocation(beforeUrl: string, afterUrl: string) {
+  try {
+    const before = new URL(beforeUrl);
+    const after = new URL(afterUrl);
+    return before.origin === after.origin && before.pathname === after.pathname && before.search === after.search;
+  } catch {
+    return beforeUrl === afterUrl;
+  }
+}
+
+export async function runInteractiveStateAccessibilityEngines(page: Page): Promise<EngineRunResult<RawFinding[]>> {
+  const findings: RawFinding[] = [];
+  const report: EngineRunSummary[] = [];
+  const triggers = await discoverInteractiveTriggers(page);
+
+  for (const trigger of triggers) {
+    const beforeUrl = page.url();
+    try {
+      const locator = page.locator(trigger.selector).first();
+      if (!(await locator.count())) continue;
+
+      await locator.scrollIntoViewIfNeeded({ timeout: 1000 }).catch(() => { });
+      await locator.click({ timeout: 1500, trial: false });
+      await page.waitForTimeout(450);
+      await page.waitForLoadState('networkidle', { timeout: 2500 }).catch(() => { });
+
+      if (!sameDocumentLocation(beforeUrl, page.url())) {
+        await page.goBack({ waitUntil: 'networkidle', timeout: 5000 }).catch(() => { });
+        continue;
+      }
+
+      const stateRun = await runStatefulPageEngines(page, 'interactive_state');
+      findings.push(...stateRun.findings);
+      report.push(...stateRun.report);
+
+      const overlays = await detectOverlayCandidates(page);
+      if (overlays.length > 0) {
+        const overlayRun = await runOverlayAccessibilityEngines(page, overlays, 'interactive_state');
+        findings.push(...overlayRun.findings);
+        report.push(...overlayRun.report);
+      }
+    } catch (err) {
+      console.warn(`Interactive state exploration skipped for "${trigger.label}".`, err);
+    } finally {
+      await page.keyboard.press('Escape').catch(() => { });
+      await page.waitForTimeout(200).catch(() => { });
+      await handleCommonOverlays(page).catch(() => 'not_found');
+      if (!sameDocumentLocation(beforeUrl, page.url())) {
+        await page.goBack({ waitUntil: 'networkidle', timeout: 5000 }).catch(() => { });
+      }
+    }
+  }
+
+  return { findings, report };
 }
 
 async function detectBlockingOverlays(page: Page): Promise<RawFinding[]> {
-  const overlays = await page.evaluate(`(() => {
-    const candidates = Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"], .modal, .modal-dialog, [aria-modal="true"]'));
-    const visible = candidates
-      .filter((el) => {
-        const style = window.getComputedStyle(el);
-        const rect = el.getBoundingClientRect();
-        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 120 && rect.height > 80;
-      })
-      .slice(0, 3)
-      .map((el) => {
-        const id = el.id ? '#' + el.id : '';
-        const selector = id || (el.className ? '.' + String(el.className).trim().split(/\\s+/).join('.') : el.tagName.toLowerCase());
-        return { selector, html: el.outerHTML.slice(0, 1000) };
-      });
-    return visible;
-  })()`) as Array<{ selector: string; html: string }>;
-
-  return overlays.map((overlay) => ({
-    tool: 'heuristic-dom',
-    ruleId: 'blocking-overlay-needs-review',
-    normalizedRuleId: 'blocking-overlay-needs-review',
-    category: 'manual_check',
-    wcagCriterion: 'Revision manual',
-    findingStatus: 'needs_review',
-    description: 'Se detecto un modal o bloqueo visible que puede limitar la cobertura del analisis automatico.',
-    selector: normalizeSelector(overlay.selector),
-    elementHtml: overlay.html,
-    severity: 'medio',
-    suggestedFix: 'Revisar el sitio en navegador, cerrar o aceptar terminos cuando corresponda, o configurar un script de pre-navegacion seguro para preparar la pagina antes del escaneo.',
-  }));
+  const overlays = await detectOverlayCandidates(page);
+  return overlays.map(overlayReviewFinding);
 }
 
-async function runAxe(page: Page): Promise<RawFinding[]> {
+async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[]> {
   await page.evaluate((src) => {
+    if ((window as any).axe) return;
     const script = window.document.createElement('script');
     script.innerHTML = src;
     window.document.head.appendChild(script);
   }, axeSource);
 
-  const results = await page.evaluate(() => {
+  const results = await page.evaluate((selector) => {
+    const context = selector ? document.querySelector(selector) : document;
     // @ts-ignore
-    return axe.run({
+    return axe.run(context || document, {
       runOnly: {
         type: 'tag',
         values: ['wcag2a', 'wcag2aa', 'wcag2aaa', 'wcag22a', 'wcag22aa', 'wcag22aaa', 'best-practice'],
       },
     });
-  });
+  }, contextSelector);
 
   const findings: RawFinding[] = [];
   for (const violation of results.violations || []) {
@@ -277,10 +598,9 @@ async function runPa11y(url: string, port: number): Promise<RawFinding[]> {
   }
 }
 
-async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
+async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
   const checkerModule: any = await import('accessibility-checker');
   const aChecker = checkerModule.default || checkerModule;
-  const html = await page.content();
   const report = await aChecker.getCompliance(html, 'scan-page');
 
   const violations = report?.results?.violations || [];
@@ -322,6 +642,10 @@ async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
   return findings;
 }
 
+async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
+  return runIbmEqualAccessHtml(await page.content());
+}
+
 async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
   const checks = await page.evaluate(`(() => {
     const findings = [];
@@ -332,6 +656,65 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (name) return el.tagName.toLowerCase() + '[name="' + name + '"]';
       return el.tagName.toLowerCase();
     };
+
+    const isVisible = (el) => {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number(style.opacity || '1') > 0.05
+        && rect.width > 0
+        && rect.height > 0;
+    };
+
+    const textOf = (el) => (el?.innerText || el?.textContent || '').replace(/\\s+/g, ' ').trim();
+
+    const accessibleName = (el) => {
+      const labelledBy = el.getAttribute('aria-labelledby');
+      if (labelledBy) {
+        const value = labelledBy
+          .split(/\\s+/)
+          .map((id) => document.getElementById(id))
+          .filter(Boolean)
+          .map(textOf)
+          .join(' ')
+          .trim();
+        if (value) return value;
+      }
+      const ariaLabel = el.getAttribute('aria-label');
+      if (ariaLabel) return ariaLabel.trim();
+      if (el.labels?.length) return Array.from(el.labels).map(textOf).join(' ').trim();
+      const alt = el.getAttribute('alt');
+      if (alt) return alt.trim();
+      const title = el.getAttribute('title');
+      if (title) return title.trim();
+      return textOf(el).slice(0, 120);
+    };
+
+    const interactiveSelector = [
+      'a[href]',
+      'button',
+      'input',
+      'select',
+      'textarea',
+      'summary',
+      '[role="button"]',
+      '[role="link"]',
+      '[tabindex]:not([tabindex="-1"])',
+      '[contenteditable="true"]'
+    ].join(',');
+
+    if (!document.documentElement.getAttribute('lang')) {
+      findings.push({
+        ruleId: 'html-lang-missing',
+        description: 'El elemento html no tiene atributo lang definido.',
+        selector: 'html',
+        html: document.documentElement.outerHTML.slice(0, 500),
+        wcagCriterion: '3.1.1',
+        wcagLevel: 'A',
+        category: 'violation',
+      });
+    }
 
     const mainCount = document.querySelectorAll('main, [role="main"]').length;
     if (mainCount === 0) {
@@ -368,6 +751,237 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
         html: '<body>',
         wcagCriterion: '2.4.1',
         wcagLevel: 'A',
+        category: 'manual_check',
+      });
+    }
+
+    for (const heading of Array.from(document.querySelectorAll('header h1, [role="banner"] h1'))) {
+      if (!isVisible(heading)) continue;
+      findings.push({
+        ruleId: 'h1-in-header',
+        description: 'Se encontro un h1 dentro del encabezado/banner. El h1 principal debe representar el contenido unico de la pagina, no la marca repetida.',
+        selector: getSelector(heading),
+        html: heading.outerHTML,
+        wcagCriterion: '2.4.1',
+        wcagLevel: 'A',
+        category: 'alert',
+      });
+    }
+
+    for (const item of Array.from(document.querySelectorAll('li'))) {
+      if (!isVisible(item) || item.getAttribute('aria-hidden') === 'true') continue;
+      if (textOf(item) || item.querySelector(interactiveSelector)) continue;
+      findings.push({
+        ruleId: 'empty-list-item',
+        description: 'La lista contiene un li vacio o sin contenido discernible.',
+        selector: getSelector(item),
+        html: item.outerHTML,
+        wcagCriterion: '1.3.1',
+        wcagLevel: 'A',
+        category: 'alert',
+      });
+    }
+
+    for (const link of Array.from(document.querySelectorAll('a:not([href])'))) {
+      if (!isVisible(link)) continue;
+      const cursor = window.getComputedStyle(link).cursor;
+      if (!link.getAttribute('onclick') && cursor !== 'pointer') continue;
+      findings.push({
+        ruleId: 'link-href-missing',
+        description: 'Un elemento a parece interactivo pero no tiene atributo href.',
+        selector: getSelector(link),
+        html: link.outerHTML,
+        wcagCriterion: '2.1.1',
+        wcagLevel: 'A',
+        category: 'alert',
+      });
+    }
+
+    for (const link of Array.from(document.querySelectorAll('a[href], [role="link"]'))) {
+      if (!isVisible(link) || accessibleName(link)) continue;
+      findings.push({
+        ruleId: 'link-name-missing',
+        description: 'El enlace no tiene texto ni nombre accesible discernible.',
+        selector: getSelector(link),
+        html: link.outerHTML,
+        wcagCriterion: '2.4.4',
+        wcagLevel: 'A',
+        category: 'violation',
+      });
+    }
+
+    for (const button of Array.from(document.querySelectorAll('button, [role="button"]'))) {
+      if (!isVisible(button) || accessibleName(button)) continue;
+      findings.push({
+        ruleId: 'button-name-missing',
+        description: 'El control con funcion de boton no tiene nombre programatico.',
+        selector: getSelector(button),
+        html: button.outerHTML,
+        wcagCriterion: '4.1.2',
+        wcagLevel: 'A',
+        category: 'violation',
+      });
+    }
+
+    for (const control of Array.from(document.querySelectorAll('input, select, textarea'))) {
+      const type = (control.getAttribute('type') || '').toLowerCase();
+      if (type === 'hidden' || !isVisible(control)) continue;
+      if (accessibleName(control)) continue;
+      findings.push({
+        ruleId: 'input-name-missing',
+        description: 'El campo de formulario no tiene nombre accesible.',
+        selector: getSelector(control),
+        html: control.outerHTML,
+        wcagCriterion: '4.1.2',
+        wcagLevel: 'A',
+        category: 'violation',
+      });
+    }
+
+    const requiredChildrenByRole = {
+      listbox: ['option'],
+      menu: ['menuitem', 'menuitemcheckbox', 'menuitemradio'],
+      menubar: ['menuitem', 'menuitemcheckbox', 'menuitemradio'],
+      radiogroup: ['radio'],
+      tablist: ['tab'],
+      tree: ['treeitem'],
+      grid: ['row'],
+      row: ['cell', 'gridcell', 'columnheader', 'rowheader'],
+    };
+    for (const [role, children] of Object.entries(requiredChildrenByRole)) {
+      for (const widget of Array.from(document.querySelectorAll('[role="' + role + '"]'))) {
+        if (!isVisible(widget)) continue;
+        const hasRequiredChild = children.some((childRole) => widget.querySelector('[role="' + childRole + '"]'));
+        if (hasRequiredChild) continue;
+        findings.push({
+          ruleId: 'aria-required-owned-element',
+          description: 'El rol ' + role + ' requiere elementos hijos con rol: ' + children.join(', ') + '.',
+          selector: getSelector(widget),
+          html: widget.outerHTML,
+          wcagCriterion: '4.1.2',
+          wcagLevel: 'A',
+          category: 'violation',
+        });
+      }
+    }
+
+    for (const widget of Array.from(document.querySelectorAll('[role="listbox"], [role="combobox"], [role="menu"], [role="radiogroup"], [role="tablist"], [role="tree"], [role="grid"], [role="dialog"], [role="alertdialog"]'))) {
+      if (!isVisible(widget) || accessibleName(widget)) continue;
+      findings.push({
+        ruleId: 'aria-widget-name-missing',
+        description: 'Un widget ARIA no tiene nombre accesible programatico.',
+        selector: getSelector(widget),
+        html: widget.outerHTML,
+        wcagCriterion: '4.1.2',
+        wcagLevel: 'A',
+        category: 'violation',
+      });
+    }
+
+    for (const table of Array.from(document.querySelectorAll('table'))) {
+      if (!isVisible(table)) continue;
+      const role = (table.getAttribute('role') || '').toLowerCase();
+      if (role === 'presentation' || role === 'none') continue;
+      if (table.querySelector('caption, th') || table.getAttribute('aria-label') || table.getAttribute('aria-labelledby')) continue;
+      findings.push({
+        ruleId: 'table-purpose-review',
+        description: 'No se puede determinar si la tabla es de datos o de maquetacion.',
+        selector: getSelector(table),
+        html: table.outerHTML,
+        wcagCriterion: '1.3.1',
+        wcagLevel: 'A',
+        category: 'manual_check',
+      });
+    }
+
+    for (const titled of Array.from(document.querySelectorAll('[title]'))) {
+      if (!isVisible(titled) || titled.matches(interactiveSelector)) continue;
+      findings.push({
+        ruleId: 'title-non-interactive',
+        description: 'Un elemento no interactivo usa title; puede no estar disponible para teclado o tecnologias de asistencia.',
+        selector: getSelector(titled),
+        html: titled.outerHTML,
+        wcagCriterion: '3.3.2',
+        wcagLevel: 'A',
+        category: 'alert',
+      });
+    }
+
+    const viewportArea = Math.max(1, window.innerWidth * window.innerHeight);
+    const hasToken = (el, tokens) => {
+      const text = [
+        el.getAttribute('class') || '',
+        el.getAttribute('id') || '',
+        el.getAttribute('aria-label') || '',
+        el.getAttribute('data-testid') || ''
+      ].join(' ').toLowerCase();
+      return tokens.some((token) => new RegExp('(^|[^a-z0-9])' + token + '([^a-z0-9]|$)', 'i').test(text));
+    };
+    const isDialogLike = (el) => {
+      if (!isVisible(el)) return false;
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      const areaRatio = Math.max(0, rect.width) * Math.max(0, rect.height) / viewportArea;
+      const hasDialogSemantics = el.getAttribute('role') === 'dialog'
+        || el.getAttribute('role') === 'alertdialog'
+        || el.getAttribute('aria-modal') === 'true';
+      const bodyModalOpen = /(^|\\s)(modal-open|overflow-hidden|no-scroll)(\\s|$)/i.test(document.body?.className || '');
+      const floatingModal = hasToken(el, ['modal', 'dialog', 'popup', 'popover'])
+        && ['fixed', 'absolute'].includes(style.position)
+        && areaRatio >= 0.08;
+      return hasDialogSemantics || (bodyModalOpen && floatingModal);
+    };
+    const visibleDialogs = Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"], [aria-modal="true"], .modal, .modal-dialog, [class*="popup" i]'))
+      .filter((el) => isDialogLike(el));
+    for (const dialog of visibleDialogs.slice(0, 3)) {
+      const backgroundChildren = Array.from(document.body.children).filter((child) => {
+        if (child === dialog || child.contains(dialog) || dialog.contains(child)) return false;
+        if (!isVisible(child)) return false;
+        if (child.hasAttribute('inert')) return false;
+        if (child.getAttribute('aria-hidden') === 'true') return false;
+        return true;
+      });
+      if (backgroundChildren.length === 0) continue;
+      findings.push({
+        ruleId: 'content-behind-dialog-accessible',
+        description: 'Hay un dialogo u overlay visible, pero el contenido detras sigue expuesto a tecnologias de asistencia.',
+        selector: getSelector(dialog),
+        html: dialog.outerHTML,
+        wcagCriterion: '1.3.2',
+        wcagLevel: 'A',
+        category: 'violation',
+      });
+    }
+
+    const imageBackgroundText = [];
+    const ignoredTextTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG']);
+    for (const el of Array.from(document.querySelectorAll('body *'))) {
+      if (imageBackgroundText.length >= 12) break;
+      if (ignoredTextTags.has(el.tagName)) continue;
+      if (!isVisible(el)) continue;
+      const text = (el.textContent || '').replace(/\\s+/g, ' ').trim();
+      if (text.length < 2 || text.length > 220) continue;
+      const childrenWithText = Array.from(el.children).filter((child) => (child.textContent || '').trim().length > 0);
+      if (childrenWithText.length > 2) continue;
+      let current = el;
+      let hasImageBackground = false;
+      for (let depth = 0; current && depth < 5; depth++) {
+        const backgroundImage = window.getComputedStyle(current).backgroundImage || '';
+        if (/url\\(/i.test(backgroundImage)) {
+          hasImageBackground = true;
+          break;
+        }
+        current = current.parentElement;
+      }
+      if (!hasImageBackground) continue;
+      imageBackgroundText.push(el);
+      findings.push({
+        ruleId: 'contrast-image-background-undetermined',
+        description: 'El texto se muestra sobre un fondo con imagen; el contraste requiere revision manual sobre la captura real.',
+        selector: getSelector(el),
+        html: el.outerHTML,
+        wcagCriterion: '1.4.3',
+        wcagLevel: 'AA',
         category: 'manual_check',
       });
     }
@@ -522,24 +1136,61 @@ export async function runStatefulPageEngines(page: Page, pageState: PageState): 
   };
 }
 
-export async function runSupportingEngines(url: string, port: number): Promise<EngineRunResult<RawFinding[]>> {
+export async function runOverlayAccessibilityEngines(
+  page: Page,
+  overlays: OverlayCandidate[],
+  pageState: PageState,
+): Promise<EngineRunResult<RawFinding[]>> {
+  const findings: RawFinding[] = [];
+  const report: EngineRunSummary[] = [];
+
+  for (const overlay of overlays) {
+    findings.push(overlayReviewFinding(overlay));
+    const result = await runEngineSeries([
+      {
+        engine: 'axe',
+        pageState,
+        onFailureMessage: 'Overlay axe execution failed; continuing with other engines.',
+        run: async () => runAxe(page, overlay.selector),
+      },
+      {
+        engine: 'ibm-equal-access',
+        pageState,
+        onFailureMessage: 'Overlay IBM Equal Access execution failed; continuing with other engines.',
+        run: async () => runIbmEqualAccessHtml(overlay.html),
+      },
+    ]);
+    findings.push(...result.findings);
+    report.push(...result.report);
+  }
+
+  return {
+    findings: tagFindingsWithPageState(findings, pageState),
+    report: report.map((entry) => ({
+      ...entry,
+      pageState,
+    })),
+  };
+}
+
+export async function runSupportingEngines(url: string, port: number, pageState: PageState = 'post_overlay'): Promise<EngineRunResult<RawFinding[]>> {
   const result = await runEngineSeries([
     {
       engine: 'lighthouse',
-      pageState: 'post_overlay',
+      pageState,
       onFailureMessage: 'Lighthouse execution failed; continuing with other engines.',
       run: async () => runLighthouse(url, port),
     },
     {
       engine: 'pa11y',
-      pageState: 'post_overlay',
+      pageState,
       onFailureMessage: 'Pa11y execution failed; continuing with other engines.',
       run: async () => runPa11y(url, port),
     },
   ]);
 
   return {
-    findings: tagFindingsWithPageState(result.findings, 'post_overlay'),
+    findings: tagFindingsWithPageState(result.findings, pageState),
     report: result.report,
   };
 }

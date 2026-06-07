@@ -107,7 +107,6 @@ describe('ExcelService', () => {
       'Hallazgos',
       'Severidad',
       'Estado hallazgo',
-      'Evaluacion manual',
       'Vista evaluada',
       'Descripcion',
       'Selector CSS',

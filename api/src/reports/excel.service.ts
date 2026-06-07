@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -24,13 +24,8 @@ export class ExcelService {
     private readonly scanRepository: Repository<Scan>,
   ) {}
 
-  async generateExcel(scanId: string): Promise<Buffer> {
-    const scan = await this.scanRepository.findOne({
-      where: { id: scanId },
-      relations: { project: true, urlResults: true },
-    });
-
-    if (!scan) throw new Error('Scan not found');
+  async generateExcel(scanId: string, ownerId: string | null = null): Promise<Buffer> {
+    const scan = await this.findScanForReport(scanId, ownerId);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Peru Accessibility Analyzer';
@@ -46,8 +41,9 @@ export class ExcelService {
 
     const allErrors = this.collectAllViolations(scan);
     const confirmedErrors = allErrors.filter((v) => this.findingStatus(v) === 'confirmed');
-    const reviewErrors = allErrors.filter((v) => this.findingStatus(v) !== 'confirmed');
-    const totalViolations = confirmedErrors.length;
+    const reviewErrors = allErrors.filter((v) => this.isReviewFinding(v));
+    const totalViolations = this.countAffectedFindings(confirmedErrors);
+    const totalReviewItems = this.countAffectedFindings(reviewErrors);
 
     summarySheet.addRows([
       { metric: 'Proyecto', value: scan.project?.name || '' },
@@ -58,6 +54,7 @@ export class ExcelService {
       { metric: 'Puntaje Global', value: `${scan.globalScore}/100` },
       { metric: 'Total de Páginas', value: String(scan.urlResults?.length || 0) },
       { metric: 'Total de Violaciones', value: String(totalViolations) },
+      { metric: 'Total requiere revision', value: String(totalReviewItems) },
       { metric: 'Vo (Volumen de Visitas)', value: String(scan.project?.vo) },
       { metric: 'Ux (Impacto en Experiencia)', value: String(scan.ux) },
       { metric: 'Vp (Valor de Priorización)', value: String(scan.vp) },
@@ -92,6 +89,39 @@ export class ExcelService {
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
+  }
+
+  private async findScanForReport(scanId: string, ownerId: string | null) {
+    if (!ownerId && typeof (this.scanRepository as any).findOne === 'function') {
+      const scan = await this.scanRepository.findOne({
+        where: { id: scanId },
+        relations: { project: true, urlResults: true },
+      });
+
+      if (!scan) {
+        throw new NotFoundException('Scan not found');
+      }
+
+      return scan;
+    }
+
+    const query = this.scanRepository
+      .createQueryBuilder('scan')
+      .leftJoinAndSelect('scan.project', 'project')
+      .leftJoinAndSelect('scan.urlResults', 'urlResults')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .where('scan.id = :scanId', { scanId });
+
+    if (ownerId) {
+      query.andWhere('owner.id = :ownerId', { ownerId });
+    }
+
+    const scan = await query.getOne();
+    if (!scan) {
+      throw new NotFoundException('Scan not found');
+    }
+
+    return scan;
   }
 
   private collectAllViolations(scan: Scan) {
@@ -137,7 +167,7 @@ export class ExcelService {
         level: v.level,
         severity: v.severity,
         statusLabel: v.statusLabel || this.findingStatusLabel(v),
-        pageStateLabel: v.pageStateLabel || (v.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales'),
+        pageStateLabel: v.pageStateLabel || (v.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales'),
         role: v.role,
         disability: Array.isArray(v.disability) ? v.disability.join(', ') : v.disability,
         description: v.description,
@@ -163,7 +193,6 @@ export class ExcelService {
       { header: 'Hallazgos', key: 'findingCount', width: 14 },
       { header: 'Severidad', key: 'severity', width: 12 },
       { header: 'Estado hallazgo', key: 'findingStatus', width: 18 },
-      { header: 'Evaluacion manual', key: 'manualEvaluation', width: 28 },
       { header: 'Vista evaluada', key: 'pageStateLabel', width: 24 },
       { header: 'Descripcion', key: 'description', width: 48 },
       { header: 'Selector CSS', key: 'selector', width: 30 },
@@ -221,18 +250,16 @@ export class ExcelService {
           const findings = violationsByCriterion.get(criterion.id) || [];
           const manualVerifications = manualByCriterion.get(criterion.id) || [];
           const confirmedFindings = findings.filter((finding) => this.findingStatus(finding) === 'confirmed');
+          const reviewFindings = findings.filter((finding) => this.isReviewFinding(finding));
           const primaryFinding = confirmedFindings[0] || findings[0];
           const result = criterion.estado === 'no_aplica'
             ? 'N/A'
             : confirmedFindings.length > 0
               ? 'Falla'
-              : 'Cumple';
-          const manualEvaluation = manualVerifications.length > 0
-            ? manualVerifications
-                .map((verification) => `${verification.name}: ${this.manualVerificationStatusLabel(verification.status)}`)
-                .join(' | ')
-            : '';
-
+              : reviewFindings.length > 0
+                ? 'Requiere revision'
+                : 'Cumple';
+          const findingCount = this.countAffectedFindings(findings);
           sheet.addRow({
             url: ur.url,
             type: 'Criterio',
@@ -243,14 +270,13 @@ export class ExcelService {
             applicability: criterion.estado,
             result,
             reason: criterion.razon,
-            findingCount: criterion.estado === 'aplica' && (findings.length > 0 || manualVerifications.length > 0)
-              ? `${findings.length} hallazgo(s)${manualVerifications.length > 0 ? ` + ${manualVerifications.length} manual` : ''}`
+            findingCount: criterion.estado === 'aplica' && findingCount > 0
+              ? `${findingCount} hallazgo(s)`
               : '',
             severity: primaryFinding?.severity || '',
             findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
-            manualEvaluation,
-            pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales') : '',
-            description: primaryFinding?.description || manualVerifications.map((verification) => verification.description).filter(Boolean).join(' | ') || '',
+            pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales') : '',
+            description: this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '',
             selector: primaryFinding?.selector || '',
             role: primaryFinding?.role || '',
             suggestedFix: primaryFinding?.suggestedFix || '',
@@ -300,11 +326,15 @@ export class ExcelService {
       for (const criterion of criteria) {
         const findings = findingsByCriterion.get(criterion.id) || [];
         const primaryFinding = findings.find((v) => this.findingStatus(v) === 'confirmed') || findings[0];
+        const hasReviewFinding = findings.some((v) => this.isReviewFinding(v));
         const result = criterion.estado === 'no_aplica'
           ? 'N/A'
           : failed.has(criterion.id)
             ? 'Falla'
-            : 'Cumple';
+            : hasReviewFinding
+              ? 'Requiere revision'
+              : 'Cumple';
+        const findingCount = this.countAffectedFindings(findings);
 
         sheet.addRow({
           url: ur.url,
@@ -314,11 +344,11 @@ export class ExcelService {
           applicability: criterion.estado,
           result,
           reason: criterion.razon,
-          findingCount: criterion.estado === 'aplica' && findings.length > 0 ? findings.length : '',
+          findingCount: criterion.estado === 'aplica' && findingCount > 0 ? findingCount : '',
           severity: primaryFinding?.severity || '',
           findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
-          pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales') : '',
-          description: primaryFinding?.description || '',
+          pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales') : '',
+            description: this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '',
           selector: primaryFinding?.selector || '',
           role: primaryFinding?.role || '',
           suggestedFix: primaryFinding?.suggestedFix || '',
@@ -343,11 +373,58 @@ export class ExcelService {
     return v.findingStatus || v.status || 'confirmed';
   }
 
+  private isReviewFinding(v: any): boolean {
+    const status = this.findingStatus(v);
+    return status === 'needs_review' || status === 'not_evaluated';
+  }
+
+  private countAffectedFindings(findings: any[]): number {
+    return (findings || []).reduce((total, finding) => {
+      const affectedElements = Array.isArray(finding?.affectedElements) ? finding.affectedElements.length : 0;
+      const htmlSamples = Array.isArray(finding?.affectedHtmlSamples) ? finding.affectedHtmlSamples.length : 0;
+      return total + Math.max(1, affectedElements, htmlSamples);
+    }, 0);
+  }
+
+  private splitReportText(value?: string | null): string[] {
+    return String(value || '')
+      .split(/\s*\|\s*/)
+      .map((part) => part.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  }
+
+  private summarizeFindingText(findings: any[], field: string): string {
+    const counts = new Map<string, number>();
+
+    for (const finding of findings || []) {
+      const parts = this.splitReportText(finding?.[field]);
+      if (parts.length === 0) continue;
+
+      const partCounts = new Map<string, number>();
+      for (const part of parts) {
+        partCounts.set(part, (partCounts.get(part) || 0) + 1);
+      }
+
+      const affectedElements = Array.isArray(finding?.affectedElements) ? finding.affectedElements.length : 0;
+      const htmlSamples = Array.isArray(finding?.affectedHtmlSamples) ? finding.affectedHtmlSamples.length : 0;
+      const affectedCount = Math.max(1, affectedElements, htmlSamples);
+
+      for (const [part, partCount] of partCounts.entries()) {
+        const count = partCounts.size === 1 ? Math.max(partCount, affectedCount) : partCount;
+        counts.set(part, (counts.get(part) || 0) + count);
+      }
+    }
+
+    return Array.from(counts.entries())
+      .map(([text, count]) => count > 1 ? `${text} (${count} elementos afectados)` : text)
+      .join(' | ');
+  }
+
   private findingStatusLabel(v: any): string {
     const status = this.findingStatus(v);
     if (status === 'not_evaluated') return 'No evaluado';
     if (status === 'not_applicable') return 'No aplicable';
-    if (status === 'needs_review') return 'Requiere revision';
+    if (status === 'needs_review') return 'Requiere revisión';
     return 'Confirmado';
   }
 

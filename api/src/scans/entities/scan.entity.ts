@@ -25,6 +25,12 @@ export class Scan {
   @Column({ default: 'estandar' }) // rapido, estandar, profundo
   scanMode!: string;
 
+  @Column({ default: 'none' })
+  loginMode!: string;
+
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  scanUrls!: string[];
+
   @Column({ default: 'Resolucion N° 001-2025-PCM/SGTD' })
   normativeVersion!: string;
 

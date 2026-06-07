@@ -25,6 +25,15 @@ export class UrlResult {
   @Column({ type: 'jsonb', nullable: true })
   engineReport!: any; // structured per-engine execution summary
 
+  @Column({ type: 'jsonb', nullable: true })
+  focusTraversal!: any; // keyboard tab traversal map and visual evidence
+
+  @Column({ type: 'jsonb', nullable: true })
+  semanticStructure!: any; // headings, landmarks, forms, tables and reading structure inventory
+
+  @Column({ type: 'jsonb', nullable: true })
+  visualMap!: any; // full-page screenshots with positioned accessibility finding markers
+
   @Column({ default: 'completed' }) // pending, scanning, completed, failed
   status!: string;
 

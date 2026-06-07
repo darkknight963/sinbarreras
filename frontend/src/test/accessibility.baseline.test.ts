@@ -16,15 +16,15 @@ import { generateContrastReport } from './accessibility-report'
 describe('Accessibility Baseline Tests', () => {
   describe('Color Contrast Ratios', () => {
     it('should have primary blue on white meeting WCAG AA', () => {
-      const ratio = calculateContrastRatio('#002C76', '#ffffff')
+      const ratio = calculateContrastRatio('#1E40AF', '#ffffff')
       expect(ratio).toBeGreaterThanOrEqual(4.5)
-      expect(Math.round(ratio * 10) / 10).toBe(12.9)
+      expect(Math.round(ratio * 10) / 10).toBe(8.7)
     })
 
     it('should have primary blue on light blue meeting WCAG AA', () => {
-      const ratio = calculateContrastRatio('#002C76', '#f0f4ff')
+      const ratio = calculateContrastRatio('#1E40AF', '#eff6ff')
       expect(ratio).toBeGreaterThanOrEqual(4.5)
-      expect(Math.round(ratio * 10) / 10).toBe(11.8)
+      expect(Math.round(ratio * 10) / 10).toBe(8)
     })
 
     it('should have error red on light red meeting WCAG AA', () => {
@@ -52,7 +52,7 @@ describe('Accessibility Baseline Tests', () => {
     })
 
     it('should have dark text on white meeting WCAG AAA (16.0:1)', () => {
-      const ratio = calculateContrastRatio('#1f2937', '#ffffff')
+      const ratio = calculateContrastRatio('#0F172A', '#ffffff')
       expect(ratio).toBeGreaterThanOrEqual(7)
     })
 
@@ -116,8 +116,8 @@ describe('Accessibility Baseline Tests', () => {
     })
 
     it('should handle hex colors with and without hash', () => {
-      const ratio1 = calculateContrastRatio('#002C76', '#ffffff')
-      const ratio2 = calculateContrastRatio('002C76', 'ffffff')
+      const ratio1 = calculateContrastRatio('#1E40AF', '#ffffff')
+      const ratio2 = calculateContrastRatio('1E40AF', 'ffffff')
       expect(ratio1).toBeCloseTo(ratio2, 1)
     })
 

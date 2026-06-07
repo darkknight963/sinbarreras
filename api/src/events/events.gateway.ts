@@ -1,5 +1,6 @@
 import { WebSocketGateway, WebSocketServer, OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { AuthService } from '../auth/auth.service';
 
 const allowedOrigins = [
   'http://localhost',
@@ -20,38 +21,46 @@ const allowedOrigins = [
   },
 })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private readonly authService: AuthService) {}
+
   @WebSocketServer() server!: Server;
 
   afterInit(server: Server) {
     console.log('WebSocket Gateway initialized');
   }
 
-  handleConnection(client: Socket, ...args: any[]) {
+  async handleConnection(client: Socket, ...args: any[]) {
     const configuredToken = process.env.API_AUTH_TOKEN?.trim();
     const rawToken = client.handshake.auth?.token || client.handshake.headers.authorization;
     const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
     const normalizedToken = typeof token === 'string' ? token.replace(/^Bearer\s+/i, '').trim() : '';
 
-    if (!configuredToken) {
-      if (process.env.NODE_ENV === 'production') {
-        client.disconnect(true);
-        return;
-      }
-
+    if (configuredToken && normalizedToken === configuredToken) {
       client.join('authorized');
       console.log(`Client connected: ${client.id}`);
       return;
     }
 
-    if (configuredToken && normalizedToken !== configuredToken) {
-      client.emit('error', 'Unauthorized');
-      client.disconnect(true);
+    if (normalizedToken) {
+      const session = await this.authService.validateSessionToken(normalizedToken);
+      if (session) {
+        client.data.user = session.user;
+        client.join('authorized');
+        client.join(`user-${session.user.id}`);
+        console.log(`Client connected: ${client.id}`);
+        return;
+      }
+    }
+
+    if (!configuredToken && process.env.NODE_ENV !== 'production') {
+      client.join('authorized');
+      console.log(`Client connected: ${client.id}`);
       return;
     }
 
-    client.join('authorized');
-
-    console.log(`Client connected: ${client.id}`);
+    client.emit('error', 'Unauthorized');
+    client.disconnect(true);
+    return;
   }
 
   handleDisconnect(client: Socket) {

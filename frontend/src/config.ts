@@ -16,9 +16,16 @@ export const resolveApiBaseUrl = (
   configuredApiBaseUrl: string | undefined,
   isDevelopment: boolean,
   hostname: string,
-) =>
-  configuredApiBaseUrl?.trim() ||
-  (isDevelopment || isLocalRuntimeHost(hostname) ? API_FALLBACK_BASE_URL : '/api');
+) => {
+  const configured = configuredApiBaseUrl?.trim();
+  const localRuntime = isDevelopment || isLocalRuntimeHost(hostname);
+
+  if (configured && !(localRuntime && configured === '/api')) {
+    return configured;
+  }
+
+  return localRuntime ? API_FALLBACK_BASE_URL : '/api';
+};
 
 export const API_BASE_URL = resolveApiBaseUrl(
   import.meta.env.VITE_API_BASE_URL,
@@ -33,5 +40,5 @@ export const SOCKET_URL =
 export const SOCKET_PATH =
   import.meta.env.VITE_SOCKET_PATH?.trim() || '/socket.io';
 
-export const API_AUTH_TOKEN =
-  import.meta.env.VITE_API_TOKEN?.trim() || '';
+export const CULQI_PUBLIC_KEY =
+  import.meta.env.VITE_CULQI_PUBLIC_KEY?.trim() || '';

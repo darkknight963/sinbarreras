@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/copy-inter-fonts.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -14,7 +13,10 @@
     "test:visual": "playwright test"
   },
   "dependencies": {
+    "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/sora": "^5.2.8",
     "@tailwindcss/postcss": "^4.1.17",
     "autoprefixer": "^10.5.0",
     "lucide-react": "^1.16.0",

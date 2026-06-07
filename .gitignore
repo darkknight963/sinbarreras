@@ -12,3 +12,8 @@ build/
 coverage/
 *.min.js
 *.bundle.js
+.env
+**/.env
+test-results/
+tmp-*.png
+**/tmp-*.png

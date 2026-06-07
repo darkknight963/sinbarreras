@@ -2,6 +2,7 @@ import { Job } from 'bullmq';
 import pg from 'pg';
 import { scanUrl } from './scanner.js';
 import { validateScanTargetUrls } from './urlPolicy.js';
+import { deleteEvidenceUrls } from './storage.js';
 
 const { Pool } = pg;
 
@@ -16,6 +17,63 @@ const pool = new Pool({
 async function ensureUrlResultSchema(): Promise<void> {
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS applicability jsonb`);
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "engineReport" jsonb`);
+  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "focusTraversal" jsonb`);
+  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "semanticStructure" jsonb`);
+  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "visualMap" jsonb`);
+}
+
+function collectEvidenceUrls(value: unknown, urls = new Set<string>()): Set<string> {
+  if (!value) return urls;
+  if (typeof value === 'string') {
+    if (value.includes('/evidence/')) urls.add(value);
+    return urls;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectEvidenceUrls(item, urls);
+    return urls;
+  }
+  if (typeof value === 'object') {
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      collectEvidenceUrls(item, urls);
+    }
+  }
+  return urls;
+}
+
+export async function cleanupPublicScan(scanId: string): Promise<void> {
+  await ensureUrlResultSchema();
+
+  const scanResult = await pool.query(
+    `SELECT s.id, s."projectId"
+     FROM scans s
+     JOIN projects p ON p.id = s."projectId"
+     WHERE s.id = $1 AND p."ownerId" IS NULL`,
+    [scanId]
+  );
+
+  if (scanResult.rowCount === 0) {
+    console.log(`Public scan cleanup skipped. Scan ${scanId} was not found or is not public.`);
+    return;
+  }
+
+  const resultRows = await pool.query(
+    `SELECT violations, "focusTraversal", "visualMap"
+     FROM url_results
+     WHERE "scanId" = $1`,
+    [scanId]
+  );
+
+  const evidenceUrls = new Set<string>();
+  for (const row of resultRows.rows) {
+    collectEvidenceUrls(row.violations, evidenceUrls);
+    collectEvidenceUrls(row.focusTraversal, evidenceUrls);
+    collectEvidenceUrls(row.visualMap, evidenceUrls);
+  }
+
+  const deletedEvidence = await deleteEvidenceUrls(Array.from(evidenceUrls));
+  await pool.query(`DELETE FROM projects WHERE id = $1 AND "ownerId" IS NULL`, [scanResult.rows[0].projectId]);
+
+  console.log(`Deleted public scan ${scanId} and ${deletedEvidence} evidence object(s).`);
 }
 
 export async function processScan(job: Job): Promise<void> {
@@ -105,6 +163,9 @@ export async function processScan(job: Job): Promise<void> {
           viewport: viewports[viewportIndex],
         }))
       );
+      const focusTraversal = viewportResults[0]?.focusTraversal || null;
+      const semanticStructure = viewportResults[0]?.semanticStructure || null;
+      const visualMap = viewportResults[0]?.visualMap || null;
 
       // Detect .gob.pe for Peruvian specific compliance
       const isGobPe = url.includes('.gob.pe');
@@ -117,8 +178,8 @@ export async function processScan(job: Job): Promise<void> {
       ];
 
       const insertQuery = `
-        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, "engineReport", status, "scanId")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, "engineReport", "focusTraversal", "semanticStructure", "visualMap", status, "scanId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `;
       
       await pool.query(insertQuery, [
@@ -128,6 +189,9 @@ export async function processScan(job: Job): Promise<void> {
         JSON.stringify(manualVerifications),
         JSON.stringify({ criteria: applicability, summary: applicabilitySummary }),
         JSON.stringify(engineReport),
+        JSON.stringify(focusTraversal),
+        JSON.stringify(semanticStructure),
+        JSON.stringify(visualMap),
         'completed',
         scanId,
       ]);
@@ -136,8 +200,8 @@ export async function processScan(job: Job): Promise<void> {
     } catch (urlErr) {
       console.error(`Error scanning URL ${url}:`, urlErr);
       await pool.query(
-        `INSERT INTO url_results (url, score, status, "engineReport", "scanId") VALUES ($1, $2, $3, $4, $5)`,
-        [url, 0, 'failed', JSON.stringify([]), scanId]
+        `INSERT INTO url_results (url, score, status, "engineReport", "semanticStructure", "visualMap", "scanId") VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [url, 0, 'failed', JSON.stringify([]), JSON.stringify(null), JSON.stringify(null), scanId]
       );
     }
   }

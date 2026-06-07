@@ -40,7 +40,7 @@ assert.equal(labelPageState('initial'), 'Estado inicial');
 assert.equal(resolveLegalReference('1.4.3', 'Fallback'), 'Anexo 1 - Criterio 1.4.3');
 assert.equal(resolveLegalReference('Otros', 'Fallback'), 'Fallback');
 assert.equal(resolveStatusLabel('confirmed'), 'Confirmado');
-assert.equal(resolveStatusLabel('needs_review'), 'Requiere revision');
+assert.equal(resolveStatusLabel('needs_review'), 'Requiere revisión');
 
 const tagged = tagFindingsWithPageState([baseFinding], 'initial');
 assert.equal(tagged[0].pageState, 'initial');

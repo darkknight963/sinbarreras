@@ -2,11 +2,17 @@ import { chromium } from 'playwright';
 import { createServer } from 'net';
 import { buildCoverageReport } from './coverageReport.js';
 import { detectPageContent } from './content-detector.js';
+import { captureFocusTraversal } from './focusTraversal.js';
+import { captureSemanticStructure } from './semanticStructure.js';
+import { captureVisualEvidence } from './visualEvidence.js';
 import { buildApplicability, conservativeApplicability, summarizeApplicability } from './wcag-applicability.js';
 import { validateScanTargetUrl } from './urlPolicy.js';
 import {
+  detectOverlayCandidates,
   enrichAndCapture,
   handleCommonOverlays,
+  runInteractiveStateAccessibilityEngines,
+  runOverlayAccessibilityEngines,
   runStatefulPageEngines,
   runSupportingEngines,
 } from './scanner-engines.js';
@@ -18,7 +24,15 @@ import {
 
 export * from './scanner-models.js';
 export * from './scanner-utils.js';
-export { enrichAndCapture, handleCommonOverlays, runStatefulPageEngines, runSupportingEngines } from './scanner-engines.js';
+export {
+  detectOverlayCandidates,
+  enrichAndCapture,
+  handleCommonOverlays,
+  runInteractiveStateAccessibilityEngines,
+  runOverlayAccessibilityEngines,
+  runStatefulPageEngines,
+  runSupportingEngines,
+} from './scanner-engines.js';
 
 declare const document: any;
 declare const window: any;
@@ -64,6 +78,13 @@ export async function scanUrl(url: string, options: {
   const page = await context.newPage();
 
   try {
+    const browserHelperScript = `
+      globalThis.__name = globalThis.__name || function(fn) { return fn; };
+      var __name = globalThis.__name;
+    `;
+    await page.addInitScript(browserHelperScript);
+    await page.evaluate(browserHelperScript).catch(() => {});
+
     await context.route('**/*', async (route) => {
       const requestUrl = route.request().url();
       try {
@@ -90,11 +111,23 @@ export async function scanUrl(url: string, options: {
       console.warn('Content applicability detection failed; using conservative applicability.', err);
     }
 
-    console.log('Running accessibility engines on initial page state...');
-    const initialEngineRun = await runStatefulPageEngines(page, 'initial');
+    const initialOverlays = await detectOverlayCandidates(page);
+    console.log(
+      initialOverlays.length > 0
+        ? `Running accessibility engines on ${initialOverlays.length} blocking overlay(s)...`
+        : 'Running accessibility engines on initial page state...',
+    );
+    const initialEngineRun = initialOverlays.length > 0
+      ? await runOverlayAccessibilityEngines(page, initialOverlays, 'initial')
+      : await runStatefulPageEngines(page, 'initial');
+    const initialVisualEvidence = await captureVisualEvidence(page, initialEngineRun.findings, 'initial').catch((err) => {
+      console.warn('Initial visual evidence capture failed.', err);
+      return null;
+    });
     await reportProgress(35);
 
-    await handleCommonOverlays(page);
+    const overlayAction = await handleCommonOverlays(page);
+    const hasOverlayWorkflow = initialOverlays.length > 0 || overlayAction !== 'not_found';
     await page.waitForLoadState('networkidle').catch(() => { });
     try {
       const contentDetection = await detectPageContent(page);
@@ -122,14 +155,23 @@ export async function scanUrl(url: string, options: {
     }
 
     await reportProgress(50);
-    console.log('Running accessibility engines after modal handling...');
-    const postOverlayEngineRun = await runStatefulPageEngines(page, 'post_overlay');
-    const supportingEngineRun = await runSupportingEngines(url, debugPort);
+    const postOverlayEngineRun = hasOverlayWorkflow
+      ? await runStatefulPageEngines(page, 'post_overlay')
+      : { findings: [], report: [] };
+    if (hasOverlayWorkflow) {
+      console.log('Running accessibility engines after modal handling...');
+    } else {
+      console.log('No blocking overlay detected; keeping analysis in initial page state.');
+    }
+    console.log('Exploring safe interactive states for hidden menus and dialogs...');
+    const interactiveStateEngineRun = await runInteractiveStateAccessibilityEngines(page);
+    const supportingEngineRun = await runSupportingEngines(url, debugPort, hasOverlayWorkflow ? 'post_overlay' : 'initial');
     await reportProgress(65);
 
     const mergedRaw = [
       ...initialEngineRun.findings,
       ...postOverlayEngineRun.findings,
+      ...interactiveStateEngineRun.findings,
       ...supportingEngineRun.findings,
     ];
     const coverageReport = buildCoverageReport(mergedRaw);
@@ -137,14 +179,27 @@ export async function scanUrl(url: string, options: {
     const grouped = groupFindings(dedupedRaw);
     await reportProgress(75);
     const formattedViolations = await enrichAndCapture(page, grouped);
+    const currentVisualEvidenceState = hasOverlayWorkflow ? 'post_overlay' : 'initial';
+    const currentVisualEvidence = await captureVisualEvidence(page, formattedViolations as any, currentVisualEvidenceState).catch((err) => {
+      console.warn('Final visual evidence capture failed.', err);
+      return null;
+    });
     await reportProgress(85);
+
+    const focusTraversal = await captureFocusTraversal(page);
+    const semanticStructure = await captureSemanticStructure(page);
 
     const failedCriterionIds = new Set(
       formattedViolations
         .filter((v) => (v.findingStatus || 'confirmed') === 'confirmed' && isSpecificCriterion(v.criterion))
         .map((v) => v.criterion),
     );
-    const applicabilitySummary = summarizeApplicability(applicability, failedCriterionIds);
+    const reviewCriterionIds = new Set(
+      formattedViolations
+        .filter((v) => (v.findingStatus || v.status || 'confirmed') !== 'confirmed' && isSpecificCriterion(v.criterion))
+        .map((v) => v.criterion),
+    );
+    const applicabilitySummary = summarizeApplicability(applicability, failedCriterionIds, reviewCriterionIds);
     const score = applicabilitySummary.score;
 
     console.log('Running Peruvian compliance heuristics...');
@@ -156,11 +211,20 @@ export async function scanUrl(url: string, options: {
       violations: formattedViolations,
       applicability,
       applicabilitySummary,
+      focusTraversal,
+      semanticStructure,
+      visualMap: {
+        states: [
+          initialOverlays.length > 0 ? initialVisualEvidence : null,
+          currentVisualEvidence,
+        ].filter(Boolean),
+      },
       coverageReport,
       peruvianChecks: peruvianResults,
       engineReport: [
         ...initialEngineRun.report,
         ...postOverlayEngineRun.report,
+        ...interactiveStateEngineRun.report,
         ...supportingEngineRun.report,
       ],
       device: options.viewport?.width === 375 ? 'Movil' : options.viewport?.width === 768 ? 'Tablet' : 'Desktop',

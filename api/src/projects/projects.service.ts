@@ -10,33 +10,59 @@ export class ProjectsService {
     private readonly projectRepository: Repository<Project>,
   ) {}
 
-  async create(name: string, domain: string, vo: number, entityType: string): Promise<Project> {
-    const project = this.projectRepository.create({ name, domain, vo, entityType });
+  async create(name: string, domain: string, vo: number, entityType: string, ownerId: string | null): Promise<Project> {
+    const project = this.projectRepository.create({
+      name,
+      domain,
+      vo,
+      entityType,
+      owner: ownerId ? ({ id: ownerId } as Project['owner']) : null,
+    });
     return this.projectRepository.save(project);
   }
 
-  async findAll(): Promise<Project[]> {
-    return this.projectRepository.find({
-      relations: { scans: { urlResults: true } },
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(ownerId: string | null): Promise<Project[]> {
+    const query = this.projectRepository
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.scans', 'scan')
+      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .orderBy('project.createdAt', 'DESC');
+
+    if (ownerId) {
+      query.where('owner.id = :ownerId', { ownerId });
+    }
+
+    return query.getMany();
   }
 
-  async findOne(id: string): Promise<Project | null> {
-    return this.projectRepository.findOne({
-      where: { id },
-      relations: { scans: { urlResults: true } },
-    });
+  async findOne(id: string, ownerId: string | null): Promise<Project | null> {
+    const query = this.projectRepository
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.scans', 'scan')
+      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .where('project.id = :id', { id });
+
+    if (ownerId) {
+      query.andWhere('owner.id = :ownerId', { ownerId });
+    }
+
+    return query.getOne();
   }
 
-  async update(id: string, updateData: Partial<Project>): Promise<Project> {
+  async update(id: string, updateData: Partial<Project>, ownerId: string | null): Promise<Project> {
+    const existing = await this.findOne(id, ownerId);
+    if (!existing) throw new Error('Project not found');
     await this.projectRepository.update(id, updateData);
-    const updated = await this.findOne(id);
+    const updated = await this.findOne(id, ownerId);
     if (!updated) throw new Error('Project not found');
     return updated;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, ownerId: string | null): Promise<void> {
+    const project = await this.findOne(id, ownerId);
+    if (!project) throw new Error('Project not found');
     await this.projectRepository.delete(id);
   }
 }

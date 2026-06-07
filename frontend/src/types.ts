@@ -1,20 +1,22 @@
-export interface Project {
+﻿export interface Project {
   id: string;
   name: string;
-  domain: string;
+  domain: string | null;
   vo: number; // 2, 4, 6
-  entityType: string; // Administración Pública Peruana, Empresa pública FONAFE, Gobierno Regional, Gobierno Local, Sector privado
+  entityType: string; // Sector público, Sector privado
   createdAt: string;
   scans?: Scan[];
 }
-
 export interface Scan {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'awaiting_login' | 'running' | 'completed' | 'failed';
+  progress?: number;
   globalScore: number | null;
   ux: number; // 2, 4, 6
   vp: number | null; // Vo * Ux
   scanMode: 'rápido' | 'estándar' | 'profundo';
+  loginMode?: 'none' | 'manual_assisted';
+  scanUrls?: string[];
   createdAt: string;
   project?: Project;
   urlResults?: UrlResult[];
@@ -33,7 +35,8 @@ export interface Violation {
   findingStatus?: 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
   status?: 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
   statusLabel?: string;
-  pageState?: 'initial' | 'post_overlay';
+  sourceCategory?: 'violation' | 'alert' | 'manual_check';
+  pageState?: 'initial' | 'post_overlay' | 'interactive_state';
   pageStateLabel?: string;
   description: string;
   elementHtml: string;
@@ -42,6 +45,8 @@ export interface Violation {
   suggestedFix: string;
   resolutionArticle: string;
   wcagUrl: string;
+  affectedElements?: string[];
+  affectedHtmlSamples?: string[];
 }
 
 export interface ManualVerification {
@@ -65,6 +70,7 @@ export interface ApplicabilitySummary {
   applicableCount: number;
   notApplicableCount: number;
   failedCount: number;
+  reviewCount?: number;
   passedCount: number;
   score: number;
 }
@@ -74,6 +80,108 @@ export interface ApplicabilityResult {
   summary: ApplicabilitySummary;
 }
 
+export interface FocusTraversalStep {
+  index: number;
+  selector: string;
+  elementHtml: string;
+  text: string;
+  tagName: string;
+  role: string;
+  accessibleName: string;
+  rect: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  status: 'ok' | 'warning' | 'error';
+  issue: string;
+  suggestedFix: string;
+}
+
+export interface FocusTraversalReport {
+  screenshotUrl: string;
+  viewport: {
+    width: number;
+    height: number;
+  };
+  pageSize: {
+    width: number;
+    height: number;
+  };
+  steps: FocusTraversalStep[];
+  summary: {
+    total: number;
+    ok: number;
+    warning: number;
+    error: number;
+  };
+}
+
+export interface SemanticStructureItem {
+  index: number;
+  kind: 'heading' | 'landmark' | 'form' | 'table' | 'iframe' | 'interactive';
+  label: string;
+  level?: number;
+  role?: string;
+  selector: string;
+  accessibleName: string;
+  text: string;
+  status: 'ok' | 'warning' | 'error';
+  issue: string;
+  suggestedFix: string;
+}
+
+export interface SemanticStructureReport {
+  items: SemanticStructureItem[];
+  summary: {
+    headings: number;
+    landmarks: number;
+    forms: number;
+    tables: number;
+    iframes: number;
+    interactive: number;
+    warnings: number;
+    errors: number;
+  };
+}
+
+export interface VisualFindingMarker {
+  id: string;
+  ruleId: string;
+  normalizedRuleId: string;
+  criterion: string;
+  selector: string;
+  description: string;
+  severity: string;
+  status: 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
+  statusLabel: string;
+  pageState: 'initial' | 'post_overlay' | 'interactive_state';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface VisualMapState {
+  pageState: 'initial' | 'post_overlay' | 'interactive_state';
+  pageStateLabel: string;
+  screenshotUrl: string;
+  viewport: {
+    width: number;
+    height: number;
+  };
+  pageSize: {
+    width: number;
+    height: number;
+  };
+  markers: VisualFindingMarker[];
+}
+
+export interface VisualMapReport {
+  states: VisualMapState[];
+}
+
 export interface UrlResult {
   id: string;
   url: string;
@@ -81,6 +189,9 @@ export interface UrlResult {
   violations: Violation[];
   manualVerifications: ManualVerification[];
   applicability?: ApplicabilityResult;
+  focusTraversal?: FocusTraversalReport | null;
+  semanticStructure?: SemanticStructureReport | null;
+  visualMap?: VisualMapReport | null;
   status: 'completed' | 'failed' | 'scanning';
   createdAt: string;
   scan?: Scan;
