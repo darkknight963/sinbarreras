@@ -14,6 +14,14 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  const configuredOrigins = [
+    process.env.CORS_ORIGIN,
+    process.env.FRONTEND_URL,
+    process.env.PUBLIC_FRONTEND_URL,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => value!.split(',').map((origin) => origin.trim()).filter(Boolean));
+
   app.enableCors({
     origin: [
       'http://localhost',
@@ -24,6 +32,7 @@ async function bootstrap() {
       'http://127.0.0.1:80',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:4173',
+      ...configuredOrigins,
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,

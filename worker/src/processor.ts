@@ -6,13 +6,19 @@ import { deleteEvidenceUrls } from './storage.js';
 
 const { Pool } = pg;
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'accessibility_db',
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+      }
+    : {
+        host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || process.env.PGPORT || '5432', 10),
+        user: process.env.DB_USER || process.env.PGUSER || 'postgres',
+        password: process.env.DB_PASSWORD || process.env.PGPASSWORD || 'postgres',
+        database: process.env.DB_NAME || process.env.PGDATABASE || 'accessibility_db',
+      }
+);
 
 async function ensureUrlResultSchema(): Promise<void> {
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS applicability jsonb`);

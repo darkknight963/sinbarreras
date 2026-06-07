@@ -2,11 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 
+const minioProtocol = process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http';
 const endpoint = process.env.MINIO_ENDPOINT
-  ? `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}`
+  ? `${minioProtocol}://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}`
   : 'http://localhost:9000';
 
-const bucketName = 'accessibility-evidence';
+const bucketName = process.env.MINIO_BUCKET || 'accessibility-evidence';
 
 @Injectable()
 export class EvidenceService {
@@ -14,8 +15,8 @@ export class EvidenceService {
     endpoint,
     region: 'us-east-1',
     credentials: {
-      accessKeyId: process.env.MINIO_ROOT_USER || 'admin',
-      secretAccessKey: process.env.MINIO_ROOT_PASSWORD || 'admin123',
+      accessKeyId: process.env.MINIO_ACCESS_KEY || process.env.MINIO_ROOT_USER || 'admin',
+      secretAccessKey: process.env.MINIO_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD || 'admin123',
     },
     forcePathStyle: true,
   });

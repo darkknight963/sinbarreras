@@ -34,11 +34,15 @@ import { RequestRateLimitService } from './security/request-rate-limit.service';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USER', 'postgres'),
-        password: config.get<string>('DB_PASSWORD', 'postgres'),
-        database: config.get<string>('DB_NAME', 'accessibility_db'),
+        ...(config.get<string>('DATABASE_URL')
+          ? { url: config.get<string>('DATABASE_URL') }
+          : {
+              host: config.get<string>('DB_HOST', 'localhost'),
+              port: config.get<number>('DB_PORT', 5432),
+              username: config.get<string>('DB_USER', 'postgres'),
+              password: config.get<string>('DB_PASSWORD', 'postgres'),
+              database: config.get<string>('DB_NAME', 'accessibility_db'),
+            }),
         entities: [Project, Scan, UrlResult, User, Session, BillingSubscription],
         synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
       }),
