@@ -70,10 +70,7 @@ export function AuthView({
           <a href="#how-it-works">C&oacute;mo funciona</a>
           <a href="#normative-coverage">Cobertura normativa</a>
           <button type="button" onClick={onViewPlans} disabled={guestSubmitting}>Planes</button>
-          <button type="button" onClick={openAccessPanel}>Iniciar sesi&oacute;n</button>
-          <button type="button" className="auth-nav-primary" onClick={handleStartGuest} disabled={guestSubmitting}>
-            {guestSubmitting ? 'Preparando...' : 'Empezar gratis'}
-          </button>
+          <button type="button" className="auth-nav-login" onClick={openAccessPanel}>Iniciar sesi&oacute;n</button>
         </nav>
       </header>
 

@@ -73,19 +73,21 @@ export function ProjectDetailView({
   });
   const hasScans = scans.length > 0;
   const newScanDialogRef = React.useRef<HTMLDivElement>(null);
+  const onCloseNewScanRef = React.useRef(onCloseNewScan);
+
+  React.useEffect(() => {
+    onCloseNewScanRef.current = onCloseNewScan;
+  }, [onCloseNewScan]);
 
   React.useEffect(() => {
     if (!showNewScan) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusTarget = window.setTimeout(() => {
-      const firstFocusable = newScanDialogRef.current?.querySelector<HTMLElement>(
-        'input, button, a[href], textarea, select, [tabindex]:not([tabindex="-1"])'
-      );
-      firstFocusable?.focus();
+      newScanDialogRef.current?.querySelector<HTMLInputElement>('#new-scan-urls')?.focus();
     }, 0);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onCloseNewScan();
+        onCloseNewScanRef.current();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -94,7 +96,7 @@ export function ProjectDetailView({
       document.removeEventListener('keydown', handleKeyDown);
       previousFocus?.focus();
     };
-  }, [showNewScan, onCloseNewScan]);
+  }, [showNewScan]);
 
   React.useEffect(() => {
     if (showNewScan) {

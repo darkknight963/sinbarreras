@@ -16225,6 +16225,24 @@ html body .auth-flow-extension button {
   }
 }
 
+html body .auth-landing-nav nav button:not(.auth-nav-login) {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--sb-text) !important;
+}
+
+html body .auth-landing-nav .auth-nav-login {
+  border-color: var(--sb-primary) !important;
+  background: var(--sb-primary) !important;
+  color: #ffffff !important;
+}
+
+html body .auth-landing-nav .auth-nav-login:hover {
+  border-color: var(--sb-primary-hover) !important;
+  background: var(--sb-primary-hover) !important;
+  color: #ffffff !important;
+}
+
 @media (max-width: 760px) {
   html body .auth-landing-nav {
     display: grid !important;
@@ -16255,7 +16273,7 @@ html body .auth-flow-extension button {
   }
 
   html body .auth-landing-nav nav a,
-  html body .auth-landing-nav nav button:not(.auth-nav-primary) {
+  html body .auth-landing-nav nav button:not(.auth-nav-login) {
     display: none !important;
   }
 
@@ -16270,7 +16288,7 @@ html body .auth-flow-extension button {
     white-space: nowrap !important;
   }
 
-  html body .auth-landing-nav .auth-nav-primary {
+  html body .auth-landing-nav .auth-nav-login {
     padding: 0 14px !important;
   }
 
