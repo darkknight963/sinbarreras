@@ -32,6 +32,8 @@ async function bootstrap() {
       'http://127.0.0.1:80',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:4173',
+      'https://sinbarreras.gzakgroup.com',
+      'https://www.sinbarreras.gzakgroup.com',
       ...configuredOrigins,
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
