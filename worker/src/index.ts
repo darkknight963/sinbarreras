@@ -20,6 +20,7 @@ const buildRedisConnection = () => {
       port: Number(parsed.port || 6379),
       ...(parsed.username ? { username: decodeURIComponent(parsed.username) } : {}),
       ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+      maxRetriesPerRequest: null,
     };
   }
 
@@ -27,6 +28,7 @@ const buildRedisConnection = () => {
     host: process.env.REDIS_HOST || process.env.REDISHOST || redisHost,
     port: parseInt(process.env.REDIS_PORT || process.env.REDISPORT || String(redisPort), 10),
     ...(redisPassword ? { password: redisPassword } : {}),
+    maxRetriesPerRequest: null,
   };
 };
 

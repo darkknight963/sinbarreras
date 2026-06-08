@@ -24,7 +24,10 @@ import { ApiTokenGuard } from './auth/api-token.guard';
 import { RequestRateLimitGuard } from './security/request-rate-limit.guard';
 import { RequestRateLimitService } from './security/request-rate-limit.service';
 
-const buildRedisConnection = (redisUrl: string | undefined, fallback: { host: string; port: number; password?: string }) => {
+const buildRedisConnection = (
+  redisUrl: string | undefined,
+  fallback: { host: string; port: number; username?: string; password?: string; maxRetriesPerRequest?: null },
+) => {
   if (!redisUrl) return fallback;
 
   const parsed = new URL(redisUrl);
@@ -33,6 +36,7 @@ const buildRedisConnection = (redisUrl: string | undefined, fallback: { host: st
     port: Number(parsed.port || 6379),
     ...(parsed.username ? { username: decodeURIComponent(parsed.username) } : {}),
     ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+    maxRetriesPerRequest: null,
   };
 };
 
@@ -72,6 +76,7 @@ const buildRedisConnection = (redisUrl: string | undefined, fallback: { host: st
                 host: config.get<string>('REDIS_HOST') || config.get<string>('REDISHOST') || 'localhost',
                 port: Number(config.get<string>('REDIS_PORT') || config.get<string>('REDISPORT') || 6379),
                 ...(redisPassword ? { password: redisPassword } : {}),
+                maxRetriesPerRequest: null,
               }),
         };
       },
