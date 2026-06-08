@@ -5,5 +5,6 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=true
 COPY package*.json ./
 RUN npm install
+RUN npx puppeteer browsers install chrome-headless-shell
 COPY . .
 CMD ["npx", "tsx", "src/index.ts"]
