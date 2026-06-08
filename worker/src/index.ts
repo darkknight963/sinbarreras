@@ -12,6 +12,12 @@ const redisPassword = process.env.REDIS_PASSWORD || process.env.REDISPASSWORD;
 
 console.log(`Starting worker. Connecting to Redis at ${redisUrl ? 'REDIS_URL' : `${redisHost}:${redisPort}`}`);
 
+const shouldUseRedisTls = (host: string, protocol?: string) =>
+  protocol === 'rediss:' ||
+  host.includes('upstash.io') ||
+  process.env.REDIS_TLS === 'true' ||
+  process.env.BULL_REDIS_TLS === 'true';
+
 const buildRedisConnection = () => {
   if (redisUrl) {
     const parsed = new URL(redisUrl);
@@ -20,14 +26,17 @@ const buildRedisConnection = () => {
       port: Number(parsed.port || 6379),
       ...(parsed.username ? { username: decodeURIComponent(parsed.username) } : {}),
       ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+      ...(shouldUseRedisTls(parsed.hostname, parsed.protocol) ? { tls: {} } : {}),
       maxRetriesPerRequest: null,
     };
   }
 
+  const host = process.env.REDIS_HOST || process.env.REDISHOST || redisHost;
   return {
-    host: process.env.REDIS_HOST || process.env.REDISHOST || redisHost,
+    host,
     port: parseInt(process.env.REDIS_PORT || process.env.REDISPORT || String(redisPort), 10),
     ...(redisPassword ? { password: redisPassword } : {}),
+    ...(shouldUseRedisTls(host) ? { tls: {} } : {}),
     maxRetriesPerRequest: null,
   };
 };

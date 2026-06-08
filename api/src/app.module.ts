@@ -24,11 +24,31 @@ import { ApiTokenGuard } from './auth/api-token.guard';
 import { RequestRateLimitGuard } from './security/request-rate-limit.guard';
 import { RequestRateLimitService } from './security/request-rate-limit.service';
 
+type RedisConnectionOptions = {
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  maxRetriesPerRequest?: null;
+  tls?: Record<string, never>;
+};
+
+const shouldUseRedisTls = (host: string, protocol?: string) =>
+  protocol === 'rediss:' ||
+  host.includes('upstash.io') ||
+  process.env.REDIS_TLS === 'true' ||
+  process.env.BULL_REDIS_TLS === 'true';
+
 const buildRedisConnection = (
   redisUrl: string | undefined,
-  fallback: { host: string; port: number; username?: string; password?: string; maxRetriesPerRequest?: null },
+  fallback: RedisConnectionOptions,
 ) => {
-  if (!redisUrl) return fallback;
+  if (!redisUrl) {
+    return {
+      ...fallback,
+      ...(shouldUseRedisTls(fallback.host) ? { tls: {} } : {}),
+    };
+  }
 
   const parsed = new URL(redisUrl);
   return {
@@ -36,6 +56,7 @@ const buildRedisConnection = (
     port: Number(parsed.port || 6379),
     ...(parsed.username ? { username: decodeURIComponent(parsed.username) } : {}),
     ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+    ...(shouldUseRedisTls(parsed.hostname, parsed.protocol) ? { tls: {} } : {}),
     maxRetriesPerRequest: null,
   };
 };
