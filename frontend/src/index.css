@@ -7831,6 +7831,28 @@ html body .billing-compare-table th.billing-compare-pro :is(span, small, em) {
   color: #ffffff !important;
 }
 
+html body .billing-compare-table .billing-compare-enterprise {
+  position: relative !important;
+  color: #94a3b8 !important;
+}
+
+html body .billing-compare-table th.billing-compare-enterprise {
+  background: #f8fafc !important;
+  color: var(--sb-text-muted) !important;
+}
+
+html body .billing-compare-table th.billing-compare-enterprise small {
+  color: var(--sb-primary) !important;
+  font-weight: 900 !important;
+}
+
+html body .billing-compare-table td.billing-compare-enterprise > * {
+  filter: blur(3px) !important;
+  opacity: 0.42 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 html body .billing-compare-section-row td {
   padding: 18px 24px !important;
   border: 0 !important;

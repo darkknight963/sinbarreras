@@ -136,7 +136,7 @@ export function BillingView({
       ? `${formatAmount(annualPlan)} facturado anualmente${beforeAnnualAmount ? ` - antes ${beforeAnnualAmount}` : ''}`
       : 'S/ 948 facturado anualmente'
     : null;
-  const enterprisePrice = 'S/ 249';
+  const enterprisePrice = '-';
   const enterpriseBillingNote = null;
 
   return (
@@ -291,9 +291,9 @@ export function BillingView({
                 <small>S/ 99/mes</small>
                 <em>Popular</em>
               </th>
-              <th>
+              <th className="billing-compare-enterprise">
                 <span>Empresa</span>
-                <small>S/ 249/mes</small>
+                <small>Pr&oacute;ximamente</small>
               </th>
             </tr>
           </thead>
@@ -312,7 +312,7 @@ export function BillingView({
                   <td>{row.feature}</td>
                   <td>{renderCompareCell(row.free)}</td>
                   <td className="billing-compare-pro">{renderCompareCell(row.pro)}</td>
-                  <td>{renderCompareCell(row.enterprise)}</td>
+                  <td className="billing-compare-enterprise">{renderCompareCell(row.enterprise)}</td>
                 </tr>
               );
             })}
