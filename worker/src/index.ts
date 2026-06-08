@@ -12,6 +12,24 @@ const redisPassword = process.env.REDIS_PASSWORD || process.env.REDISPASSWORD;
 
 console.log(`Starting worker. Connecting to Redis at ${redisUrl ? 'REDIS_URL' : `${redisHost}:${redisPort}`}`);
 
+const buildRedisConnection = () => {
+  if (redisUrl) {
+    const parsed = new URL(redisUrl);
+    return {
+      host: parsed.hostname,
+      port: Number(parsed.port || 6379),
+      ...(parsed.username ? { username: decodeURIComponent(parsed.username) } : {}),
+      ...(parsed.password ? { password: decodeURIComponent(parsed.password) } : {}),
+    };
+  }
+
+  return {
+    host: process.env.REDIS_HOST || process.env.REDISHOST || redisHost,
+    port: parseInt(process.env.REDIS_PORT || process.env.REDISPORT || String(redisPort), 10),
+    ...(redisPassword ? { password: redisPassword } : {}),
+  };
+};
+
 async function bootstrap() {
   await initializeStorage();
 
@@ -31,13 +49,7 @@ async function bootstrap() {
       }
     },
     {
-      connection: redisUrl
-        ? { url: redisUrl }
-        : {
-            host: process.env.REDIS_HOST || process.env.REDISHOST || redisHost,
-            port: parseInt(process.env.REDIS_PORT || process.env.REDISPORT || String(redisPort), 10),
-            ...(redisPassword ? { password: redisPassword } : {}),
-          },
+      connection: buildRedisConnection(),
       concurrency: 2,
     }
   );
