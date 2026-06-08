@@ -64,7 +64,7 @@ const buildRedisConnection = (redisUrl: string | undefined, fallback: { host: st
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const redisUrl = config.get<string>('REDIS_URL');
+        const redisUrl = config.get<string>('BULL_REDIS_URL') || config.get<string>('REDIS_URL');
         const redisPassword = config.get<string>('REDIS_PASSWORD') || config.get<string>('REDISPASSWORD');
 
         return {

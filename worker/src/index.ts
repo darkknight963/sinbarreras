@@ -7,7 +7,7 @@ dotenv.config();
 
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
-const redisUrl = process.env.REDIS_URL;
+const redisUrl = process.env.BULL_REDIS_URL || process.env.REDIS_URL;
 const redisPassword = process.env.REDIS_PASSWORD || process.env.REDISPASSWORD;
 
 console.log(`Starting worker. Connecting to Redis at ${redisUrl ? 'REDIS_URL' : `${redisHost}:${redisPort}`}`);

@@ -18,6 +18,7 @@ async function bootstrap() {
     process.env.CORS_ORIGIN,
     process.env.FRONTEND_URL,
     process.env.PUBLIC_FRONTEND_URL,
+    process.env.ALLOWED_ORIGINS,
   ]
     .filter(Boolean)
     .flatMap((value) => value!.split(',').map((origin) => origin.trim()).filter(Boolean));
