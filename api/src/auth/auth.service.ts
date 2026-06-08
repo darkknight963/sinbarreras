@@ -49,19 +49,29 @@ export class AuthService {
   ) {}
 
   async onModuleInit() {
+    const configuredAdminEmail = this.configService.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
+    const configuredAdminPassword = this.configService.get<string>('ADMIN_PASSWORD')?.trim();
+
+    if (configuredAdminEmail && configuredAdminPassword) {
+      await this.ensureAdminUser(configuredAdminEmail, configuredAdminPassword);
+      return;
+    }
+
     if (process.env.NODE_ENV === 'production') {
       return;
     }
 
-    const masterUsername = 'administrador@sinbarreras.com';
-    const legacyDemoEmail = 'demo@sinbarreras.local';
-    const existingMaster = await this.userRepository.findOne({ where: { email: masterUsername } });
-    const legacyDemo = await this.userRepository.findOne({ where: { email: legacyDemoEmail } });
+    await this.ensureAdminUser('administrador@sinbarreras.com', '12345678', 'demo@sinbarreras.local');
+  }
+
+  private async ensureAdminUser(email: string, password: string, legacyEmail?: string) {
+    const existingMaster = await this.userRepository.findOne({ where: { email } });
+    const legacyDemo = legacyEmail ? await this.userRepository.findOne({ where: { email: legacyEmail } }) : null;
     const masterUser = existingMaster || legacyDemo || this.userRepository.create();
 
     Object.assign(masterUser, {
-      email: masterUsername,
-      passwordHash: this.hashPassword('12345678'),
+      email,
+      passwordHash: this.hashPassword(password),
       fullName: 'Administrador',
       companyName: 'Sin Barreras',
       role: 'admin',
