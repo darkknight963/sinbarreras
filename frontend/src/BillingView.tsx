@@ -21,11 +21,6 @@ type BillingViewProps = {
   onBack: () => void;
 };
 
-const mailTo = (subject: string) =>
-  `mailto:ventas@sinbarreras.pe?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-    'Hola, quiero cotizar una suscripcion para Sin Barreras.',
-  )}`;
-
 const formatAmount = (plan: BillingPlan | undefined) => {
   if (!plan?.amount) return 'Pr\u00f3ximamente';
   const symbol = plan.currency === 'PEN' ? 'S/' : '$';
@@ -250,27 +245,30 @@ export function BillingView({
             </button>
           </article>
 
-          <article className="billing-plan-card billing-plan-enterprise">
-            <div className="billing-plan-head">
-              <div>
-                <p>Empresa</p>
+          <article className="billing-plan-card billing-plan-enterprise billing-plan-coming-soon" aria-label="Plan Empresa próximamente">
+            <span className="billing-coming-soon-badge">Pr&oacute;ximamente</span>
+            <div className="billing-plan-coming-soon-content">
+              <div className="billing-plan-head">
+                <div>
+                  <p>Empresa</p>
+                </div>
               </div>
+              <div className="billing-price-row">
+                <strong>{enterprisePrice}</strong>
+              </div>
+              <p className="billing-price-note">por mes</p>
+              {enterpriseBillingNote && <p className="billing-price-note">{enterpriseBillingNote}</p>}
+              <ul className="billing-feature-list">
+                <li><CheckCircle className="h-4 w-4" />Todo lo de Pro</li>
+                <li><CheckCircle className="h-4 w-4" />Hasta 10 usuarios</li>
+                <li><CheckCircle className="h-4 w-4" />Reportes white-label</li>
+                <li><CheckCircle className="h-4 w-4" />Monitoreo semanal</li>
+                <li><CheckCircle className="h-4 w-4" />Certificado de cumplimiento</li>
+              </ul>
+              <button type="button" className="billing-outline-btn" disabled>
+                Contactar ventas
+              </button>
             </div>
-            <div className="billing-price-row">
-              <strong>{enterprisePrice}</strong>
-            </div>
-            <p className="billing-price-note">por mes</p>
-            {enterpriseBillingNote && <p className="billing-price-note">{enterpriseBillingNote}</p>}
-            <ul className="billing-feature-list">
-              <li><CheckCircle className="h-4 w-4" />Todo lo de Pro</li>
-              <li><CheckCircle className="h-4 w-4" />Hasta 10 usuarios</li>
-              <li><CheckCircle className="h-4 w-4" />Reportes white-label</li>
-              <li><CheckCircle className="h-4 w-4" />Monitoreo semanal</li>
-              <li><CheckCircle className="h-4 w-4" />Certificado de cumplimiento</li>
-            </ul>
-            <a href={mailTo('Cotizacion Enterprise - Sin Barreras')} className="billing-outline-btn">
-              Contactar ventas
-            </a>
           </article>
         </div>
       )}
