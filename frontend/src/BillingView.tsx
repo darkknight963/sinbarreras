@@ -56,28 +56,23 @@ type CompareRow =
 
 const mark = (value: boolean): CompareCell => ({ kind: 'mark', value });
 const text = (value: string): CompareCell => ({ kind: 'text', value });
-const pill = (value: string, tone: 'neutral' | 'accent' | 'info' = 'neutral'): CompareCell => ({
-  kind: 'pill',
-  value,
-  tone,
-});
 
 const comparisonRows: CompareRow[] = [
   { type: 'section', label: 'Escaneo' },
   { type: 'row', feature: 'Análisis por mes', free: text('Ilimitado'), pro: text('Ilimitado'), enterprise: text('Ilimitado') },
   { type: 'section', label: 'Reportes y exportación' },
-  { type: 'row', feature: 'Vista de resultados en pantalla', free: mark(true), pro: mark(true), enterprise: mark(true) },
+  { type: 'row', feature: 'Vista de resultados en pantalla', free: text('Limitado'), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Exportar PDF Ejecutivo', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Exportar PDF técnico', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Exportar Excel', free: mark(false), pro: mark(true), enterprise: mark(true) },
-  { type: 'row', feature: 'Historial de reportes', free: text('1'), pro: text('Ilimitado'), enterprise: text('Ilimitado') },
+  { type: 'row', feature: 'Historial de reportes', free: text('1'), pro: text('10'), enterprise: text('Ilimitado') },
   { type: 'section', label: 'Remediación' },
-  { type: 'row', feature: 'Descripción del error + criterio WCAG', free: mark(true), pro: mark(true), enterprise: mark(true) },
+  { type: 'row', feature: 'Descripción del error + criterio WCAG', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Pasos de remediación por error', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Sugerencias de código corregido', free: mark(false), pro: mark(true), enterprise: mark(true) },
-  { type: 'row', feature: 'Priorización por severidad', free: pill('Limitado'), pro: mark(true), enterprise: mark(true) },
+  { type: 'row', feature: 'Priorización por severidad', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'section', label: 'Cumplimiento legal' },
-  { type: 'row', feature: 'Mapeo a WCAG 2.2', free: pill('Básico'), pro: mark(true), enterprise: mark(true) },
+  { type: 'row', feature: 'Mapeo a WCAG', free: mark(true), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Mapeo a Ley N° 29973 (Perú)', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Declaración de accesibilidad', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Certificado de cumplimiento descargable', free: mark(false), pro: mark(false), enterprise: mark(true) },
