@@ -42,3 +42,6 @@ export const SOCKET_PATH =
 
 export const CULQI_PUBLIC_KEY =
   import.meta.env.VITE_CULQI_PUBLIC_KEY?.trim() || '';
+
+export const PRO_PAYMENT_URL =
+  import.meta.env.VITE_PRO_PAYMENT_URL?.trim() || 'https://express.culqi.com/pago/1E8F693D48';

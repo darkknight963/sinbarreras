@@ -14,6 +14,7 @@ type BillingViewProps = {
   loading: boolean;
   submittingKey: string | null;
   note: string | null;
+  hasExternalProPaymentLink: boolean;
   onChangeCurrency: (currency: BillingCurrency) => void;
   onSubscribe: (plan: BillingPlan) => void;
   onReload: () => void;
@@ -109,6 +110,7 @@ export function BillingView({
   loading,
   submittingKey,
   note,
+  hasExternalProPaymentLink,
   onBack,
   onSubscribe,
 }: BillingViewProps) {
@@ -128,7 +130,7 @@ export function BillingView({
     billingState?.currency === selectedPlan.currency,
   );
   const selectedPlanKey = selectedPlan ? `${selectedPlan.code}:${selectedPlan.currency}` : '';
-  const selectedPlanUnavailable = !selectedPlan || !selectedPlan.available;
+  const selectedPlanUnavailable = !selectedPlan || (!selectedPlan.available && !hasExternalProPaymentLink);
   const proButtonLabel = submittingKey === selectedPlanKey
     ? 'Abriendo Culqi...'
     : activeSelectedPlan

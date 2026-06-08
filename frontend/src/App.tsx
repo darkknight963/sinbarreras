@@ -11,7 +11,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost } from './config';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, CULQI_PUBLIC_KEY, PRO_PAYMENT_URL, isLocalRuntimeHost } from './config';
 import { BillingView } from './BillingView';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
@@ -1037,12 +1037,22 @@ export default function App() {
   };
 
   const handleBillingSubscribe = async (plan: BillingPlan) => {
+    const key = `${plan.code}:${plan.currency}`;
+
+    if (PRO_PAYMENT_URL) {
+      setBillingSubmitting(key);
+      setBillingNote(null);
+      window.open(PRO_PAYMENT_URL, '_blank', 'noopener,noreferrer');
+      setBillingNote('Completa el pago del Plan Pro en Culqi.');
+      setBillingSubmitting(null);
+      return;
+    }
+
     if (authMode !== 'session') {
       setBillingNote('Crea una cuenta o inicia sesión para activar Pro.');
       return;
     }
 
-    const key = `${plan.code}:${plan.currency}`;
     setBillingSubmitting(key);
     setBillingNote(null);
 
@@ -1650,6 +1660,7 @@ export default function App() {
             loading={billingLoading}
             submittingKey={billingSubmitting}
             note={billingNote}
+            hasExternalProPaymentLink={Boolean(PRO_PAYMENT_URL)}
             onChangeCurrency={setBillingCurrency}
             onSubscribe={handleBillingSubscribe}
             onReload={loadBillingData}
