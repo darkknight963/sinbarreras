@@ -126,6 +126,12 @@ const readApiErrorMessage = async (res: Response) => {
   }
 };
 
+const readApiJson = async <T,>(res: Response): Promise<T | null> => {
+  const text = await res.text();
+  if (!text.trim()) return null;
+  return JSON.parse(text) as T;
+};
+
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
@@ -604,8 +610,9 @@ export default function App() {
     try {
       setAppError(null);
       const res = await fetchWithFallback(`/projects/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      const data = await readApiJson<Project>(res);
+      if (!data) throw new Error('La API devolvió una respuesta vacía para el proyecto.');
       setCurrentProject(data);
     } catch (err) {
       handleApiError('No se pudo cargar el detalle del proyecto', err);
@@ -616,14 +623,16 @@ export default function App() {
     try {
       setAppError(null);
       const res = await fetchWithFallback(`/scans/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      const data = await readApiJson<Scan>(res);
+      if (!data) throw new Error('La API devolvió una respuesta vacía para el escaneo.');
       setCurrentScan(data);
-      if (data.urlResults && data.urlResults.length > 0) {
+      const urlResults = data.urlResults ?? [];
+      if (urlResults.length > 0) {
         setSelectedUrlResult((prev) => {
-          if (!prev) return data.urlResults[0];
-          const same = data.urlResults.find((ur: UrlResult) => ur.id === prev.id);
-          return same || data.urlResults[0];
+          if (!prev) return urlResults[0];
+          const same = urlResults.find((ur: UrlResult) => ur.id === prev.id);
+          return same || urlResults[0];
         });
       }
     } catch (err) {
@@ -635,8 +644,9 @@ export default function App() {
     try {
       setAppError(null);
       const res = await fetchWithFallback(`/scans/public/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const scan = await res.json() as Scan;
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      const scan = await readApiJson<Scan>(res);
+      if (!scan) throw new Error('La API devolvió una respuesta vacía para el escaneo.');
       if (typeof scan.progress === 'number') {
         setScanProgress(prev => ({ ...prev, [scan.id]: scan.progress ?? 0 }));
       }
