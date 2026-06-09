@@ -420,14 +420,18 @@ export default function App() {
 
   const isGuestUser = currentUser?.role === 'guest';
   const isMasterAccount = currentUser?.role === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
-  const canUsePaidFeatures = Boolean(isMasterAccount || (currentUser?.billingPlan && currentUser?.billingStatus === 'active'));
   const isAdminAccount = currentUser?.role === 'admin';
+  const canUsePaidFeatures = Boolean(
+    isMasterAccount ||
+      isAdminAccount ||
+      (currentUser?.billingPlan && currentUser?.billingStatus === 'active')
+  );
   const canCreateProjects = Boolean(isAdminAccount || canUsePaidFeatures);
   const currentPlanLabel = isMasterAccount || (currentUser?.billingPlan === 'annual' && currentUser.billingStatus === 'active')
     ? 'Plan Enterprise'
-    : canUsePaidFeatures
-      ? 'Plan Pro'
-      : 'Plan Free';
+      : canUsePaidFeatures
+        ? 'Plan Pro'
+        : 'Plan Free';
   const currentUserLabel = isGuestUser
     ? 'Modo invitado'
     : currentUser?.fullName || currentUser?.companyName || currentUser?.email || 'Cuenta';
@@ -1751,7 +1755,6 @@ export default function App() {
             onBack={() => { if (currentProject && authMode !== 'public') fetchProjectDetails(currentProject.id); setView('project'); }}
             onUrlResultSelect={setSelectedUrlResult}
             onExport={handleExport}
-            currentUser={currentUser}
             canUsePaidFeatures={canUsePaidFeatures}
             renderScoreMeter={renderScoreMeter}
             getVpCategory={getVpCategory}

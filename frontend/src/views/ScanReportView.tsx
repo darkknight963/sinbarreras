@@ -511,7 +511,6 @@ interface ScanReportViewProps {
   onBack: () => void;
   onUrlResultSelect: (result: any) => void;
   onExport: (kind: 'pdf-executive' | 'pdf-technical' | 'excel') => void;
-  currentUser: any;
   canUsePaidFeatures: boolean;
   renderScoreMeter: (score: number | null | undefined, label?: string, size?: 'compact' | 'large', showCaption?: boolean) => React.ReactNode;
   getVpCategory: (vp: number | null) => { label: string; color: string };
@@ -551,7 +550,6 @@ export function ScanReportView({
   onBack,
   onUrlResultSelect,
   onExport,
-  currentUser,
   canUsePaidFeatures,
   renderScoreMeter,
   getVpCategory,
@@ -635,7 +633,7 @@ export function ScanReportView({
                 <p className="report-subtitle">Auditoría realizada: {new Date(currentScan.createdAt).toLocaleString()}</p>
               </div>
             </div>
-            {currentUser?.billingPlan && currentUser.billingStatus !== 'inactive' ? (
+            {canUsePaidFeatures ? (
               <div className="report-export-actions">
                 <button onClick={() => onExport('pdf-executive')} className="report-action-btn"><Download className="h-4 w-4" />PDF Ejecutivo</button>
                 <button onClick={() => onExport('pdf-technical')} className="report-action-btn"><Download className="h-4 w-4" />PDF técnico</button>
