@@ -1558,6 +1558,7 @@ export default function App() {
         appError={appError}
         useDemoCredentials={useDemoCredentials}
         onSubmitComplaint={handleSubmitComplaint}
+        forceOpenAccessPanel={postLoginAction !== null}
       />
     );
   }

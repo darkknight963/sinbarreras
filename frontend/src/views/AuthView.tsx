@@ -42,6 +42,7 @@ interface AuthViewProps {
     detail: string;
     request: string;
   }) => Promise<void>;
+  forceOpenAccessPanel?: boolean;
 }
 
 export function AuthView({
@@ -63,11 +64,18 @@ export function AuthView({
   appError,
   useDemoCredentials,
   onSubmitComplaint,
+  forceOpenAccessPanel,
 }: AuthViewProps) {
   const [showAccessPanel, setShowAccessPanel] = useState(false);
   const [activeLegalPanel, setActiveLegalPanel] = useState<LegalPanel | null>(null);
   const [complaintNotice, setComplaintNotice] = useState<string | null>(null);
   const [complaintError, setComplaintError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (forceOpenAccessPanel) {
+      setShowAccessPanel(true);
+    }
+  }, [forceOpenAccessPanel]);
 
   const openAccessPanel = () => setShowAccessPanel(true);
   const closeAccessPanel = () => setShowAccessPanel(false);
