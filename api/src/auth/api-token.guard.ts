@@ -3,6 +3,12 @@ import { Reflector } from '@nestjs/core';
 import { AUTH_ROUTE_KEY } from './auth.constants';
 import { AuthService } from './auth.service';
 
+const normalizeRole = (role?: string) => {
+  if (role === 'superadmin') return 'superadmin';
+  if (role === 'guest') return 'guest';
+  return 'admin';
+};
+
 @Injectable()
 export class ApiTokenGuard implements CanActivate {
   constructor(
@@ -54,7 +60,7 @@ export class ApiTokenGuard implements CanActivate {
           id: session.user.id,
           email: session.user.email,
           fullName: session.user.fullName,
-          role: session.user.role,
+          role: normalizeRole(session.user.role),
           companyName: session.user.companyName,
           billingStatus: session.user.billingStatus,
           billingPlan: session.user.billingPlan,
