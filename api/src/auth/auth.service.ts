@@ -6,6 +6,7 @@ import { randomBytes, randomUUID, pbkdf2Sync, timingSafeEqual, createHash, creat
 import { User } from './entities/user.entity';
 import { Session } from './entities/session.entity';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
+import { RequestRateLimitService } from '../security/request-rate-limit.service';
 
 const PASSWORD_ITERATIONS = 120000;
 const PASSWORD_KEY_LENGTH = 32;
@@ -48,6 +49,7 @@ export class AuthService {
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
     private readonly configService: ConfigService,
+    private readonly rateLimitService: RequestRateLimitService,
   ) {}
 
   private normalizeRole(role: string | null | undefined): AppRole {
@@ -213,7 +215,16 @@ export class AuthService {
     return this.configService.get<number>('SESSION_TTL_DAYS', 30);
   }
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, request?: { ip?: string }) {
+    const identifier = this.buildBruteForceIdentifier(dto.email.toLowerCase(), request);
+    const lockout = await this.rateLimitService.recordFailedAttempt(identifier, 5, 10 * 60 * 1000);
+    if (lockout.blocked) {
+      throw new UnauthorizedException({
+        message: 'Demasiados intentos de registro fallidos. Intenta mas tarde.',
+        retryAfterMs: lockout.retryAfterMs,
+      });
+    }
+
     const existing = await this.userRepository.findOne({ where: { email: dto.email.toLowerCase() } });
     if (existing) {
       throw new ConflictException('Ya existe una cuenta con ese correo');
@@ -236,21 +247,56 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+    await this.rateLimitService.resetAttempts(this.buildBruteForceIdentifier(dto.email.toLowerCase(), request));
     const session = await this.createSession(savedUser);
     return this.buildSessionResponse(savedUser, session.token);
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, request?: { ip?: string }) {
+    const identifier = this.buildBruteForceIdentifier(dto.email.toLowerCase(), request);
+    const lockout = await this.rateLimitService.isBlocked(identifier);
+    if (lockout) {
+      const remaining = await this.rateLimitService.getBlockRemaining(identifier);
+      throw new UnauthorizedException({
+        message: 'Cuenta bloqueada temporalmente por multiples intentos fallidos. Intenta mas tarde.',
+        retryAfterMs: remaining,
+      });
+    }
+
     const user = await this.userRepository.findOne({ where: { email: dto.email.toLowerCase() } });
     if (!user || !user.isActive || !this.verifyPassword(dto.password, user.passwordHash)) {
-      throw new UnauthorizedException('Credenciales invalidas');
+      const failed = await this.rateLimitService.recordFailedAttempt(identifier, 5, 10 * 60 * 1000);
+      throw new UnauthorizedException({
+        message: 'Credenciales invalidas',
+        remainingAttempts: failed.remainingAttempts,
+        retryAfterMs: failed.retryAfterMs,
+      });
     }
+
+    await this.rateLimitService.resetAttempts(identifier);
 
     const session = await this.createSession(user);
     return this.buildSessionResponse(user, session.token);
   }
 
-  async createGuestSession() {
+  async createGuestSession(request?: { ip?: string }) {
+    const identifier = this.buildGuestIdentifier(request);
+    const lockout = await this.rateLimitService.isBlocked(identifier);
+    if (lockout) {
+      const remaining = await this.rateLimitService.getBlockRemaining(identifier);
+      throw new UnauthorizedException({
+        message: 'Demasiadas sesiones de invitado. Intenta mas tarde.',
+        retryAfterMs: remaining,
+      });
+    }
+
+    const failed = await this.rateLimitService.recordFailedAttempt(identifier, 10, 60 * 60 * 1000);
+    if (failed.blocked) {
+      throw new UnauthorizedException({
+        message: 'Demasiadas sesiones de invitado. Intenta mas tarde.',
+        retryAfterMs: failed.retryAfterMs,
+      });
+    }
     const email = `guest-${randomUUID()}@guest.sinbarreras.local`;
     const guestUser = this.userRepository.create({
       email,
@@ -525,5 +571,15 @@ export class AuthService {
 
   private getFrontendUrl() {
     return this.configService.get<string>('FRONTEND_URL')?.trim() || process.env.FRONTEND_URL?.trim() || 'http://localhost:5173';
+  }
+
+  private buildBruteForceIdentifier(email: string, request?: { ip?: string }): string {
+    const ip = request?.ip || 'unknown';
+    return `email:${createHash('sha256').update(email.toLowerCase().trim()).digest('hex')}:ip:${ip}`;
+  }
+
+  private buildGuestIdentifier(request?: { ip?: string }): string {
+    const ip = request?.ip || 'unknown';
+    return `guest:ip:${ip}`;
   }
 }

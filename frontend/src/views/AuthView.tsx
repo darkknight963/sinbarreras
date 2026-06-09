@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ArrowUpRight,
   Cog,
+  Eye,
   EyeOff,
   FileCheck2,
   Globe2,
@@ -72,6 +73,7 @@ export function AuthView({
   const [activeLegalPanel, setActiveLegalPanel] = useState<LegalPanel | null>(null);
   const [complaintNotice, setComplaintNotice] = useState<string | null>(null);
   const [complaintError, setComplaintError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   React.useEffect(() => {
     if (forceOpenAccessPanel) {
@@ -458,7 +460,7 @@ export function AuthView({
                   <span className="auth-field-label">Contrase&ntilde;a</span>
                   <div className="auth-input-shell relative">
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       minLength={8}
                       autoComplete={authFormMode === 'register' ? 'new-password' : 'current-password'}
@@ -467,7 +469,14 @@ export function AuthView({
                       className="auth-input auth-input-password"
                       placeholder="********"
                     />
-                    <EyeOff className="auth-input-icon" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className="auth-input-icon hover:text-slate-900 transition-colors"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                    >
+                      {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                    </button>
                   </div>
                 </label>
 

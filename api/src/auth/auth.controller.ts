@@ -4,27 +4,31 @@ import { AuthService } from './auth.service';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { Public } from './public.decorator';
 import { CurrentUser } from './current-user.decorator';
+import { RateLimit } from '../security/rate-limit.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 10, windowMs: 10 * 60 * 1000 })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 10, windowMs: 10 * 60 * 1000 })
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() request: Request) {
+    return this.authService.login(dto, request);
   }
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 5, windowMs: 10 * 60 * 1000 })
   @Post('guest')
-  guest() {
-    return this.authService.createGuestSession();
+  guest(@Req() request: Request) {
+    return this.authService.createGuestSession(request);
   }
 
   @Public()
@@ -34,18 +38,21 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 20, windowMs: 10 * 60 * 1000 })
   @Get('google')
   redirectGoogle(@Res() res: Response) {
     return res.redirect(302, this.authService.buildOAuthStartUrl('google'));
   }
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 20, windowMs: 10 * 60 * 1000 })
   @Get('microsoft')
   redirectMicrosoft(@Res() res: Response) {
     return res.redirect(302, this.authService.buildOAuthStartUrl('microsoft'));
   }
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 20, windowMs: 10 * 60 * 1000 })
   @Get('google/callback')
   async googleCallback(
     @Query('code') code: string,
@@ -56,6 +63,7 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit({ scope: 'auth', limit: 20, windowMs: 10 * 60 * 1000 })
   @Get('microsoft/callback')
   async microsoftCallback(
     @Query('code') code: string,

@@ -4,11 +4,12 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
 import { Session } from './entities/session.entity';
+import { RequestRateLimitService } from '../security/request-rate-limit.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Session])],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, RequestRateLimitService],
   exports: [AuthService],
 })
 export class AuthModule {}

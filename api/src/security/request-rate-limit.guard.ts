@@ -2,11 +2,13 @@ import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } 
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
 import { RATE_LIMIT_METADATA_KEY, RateLimitOptions } from './rate-limit.decorator';
-import { RequestRateLimitService } from './request-rate-limit.service';
+import { RequestRateLimitService, type RateLimitResult } from './request-rate-limit.service';
 
 @Injectable()
 export class RequestRateLimitGuard implements CanActivate {
   private static readonly defaults = {
+    global: { limit: 300, windowMs: 60 * 1000 },
+    auth: { limit: 20, windowMs: 10 * 60 * 1000 },
     scan: { limit: 20, windowMs: 15 * 60 * 1000 },
     project: { limit: 60, windowMs: 60 * 60 * 1000 },
     report: { limit: 120, windowMs: 15 * 60 * 1000 },
@@ -18,7 +20,7 @@ export class RequestRateLimitGuard implements CanActivate {
     private readonly rateLimitService: RequestRateLimitService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const metadata = this.reflector.getAllAndOverride<RateLimitOptions>(RATE_LIMIT_METADATA_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -30,11 +32,11 @@ export class RequestRateLimitGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
-    const defaults = RequestRateLimitGuard.defaults[metadata.scope];
+    const defaults = (RequestRateLimitGuard.defaults as Record<string, { limit: number; windowMs: number }>)[metadata.scope];
     const limit = metadata.limit ?? defaults.limit;
     const windowMs = metadata.windowMs ?? defaults.windowMs;
     const key = this.rateLimitService.buildScopeKey(metadata.scope, request);
-    const result = this.rateLimitService.consume(key, limit, windowMs);
+    const result = await this.rateLimitService.consume(key, limit, windowMs);
 
     response.setHeader('X-RateLimit-Limit', String(result.limit));
     response.setHeader('X-RateLimit-Remaining', String(result.remaining));

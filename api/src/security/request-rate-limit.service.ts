@@ -1,12 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import type { Request } from 'express';
-import type { RateLimitScope } from './rate-limit.decorator';
-
-interface BucketState {
-  count: number;
-  resetAt: number;
-}
+import type { RateLimitOptions } from './rate-limit.decorator';
+import Redis from 'ioredis';
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -15,50 +12,64 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-@Injectable()
-export class RequestRateLimitService {
-  private readonly buckets = new Map<string, BucketState>();
-  private readonly cleanupTimer: NodeJS.Timeout;
+export interface BruteForceResult {
+  blocked: boolean;
+  remainingAttempts: number;
+  retryAfterMs: number;
+}
 
-  constructor() {
-    this.cleanupTimer = setInterval(() => this.pruneExpiredBuckets(), 5 * 60 * 1000);
-    this.cleanupTimer.unref?.();
+type RateLimitScope = RateLimitOptions['scope'];
+
+@Injectable()
+export class RequestRateLimitService implements OnModuleDestroy {
+  private readonly redis: Redis;
+  private readonly prefix = 'ratelimit:';
+  private readonly bruteForcePrefix = 'auth:bruteforce:';
+
+  constructor(private readonly configService: ConfigService) {
+    const redisUrl = this.configService.get<string>('REDIS_URL') || this.configService.get<string>('BULL_REDIS_URL');
+    const password = this.configService.get<string>('REDIS_PASSWORD') || this.configService.get<string>('REDISPASSWORD');
+
+    if (redisUrl) {
+      this.redis = new Redis(redisUrl, {
+        password: password || undefined,
+        maxRetriesPerRequest: null,
+      });
+    } else {
+      this.redis = new Redis({
+        host: this.configService.get<string>('REDIS_HOST') || this.configService.get<string>('REDISHOST') || 'localhost',
+        port: Number(this.configService.get<string>('REDIS_PORT') || this.configService.get<string>('REDISPORT') || 6379),
+        password: password || undefined,
+        maxRetriesPerRequest: null,
+      });
+    }
   }
 
-  consume(key: string, limit: number, windowMs: number): RateLimitResult {
+  async consume(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
     const now = Date.now();
-    const current = this.buckets.get(key);
+    const redisKey = `${this.prefix}${key}`;
 
-    if (!current || current.resetAt <= now) {
-      const resetAt = now + windowMs;
-      const next: BucketState = { count: 1, resetAt };
-      this.buckets.set(key, next);
-      return {
-        allowed: true,
-        limit,
-        remaining: Math.max(0, limit - 1),
-        resetAt,
-      };
+    const multi = this.redis.multi();
+    multi.incr(redisKey);
+    multi.pttl(redisKey);
+    const raw = await multi.exec();
+    const count = Number(raw?.[0]?.[1] ?? 1);
+    const currentTtl = Number(raw?.[1]?.[1] ?? -1);
+
+    let resetAt: number;
+    if (currentTtl === -1 || currentTtl === -2) {
+      resetAt = now + windowMs;
+      await this.redis.pexpire(redisKey, windowMs);
+    } else {
+      resetAt = now + currentTtl;
     }
-
-    current.count += 1;
-    this.buckets.set(key, current);
 
     return {
-      allowed: current.count <= limit,
+      allowed: count <= limit,
       limit,
-      remaining: Math.max(0, limit - current.count),
-      resetAt: current.resetAt,
+      remaining: Math.max(0, limit - count),
+      resetAt,
     };
-  }
-
-  private pruneExpiredBuckets(): void {
-    const now = Date.now();
-    for (const [key, bucket] of this.buckets.entries()) {
-      if (bucket.resetAt <= now) {
-        this.buckets.delete(key);
-      }
-    }
   }
 
   buildCallerKey(request: Request): string {
@@ -80,6 +91,10 @@ export class RequestRateLimitService {
 
   buildScopeKey(scope: RateLimitScope, request: Request): string {
     const callerKey = this.buildCallerKey(request);
+
+    if (scope === 'auth') {
+      return `${callerKey}:auth`;
+    }
 
     if (scope === 'scan') {
       const projectId = this.extractProjectId(request);
@@ -106,5 +121,51 @@ export class RequestRateLimitService {
     const params = request.params as Record<string, string | undefined> | undefined;
     const scanId = params?.scanId ?? params?.id;
     return typeof scanId === 'string' && scanId.trim() ? scanId.trim() : undefined;
+  }
+
+  async recordFailedAttempt(identifier: string, maxAttempts: number, windowMs: number): Promise<BruteForceResult> {
+    const key = `${this.bruteForcePrefix}${identifier}`;
+    const now = Date.now();
+
+    const multi = this.redis.multi();
+    multi.incr(key);
+    multi.pttl(key);
+    const raw = await multi.exec();
+    const count = Number(raw?.[0]?.[1] ?? 1);
+    const currentTtl = Number(raw?.[1]?.[1] ?? -1);
+
+    if ((currentTtl === -1 || currentTtl === -2) && count === 1) {
+      await this.redis.pexpire(key, windowMs);
+    }
+
+    const retryAfterMs = currentTtl <= 0 ? windowMs : currentTtl;
+
+    return {
+      blocked: count > maxAttempts,
+      remainingAttempts: Math.max(0, maxAttempts - count),
+      retryAfterMs,
+    };
+  }
+
+  async isBlocked(identifier: string): Promise<boolean> {
+    const key = `${this.bruteForcePrefix}${identifier}`;
+    const count = parseInt((await this.redis.get(key)) || '0', 10);
+    const limit = parseInt((await this.redis.get(`${key}:limit`)) || '5', 10);
+    return count > limit;
+  }
+
+  async getBlockRemaining(identifier: string): Promise<number> {
+    const key = `${this.bruteForcePrefix}${identifier}`;
+    const ttl = await this.redis.pttl(key);
+    return ttl > 0 ? ttl : 0;
+  }
+
+  async resetAttempts(identifier: string): Promise<void> {
+    const key = `${this.bruteForcePrefix}${identifier}`;
+    await this.redis.del(key, `${key}:limit`);
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit();
   }
 }

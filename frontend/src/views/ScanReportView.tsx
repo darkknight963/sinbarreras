@@ -737,7 +737,20 @@ export function ScanReportView({
               <span><strong>{findingMessageTotals.elements}</strong> elementos</span>
             </div>
           </div>
-          {findingMessageGroups.length === 0 ? (
+          {!canUsePaidFeatures ? (
+            <div className="report-pro-lockout-large relative p-8 text-center bg-slate-50 border border-slate-200 rounded-lg mt-6">
+              <Lock className="mx-auto h-8 w-8 text-slate-400 mb-3" />
+              <h4 className="text-lg font-medium text-slate-900 mb-2">Agrupación inteligente disponible en Pro</h4>
+              <p className="text-slate-600 mb-4 max-w-md mx-auto">
+                La agrupación de problemas, el análisis de impacto técnico y la inspección de código afectado son funciones exclusivas de cuentas Pro.
+              </p>
+              {onViewPlans && (
+                <button type="button" onClick={onViewPlans} className="report-action-btn report-action-btn-green mx-auto">
+                  Ver opciones de pago
+                </button>
+              )}
+            </div>
+          ) : findingMessageGroups.length === 0 ? (
             <div className="finding-message-empty">
               No hay hallazgos activos para agrupar. Revisa la matriz WCAG para validar criterios cumplidos y no aplicables.
             </div>

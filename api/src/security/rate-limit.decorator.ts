@@ -2,7 +2,7 @@ import { SetMetadata } from '@nestjs/common';
 
 export const RATE_LIMIT_METADATA_KEY = 'rate_limit_metadata';
 
-export type RateLimitScope = 'scan' | 'project' | 'report' | 'complaint';
+export type RateLimitScope = 'auth' | 'scan' | 'project' | 'report' | 'complaint';
 
 export interface RateLimitOptions {
   scope: RateLimitScope;
