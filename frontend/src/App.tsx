@@ -193,6 +193,7 @@ export default function App() {
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const [postLoginAction, setPostLoginAction] = useState<'billing' | null>(null);
 
   const [view, setView] = useState<'projects' | 'project' | 'scan' | 'billing' | 'admin'>('projects');
 
@@ -301,7 +302,12 @@ export default function App() {
       window.localStorage.setItem(SESSION_STORAGE_KEY, data.token);
       setCurrentUser(data.user);
       setAuthMode('session');
-      setView('projects');
+      if (postLoginAction === 'billing') {
+        setView('billing');
+        setPostLoginAction(null);
+      } else {
+        setView('projects');
+      }
     } catch (err) {
       handleApiError('No se pudo iniciar sesión', err);
     } finally {
@@ -1164,6 +1170,13 @@ export default function App() {
   };
 
   const handleBillingSubscribe = async (plan: BillingPlan) => {
+    if (authMode !== 'session') {
+      setPostLoginAction('billing');
+      setAuthMode('none');
+      setAuthFormMode('register');
+      return;
+    }
+
     const key = `${plan.code}:${plan.currency}`;
 
     if (PRO_PAYMENT_URL) {
@@ -1172,11 +1185,6 @@ export default function App() {
       window.open(PRO_PAYMENT_URL, '_blank', 'noopener,noreferrer');
       setBillingNote('Completa el pago del Plan Pro en Culqi.');
       setBillingSubmitting(null);
-      return;
-    }
-
-    if (authMode !== 'session') {
-      setBillingNote('Crea una cuenta o inicia sesión para activar Pro.');
       return;
     }
 
