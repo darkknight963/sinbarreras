@@ -51,7 +51,7 @@ describe('BillingService', () => {
       email: 'cliente@demo.pe',
       fullName: 'Cliente Demo',
       companyName: 'Demo SAC',
-      role: 'owner',
+      role: 'admin',
       isActive: true,
       createdAt: new Date('2026-05-31T12:00:00.000Z'),
       billingStatus: 'inactive',

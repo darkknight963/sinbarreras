@@ -7,6 +7,8 @@ import { Session } from '../auth/entities/session.entity';
 import { AdminAuditLog } from './entities/admin-audit-log.entity';
 import { CreateAdminUserDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
 
+type AppRole = 'admin' | 'superadmin' | 'guest';
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -18,6 +20,12 @@ export class AdminService {
     private readonly auditLogRepository: Repository<AdminAuditLog>,
     private readonly authService: AuthService,
   ) {}
+
+  private normalizeRole(role: string | null | undefined): AppRole {
+    if (role === 'superadmin') return 'superadmin';
+    if (role === 'guest') return 'guest';
+    return 'admin';
+  }
 
   async listUsers() {
     const users = await this.userRepository.find({
@@ -39,7 +47,7 @@ export class AdminService {
       passwordHash: this.authService.hashPassword(dto.password),
       fullName: dto.fullName?.trim() || null,
       companyName: dto.companyName?.trim() || null,
-      role: dto.role || 'viewer',
+      role: dto.role || 'admin',
       isActive: true,
       billingStatus: dto.billingStatus || 'inactive',
       billingPlan: dto.billingPlan || null,
@@ -85,7 +93,7 @@ export class AdminService {
     }
 
     if (dto.role) {
-      user.role = dto.role;
+      user.role = dto.role || this.normalizeRole(user.role);
     }
 
     if (typeof dto.isActive === 'boolean') {
@@ -166,12 +174,13 @@ export class AdminService {
   }
 
   private serializeUser(user: User) {
+    const role = this.normalizeRole(user.role);
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
       companyName: user.companyName,
-      role: user.role,
+      role,
       isActive: user.isActive,
       billingStatus: user.billingStatus,
       billingPlan: user.billingPlan,

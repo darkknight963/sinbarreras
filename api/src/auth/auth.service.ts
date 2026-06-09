@@ -38,6 +38,8 @@ type OAuthStatePayload = {
   issuedAt: number;
 };
 
+type AppRole = 'admin' | 'superadmin' | 'guest';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -47,6 +49,12 @@ export class AuthService {
     private readonly sessionRepository: Repository<Session>,
     private readonly configService: ConfigService,
   ) {}
+
+  private normalizeRole(role: string | null | undefined): AppRole {
+    if (role === 'superadmin') return 'superadmin';
+    if (role === 'guest') return 'guest';
+    return 'admin';
+  }
 
   async onModuleInit() {
     const configuredAdminEmail = this.configService.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
@@ -155,7 +163,7 @@ export class AuthService {
         passwordHash: this.hashPassword(randomBytes(32).toString('hex')),
         fullName: profile.fullName?.trim() || null,
         companyName: null,
-        role: 'owner',
+        role: 'admin',
         isActive: true,
         billingStatus: 'inactive',
         billingPlan: null,
@@ -215,7 +223,7 @@ export class AuthService {
       passwordHash: this.hashPassword(dto.password),
       fullName: dto.fullName?.trim() || null,
       companyName: dto.companyName?.trim() || null,
-      role: 'owner',
+      role: 'admin',
       isActive: true,
       billingStatus: 'inactive',
       billingPlan: null,
@@ -267,6 +275,10 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('Sesion invalida');
+    if (this.normalizeRole(user.role) !== user.role) {
+      user.role = this.normalizeRole(user.role);
+      await this.userRepository.save(user);
+    }
     return this.serializeUser(user);
   }
 
@@ -344,12 +356,13 @@ export class AuthService {
   }
 
   private serializeUser(user: User) {
+    const role = this.normalizeRole(user.role);
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
       companyName: user.companyName,
-      role: user.role,
+      role,
       createdAt: user.createdAt,
       billingStatus: user.billingStatus,
       billingPlan: user.billingPlan,

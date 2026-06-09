@@ -421,7 +421,8 @@ export default function App() {
   const isGuestUser = currentUser?.role === 'guest';
   const isMasterAccount = currentUser?.role === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
   const canUsePaidFeatures = Boolean(isMasterAccount || (currentUser?.billingPlan && currentUser?.billingStatus === 'active'));
-  const canCreateProjects = canUsePaidFeatures;
+  const isAdminAccount = currentUser?.role === 'admin';
+  const canCreateProjects = Boolean(isAdminAccount || canUsePaidFeatures);
   const currentPlanLabel = isMasterAccount || (currentUser?.billingPlan === 'annual' && currentUser.billingStatus === 'active')
     ? 'Plan Enterprise'
     : canUsePaidFeatures
@@ -434,15 +435,11 @@ export default function App() {
   const currentUserRoleLabel =
     currentUser?.role === 'guest'
       ? 'Invitado'
-      : currentUser?.role === 'owner'
-      ? 'Propietario'
       : currentUser?.role === 'superadmin'
       ? 'Superadministrador'
       : currentUser?.role === 'admin'
       ? 'Administrador'
-        : currentUser?.role === 'viewer'
-          ? 'Lector'
-          : 'Usuario';
+        : 'Usuario';
   const currentUserInitials = currentUserLabel
     .split(/\s+/)
     .filter(Boolean)

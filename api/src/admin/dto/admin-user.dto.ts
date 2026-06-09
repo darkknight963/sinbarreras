@@ -21,8 +21,8 @@ export class CreateAdminUserDto {
   companyName?: string;
 
   @IsOptional()
-  @IsIn(['owner', 'admin', 'viewer'])
-  role?: 'owner' | 'admin' | 'viewer';
+  @IsIn(['admin', 'superadmin'])
+  role?: 'admin' | 'superadmin';
 
   @IsOptional()
   @IsIn(['inactive', 'pending', 'active', 'past_due', 'canceled'])
@@ -50,8 +50,8 @@ export class UpdateAdminUserDto {
   companyName?: string;
 
   @IsOptional()
-  @IsIn(['owner', 'admin', 'viewer'])
-  role?: 'owner' | 'admin' | 'viewer';
+  @IsIn(['admin', 'superadmin'])
+  role?: 'admin' | 'superadmin';
 
   @IsOptional()
   @IsBoolean()
