@@ -21,8 +21,8 @@ export class User {
   @Column({ type: 'text', nullable: true })
   companyName!: string | null;
 
-  @Column({ type: 'varchar', length: 32, default: 'admin' })
-  role!: 'admin' | 'superadmin' | 'guest';
+  @Column({ type: 'varchar', length: 32, default: 'free' })
+  role!: 'free' | 'admin' | 'superadmin' | 'guest';
 
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;

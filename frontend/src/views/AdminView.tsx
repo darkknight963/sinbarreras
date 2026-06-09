@@ -16,7 +16,7 @@ type AdminUser = {
   email: string;
   fullName: string | null;
   companyName: string | null;
-  role: 'admin' | 'superadmin';
+  role: 'free' | 'admin' | 'superadmin' | 'guest';
   isActive: boolean;
   billingStatus: 'inactive' | 'pending' | 'active' | 'past_due' | 'canceled';
   billingPlan: 'monthly' | 'annual' | null;
@@ -90,7 +90,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     password: '',
     fullName: '',
     companyName: '',
-    role: 'admin' as 'admin' | 'superadmin',
+    role: 'free' as AdminUser['role'],
   });
   const [passwordForm, setPasswordForm] = useState('');
 
@@ -175,7 +175,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
         password: '',
         fullName: '',
         companyName: '',
-        role: 'admin',
+        role: 'free',
       });
       await loadData();
     } catch (err) {
@@ -375,7 +375,8 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 Rol
                 <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}>
-                  <option value="admin">Admin</option>
+                  <option value="free">Usuario (Free)</option>
+                  <option value="admin">Administrador</option>
                   <option value="superadmin">Superadministrador</option>
                 </select>
               </label>
@@ -395,7 +396,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                   {selectedUser ? 'Guardar cambios' : 'Crear usuario'}
                 </button>
                 {selectedUser && (
-                  <button type="button" className="report-ghost-btn" onClick={() => { setSelectedUserId(null); setUserForm({ email: '', password: '', fullName: '', companyName: '', role: 'admin' }); }}>
+                  <button type="button" className="report-ghost-btn" onClick={() => { setSelectedUserId(null); setUserForm({ email: '', password: '', fullName: '', companyName: '', role: 'free' }); }}>
                     Limpiar
                   </button>
                 )}

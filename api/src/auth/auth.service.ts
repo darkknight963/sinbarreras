@@ -38,7 +38,7 @@ type OAuthStatePayload = {
   issuedAt: number;
 };
 
-type AppRole = 'admin' | 'superadmin' | 'guest';
+type AppRole = 'free' | 'admin' | 'superadmin' | 'guest';
 
 @Injectable()
 export class AuthService {
@@ -52,8 +52,9 @@ export class AuthService {
 
   private normalizeRole(role: string | null | undefined): AppRole {
     if (role === 'superadmin') return 'superadmin';
+    if (role === 'admin') return 'admin';
     if (role === 'guest') return 'guest';
-    return 'admin';
+    return 'free';
   }
 
   async onModuleInit() {
@@ -163,7 +164,7 @@ export class AuthService {
         passwordHash: this.hashPassword(randomBytes(32).toString('hex')),
         fullName: profile.fullName?.trim() || null,
         companyName: null,
-        role: 'admin',
+        role: 'free',
         isActive: true,
         billingStatus: 'inactive',
         billingPlan: null,
@@ -223,7 +224,7 @@ export class AuthService {
       passwordHash: this.hashPassword(dto.password),
       fullName: dto.fullName?.trim() || null,
       companyName: dto.companyName?.trim() || null,
-      role: 'admin',
+      role: 'free',
       isActive: true,
       billingStatus: 'inactive',
       billingPlan: null,
