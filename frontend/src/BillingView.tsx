@@ -27,17 +27,10 @@ const formatAmount = (plan: BillingPlan | undefined) => {
   return `${symbol} ${plan.amount}`;
 };
 
-const formatMonthlyDisplayAmount = (plan: BillingPlan | undefined) => {
-  if (!plan?.amount) return 'Pr\u00f3ximamente';
-  const symbol = plan.currency === 'PEN' ? 'S/' : '$';
-  const amount = plan.code === 'annual' ? Math.round(plan.amount / 12) : plan.amount;
-  return `${symbol} ${amount}`;
-};
-
 const formatBeforeAmount = (plan: BillingPlan | undefined) => {
   if (!plan?.amount) return null;
   const symbol = plan.currency === 'PEN' ? 'S/' : '$';
-  return `${symbol}${Math.round(plan.amount / 0.8)}`;
+  return `${symbol} 199`;
 };
 
 type CompareCell =
@@ -130,12 +123,13 @@ export function BillingView({
         ? 'Empezar con Pro'
         : 'Empezar con Pro';
   const beforeAnnualAmount = formatBeforeAmount(annualPlan);
+  const beforeProAmount = selectedPlan?.amount ? 'S/ 199' : null;
   const isAnnual = billingPeriod === 'annual';
-  const proDisplayPrice = selectedPlan?.amount ? formatMonthlyDisplayAmount(selectedPlan) : isAnnual ? 'S/ 79' : 'S/ 99';
+  const proDisplayPrice = 'S/ 79';
   const proAnnualNote = isAnnual
     ? annualPlan?.amount
       ? `${formatAmount(annualPlan)} facturado anualmente${beforeAnnualAmount ? ` - antes ${beforeAnnualAmount}` : ''}`
-      : 'S/ 948 facturado anualmente'
+      : 'S/ 199 facturado anualmente'
     : null;
   const enterprisePrice = '-';
   const enterpriseBillingNote = null;
@@ -226,6 +220,7 @@ export function BillingView({
             <div className={`billing-price-row ${selectedPlanUnavailable ? 'billing-price-unavailable' : ''}`}>
               <strong>{proDisplayPrice}</strong>
             </div>
+            {beforeProAmount && <p className="billing-price-note">Antes {beforeProAmount}</p>}
             <p className="billing-price-note">por mes</p>
             {proAnnualNote && <p className="billing-price-note">{proAnnualNote}</p>}
             <ul className="billing-feature-list">
@@ -254,9 +249,9 @@ export function BillingView({
                   <p>Empresa</p>
                 </div>
               </div>
-              <div className="billing-price-row">
-                <strong>{enterprisePrice}</strong>
-              </div>
+            <div className="billing-price-row">
+              <strong>{enterprisePrice}</strong>
+            </div>
               <p className="billing-price-note">por mes</p>
               {enterpriseBillingNote && <p className="billing-price-note">{enterpriseBillingNote}</p>}
               <ul className="billing-feature-list">
@@ -289,7 +284,7 @@ export function BillingView({
               </th>
               <th className="billing-compare-pro">
                 <span>Pro</span>
-                <small>S/ 99/mes</small>
+                <small>S/ 79/mes</small>
                 <em>Popular</em>
               </th>
               <th className="billing-compare-enterprise">
