@@ -57,9 +57,9 @@ const comparisonRows: CompareRow[] = [
   { type: 'row', feature: 'Análisis por mes', free: text('Ilimitado'), pro: text('Ilimitado'), enterprise: text('Ilimitado') },
   { type: 'section', label: 'Reportes y exportación' },
   { type: 'row', feature: 'Vista de resultados en pantalla', free: text('Limitado'), pro: mark(true), enterprise: mark(true) },
-  { type: 'row', feature: 'Exportar PDF Ejecutivo', free: mark(false), pro: mark(true), enterprise: mark(true) },
+  { type: 'row', feature: 'Exportar PDF ejecutivo', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Exportar PDF técnico', free: mark(false), pro: mark(true), enterprise: mark(true) },
-  { type: 'row', feature: 'Exportar Excel', free: mark(false), pro: mark(true), enterprise: mark(true) },
+  { type: 'row', feature: 'Exportar matriz Excel', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Historial de reportes', free: text('1'), pro: text('10'), enterprise: text('Ilimitado') },
   { type: 'section', label: 'Remediación' },
   { type: 'row', feature: 'Descripción del error + criterio WCAG', free: mark(false), pro: mark(true), enterprise: mark(true) },
@@ -72,6 +72,7 @@ const comparisonRows: CompareRow[] = [
   { type: 'row', feature: 'Declaración de accesibilidad', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Certificado de cumplimiento descargable', free: mark(false), pro: mark(false), enterprise: mark(true) },
   { type: 'section', label: 'Gestión y equipo' },
+  { type: 'row', feature: 'Creación de proyectos', free: mark(false), pro: mark(true), enterprise: mark(true) },
   { type: 'row', feature: 'Proyectos activos', free: mark(false), pro: text('10 proyectos'), enterprise: text('Hasta 50 proyectos') },
   { type: 'row', feature: 'Usuarios', free: text('1'), pro: text('1'), enterprise: text('Hasta 10') },
   { type: 'row', feature: 'Panel de gestión de hallazgos', free: mark(false), pro: mark(true), enterprise: mark(true) },
@@ -229,10 +230,10 @@ export function BillingView({
             {proAnnualNote && <p className="billing-price-note">{proAnnualNote}</p>}
             <ul className="billing-feature-list">
               <li><CheckCircle className="h-4 w-4" />An&aacute;lisis ilimitados</li>
-              <li><CheckCircle className="h-4 w-4" />Hasta 500 p&aacute;ginas</li>
-              <li><CheckCircle className="h-4 w-4" />Exportar PDF y Excel</li>
+              <li><CheckCircle className="h-4 w-4" />Exportar PDF ejecutivo y t&eacute;cnico</li>
+              <li><CheckCircle className="h-4 w-4" />Exportar matriz Excel</li>
               <li><CheckCircle className="h-4 w-4" />Pasos de remediaci&oacute;n</li>
-              <li><CheckCircle className="h-4 w-4" />Mapeo Ley N&deg; 29973</li>
+              <li><CheckCircle className="h-4 w-4" />Creaci&oacute;n de proyectos</li>
             </ul>
             <button
               type="button"
