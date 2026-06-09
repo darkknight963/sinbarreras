@@ -24,6 +24,8 @@ let runtimeApiBaseUrl = API_BASE_URL;
 const BRAND_NAME = 'Sin Barreras';
 const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
 const SESSION_STORAGE_KEY = 'sin-barreras-session-token';
+const CULQI_CHECKOUT_SRC = 'https://js.culqi.com/checkout-js';
+let culqiCheckoutLoader: Promise<void> | null = null;
 
 type AuthMode = 'session' | 'none' | 'public';
 
@@ -131,6 +133,40 @@ const readApiJson = async <T,>(res: Response): Promise<T | null> => {
   const text = await res.text();
   if (!text.trim()) return null;
   return JSON.parse(text) as T;
+};
+
+const loadCulqiCheckoutScript = async () => {
+  if (typeof window === 'undefined') return;
+  if (window.CulqiCheckout) return;
+  if (culqiCheckoutLoader) return culqiCheckoutLoader;
+
+  culqiCheckoutLoader = new Promise<void>((resolve, reject) => {
+    const existingScript = window.document.querySelector(`script[src="${CULQI_CHECKOUT_SRC}"]`) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      if (window.CulqiCheckout) {
+        resolve();
+        return;
+      }
+
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('No se pudo cargar Culqi Checkout')), { once: true });
+      return;
+    }
+
+    const script = window.document.createElement('script');
+    script.src = CULQI_CHECKOUT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('No se pudo cargar Culqi Checkout'));
+    window.document.head.appendChild(script);
+  }).catch((error) => {
+    culqiCheckoutLoader = null;
+    throw error;
+  });
+
+  return culqiCheckoutLoader;
 };
 
 export default function App() {
@@ -557,6 +593,13 @@ export default function App() {
     if (authLoading || authMode === 'none' || view !== 'billing') return;
     loadBillingData();
   }, [authLoading, authMode, view]);
+
+  useEffect(() => {
+    if (view !== 'billing') return;
+    void loadCulqiCheckoutScript().catch((err) => {
+      console.warn('Culqi preload failed', err);
+    });
+  }, [view]);
 
   useEffect(() => {
     if (authLoading || authMode !== 'public' || view !== 'project') return;
@@ -1114,6 +1157,8 @@ export default function App() {
       if (!amount) {
         throw new Error(`Falta configurar el monto para ${plan.label} en ${plan.currency}`);
       }
+
+      await loadCulqiCheckoutScript();
 
       const CheckoutCtor = window.CulqiCheckout;
       if (!CheckoutCtor) {
