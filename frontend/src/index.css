@@ -7514,8 +7514,32 @@ html body .auth-landing-nav nav a,
 html body .auth-landing-nav nav button,
 html body .auth-landing-nav .auth-nav-primary,
 html body .auth-landing-footer a,
+html body .auth-landing-footer button,
 html body .auth-landing-footer span {
   color: var(--sb-text) !important;
+}
+
+html body .auth-landing-footer {
+  border-top: 1px solid var(--sb-border) !important;
+  background: #ffffff !important;
+}
+
+html body .auth-landing-footer nav button {
+  min-height: 42px !important;
+  border: 1px solid var(--sb-border-strong) !important;
+  border-radius: 10px !important;
+  padding: 0 14px !important;
+  background: #ffffff !important;
+  color: var(--sb-text-strong) !important;
+  font-weight: 900 !important;
+  opacity: 1 !important;
+}
+
+html body .auth-landing-footer nav button:hover {
+  border-color: var(--sb-primary) !important;
+  color: var(--sb-primary) !important;
+  background: var(--sb-surface-accent) !important;
+  text-decoration: none !important;
 }
 
 html body .auth-landing-nav nav a:hover,
