@@ -9,6 +9,17 @@ import {
   Lock,
   ShieldCheck,
   X,
+import React, { useState } from 'react';
+import {
+  ArrowUpRight,
+  Cog,
+  EyeOff,
+  FileCheck2,
+  Globe2,
+  Landmark,
+  Lock,
+  ShieldCheck,
+  X,
   Zap,
 } from 'lucide-react';
 
@@ -17,6 +28,7 @@ type LegalPanel = 'terms' | 'returns' | 'complaints';
 interface AuthViewProps {
   authFormMode: 'login' | 'register';
   onToggleMode: () => void;
+  onSetMode?: (mode: 'login' | 'register') => void;
   authEmail: string;
   onEmailChange: (value: string) => void;
   authPassword: string;
@@ -48,6 +60,7 @@ interface AuthViewProps {
 export function AuthView({
   authFormMode,
   onToggleMode,
+  onSetMode,
   authEmail,
   onEmailChange,
   authPassword,
@@ -78,6 +91,12 @@ export function AuthView({
   }, [forceOpenAccessPanel]);
 
   const openAccessPanel = () => setShowAccessPanel(true);
+  
+  const handleNavLoginClick = () => {
+    if (onSetMode) onSetMode('login');
+    openAccessPanel();
+  };
+
   const closeAccessPanel = () => setShowAccessPanel(false);
   const handleStartGuest = () => onStartGuest();
   const openLegalPanel = (panel: LegalPanel) => {
@@ -124,7 +143,7 @@ export function AuthView({
           <a href="#how-it-works">C&oacute;mo funciona</a>
           <a href="#normative-coverage">Cobertura normativa</a>
           <button type="button" onClick={onViewPlans} disabled={guestSubmitting}>Planes</button>
-          <button type="button" className="auth-nav-login" onClick={openAccessPanel}>Iniciar sesi&oacute;n</button>
+          <button type="button" className="auth-nav-login" onClick={handleNavLoginClick}>Iniciar sesi&oacute;n</button>
         </nav>
       </header>
 

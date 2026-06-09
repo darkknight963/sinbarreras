@@ -1542,6 +1542,7 @@ export default function App() {
       <AuthView
         authFormMode={authFormMode}
         onToggleMode={() => setAuthFormMode(authFormMode === 'register' ? 'login' : 'register')}
+        onSetMode={setAuthFormMode}
         authEmail={authEmail}
         onEmailChange={setAuthEmail}
         authPassword={authPassword}
