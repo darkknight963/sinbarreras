@@ -427,19 +427,21 @@ export default function App() {
   const isGuestUser = currentUser?.role === 'guest';
   const isMasterAccount = currentUser?.role === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
   const isAdminAccount = currentUser?.role === 'admin';
+  const isProSubscriptionActive = Boolean(currentUser?.billingPlan && currentUser?.billingStatus === 'active');
+  const isEnterprisePlanActive = Boolean(currentUser?.billingPlan === 'annual' && currentUser?.billingStatus === 'active');
   const canUsePaidFeatures = Boolean(
     isMasterAccount ||
       isAdminAccount ||
-      (currentUser?.billingPlan && currentUser?.billingStatus === 'active')
+      isProSubscriptionActive
   );
   const canCreateProjects = Boolean(isAdminAccount || canUsePaidFeatures);
-  const currentPlanLabel = isMasterAccount || (currentUser?.billingPlan === 'annual' && currentUser.billingStatus === 'active')
-    ? 'Plan Enterprise'
+  const currentPlanLabel = isMasterAccount || isEnterprisePlanActive
+    ? 'Enterprise activo'
     : isAdminAccount
-      ? 'Cuenta Admin'
-      : (currentUser?.billingPlan && currentUser?.billingStatus === 'active')
-        ? 'Plan Pro'
-        : 'Plan Free';
+      ? 'Admin'
+      : isProSubscriptionActive
+        ? 'Pro activo'
+        : 'Free';
   const currentUserLabel = isGuestUser
     ? 'Modo invitado'
     : currentUser?.fullName || currentUser?.companyName || currentUser?.email || 'Cuenta';
