@@ -513,9 +513,10 @@ export function AuthView({
                 <h3>1. Objeto del Servicio y Alcance T&eacute;cnico</h3>
                 <p>
                   Sin Barreras brinda una herramienta automatizada de software orientada al an&aacute;lisis preventivo de accesibilidad web,
-                  basada en las Pautas de Accesibilidad para el Contenido Web (WCAG) y la normativa peruana aplicable (Ley N&deg; 29973).
-                  Los reportes, auditor&iacute;as y sugerencias de remediaci&oacute;n generados por la Plataforma tienen una finalidad exclusivamente
-                  informativa, t&eacute;cnica y de apoyo orientativo para procesos de mejora continua.
+                  basada en las Pautas de Accesibilidad para el Contenido Web (WCAG en sus versiones vigentes), la normativa peruana aplicable
+                  (Ley N&deg; 29973) y/o los est&aacute;ndares internacionales de accesibilidad an&aacute;logos seg&uacute;n corresponda. Los reportes, auditor&iacute;as
+                  y sugerencias de remediaci&oacute;n generados por la Plataforma tienen una finalidad exclusivamente informativa, t&eacute;cnica y de apoyo
+                  orientativo para procesos de mejora continua.
                 </p>
                 <h3>2. Exclusi&oacute;n de Responsabilidad (Disclaimer Cr&iacute;tico)</h3>
                 <ul>
@@ -545,12 +546,7 @@ export function AuthView({
                   Los planes de pago contratados habilitan funcionalidades adicionales seg&uacute;n las caracter&iacute;sticas y vigencia estipuladas en la tabla de planes.
                   El Titular se reserva el derecho de modificar las tarifas, notificando a los usuarios activos con una anticipaci&oacute;n razonable.
                 </p>
-                <h3>6. Ley Aplicable y Jurisdicci&oacute;n</h3>
-                <p>
-                  Estos T&eacute;rminos y Condiciones se rigen bajo las leyes de la Rep&uacute;blica del Per&uacute;. Cualquier controversia que no pueda ser resuelta
-                  de mutuo acuerdo, ser&aacute; sometida a la competencia exclusiva de los jueces y tribunales de Lima Cercado, Per&uacute;.
-                </p>
-                <h3>7. Contacto y Soporte</h3>
+                <h3>6. Contacto y Soporte</h3>
                 <p className="auth-legal-note">Para consultas relacionadas con contrataciones, incidencias t&eacute;cnicas o soporte, el canal oficial y exclusivo es: administrador@gzakgroup.com</p>
               </div>
             )}
