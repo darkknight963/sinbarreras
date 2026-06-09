@@ -4,6 +4,7 @@ import {
   Download,
   FileText,
   Gauge,
+  Lock,
   ListTree,
   TableProperties,
 } from 'lucide-react';
