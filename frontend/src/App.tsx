@@ -419,7 +419,7 @@ export default function App() {
   };
 
   const isGuestUser = currentUser?.role === 'guest';
-  const isMasterAccount = currentUser?.role === 'admin' || currentUser?.email === 'administrador@gzakgroup.com';
+  const isMasterAccount = currentUser?.role === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
   const canUsePaidFeatures = Boolean(isMasterAccount || (currentUser?.billingPlan && currentUser?.billingStatus === 'active'));
   const canCreateProjects = canUsePaidFeatures;
   const currentPlanLabel = isMasterAccount || (currentUser?.billingPlan === 'annual' && currentUser.billingStatus === 'active')
@@ -436,8 +436,10 @@ export default function App() {
       ? 'Invitado'
       : currentUser?.role === 'owner'
       ? 'Propietario'
+      : currentUser?.role === 'superadmin'
+      ? 'Superadministrador'
       : currentUser?.role === 'admin'
-        ? 'Administrador'
+      ? 'Administrador'
         : currentUser?.role === 'viewer'
           ? 'Lector'
           : 'Usuario';

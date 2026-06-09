@@ -3836,33 +3836,9 @@ html body .scan-launch-grid {
   color: var(--sb-text-muted);
 }
 
-.auth-google-button,
 .auth-submit-button {
   min-height: 44px;
   border-radius: 8px;
-}
-
-.auth-google-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 1px solid var(--sb-border);
-  background: #ffffff;
-  color: var(--sb-text);
-  font-weight: 800;
-}
-
-.auth-google-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: var(--sb-surface-accent);
-  color: var(--sb-primary);
-  font-weight: 900;
 }
 
 .auth-divider {

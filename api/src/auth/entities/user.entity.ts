@@ -22,7 +22,7 @@ export class User {
   companyName!: string | null;
 
   @Column({ type: 'varchar', length: 32, default: 'owner' })
-  role!: 'owner' | 'admin' | 'viewer' | 'guest';
+  role!: 'owner' | 'admin' | 'superadmin' | 'viewer' | 'guest';
 
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;

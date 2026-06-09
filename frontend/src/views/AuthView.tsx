@@ -404,10 +404,6 @@ export function AuthView({
                   </p>
                 </div>
 
-                <button type="button" className="auth-google-button">
-                  <span className="auth-google-mark" aria-hidden="true">G</span>
-                  <span>Continuar con Google</span>
-                </button>
                 <div className="auth-divider" role="separator">
                   <span>o con correo</span>
                 </div>

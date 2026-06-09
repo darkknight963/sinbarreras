@@ -51,10 +51,13 @@ export class AuthService {
   async onModuleInit() {
     const configuredAdminEmail = this.configService.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
     const configuredAdminPassword = this.configService.get<string>('ADMIN_PASSWORD')?.trim();
+    const masterAdminEmail = configuredAdminEmail || 'administrador@gzakgroup.com';
 
-    if (configuredAdminEmail && configuredAdminPassword) {
-      const legacyAdminEmail = configuredAdminEmail === 'administrador@sinbarreras.com' ? undefined : 'administrador@sinbarreras.com';
-      await this.ensureAdminUser(configuredAdminEmail, configuredAdminPassword, legacyAdminEmail);
+    if (configuredAdminPassword) {
+      const legacyAdminEmails = masterAdminEmail === 'administrador@gzakgroup.com'
+        ? ['administrador@sinbarreras.com']
+        : ['administrador@sinbarreras.com', 'administrador@gzakgroup.com'];
+      await this.ensureAdminUser(masterAdminEmail, configuredAdminPassword, legacyAdminEmails);
       return;
     }
 
@@ -62,20 +65,23 @@ export class AuthService {
       return;
     }
 
-    await this.ensureAdminUser('administrador@sinbarreras.com', '12345678', 'demo@sinbarreras.local');
+    await this.ensureAdminUser('administrador@gzakgroup.com', '12345678', ['administrador@sinbarreras.com', 'demo@sinbarreras.local']);
   }
 
-  private async ensureAdminUser(email: string, password: string, legacyEmail?: string) {
+  private async ensureAdminUser(email: string, password: string, legacyEmails: string[] = []) {
     const existingMaster = await this.userRepository.findOne({ where: { email } });
-    const legacyDemo = legacyEmail ? await this.userRepository.findOne({ where: { email: legacyEmail } }) : null;
-    const masterUser = existingMaster || legacyDemo || this.userRepository.create();
+    const legacyUsers = await Promise.all(
+      legacyEmails.map(async (legacyEmail) => this.userRepository.findOne({ where: { email: legacyEmail } })),
+    );
+    const legacyUser = legacyUsers.find((user): user is User => Boolean(user));
+    const masterUser = existingMaster || legacyUser || this.userRepository.create();
 
     Object.assign(masterUser, {
       email,
       passwordHash: this.hashPassword(password),
       fullName: 'Administrador',
       companyName: 'Sin Barreras',
-      role: 'admin',
+      role: 'superadmin',
       isActive: true,
       billingStatus: 'active',
       billingPlan: 'annual',
