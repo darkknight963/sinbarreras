@@ -281,7 +281,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
         <div>
           <span className="project-overview-kicker">Administración</span>
           <h2 className="text-2xl font-bold text-white">Panel maestro</h2>
-          <p className="text-slate-300 text-sm">Usuarios, libro de reclamaciones y bitácora de acciones sensibles.</p>
+          <p className="text-slate-800 text-sm">Usuarios, libro de reclamaciones y bitácora de acciones sensibles.</p>
         </div>
         <button type="button" className="report-ghost-btn" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -343,7 +343,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       {loading ? (
         <div className="report-empty-state project-empty-card">
           <RefreshCw className="h-6 w-6 animate-spin" />
-          <p className="text-sm text-slate-400">Cargando panel administrativo...</p>
+          <p className="text-sm text-slate-800">Cargando panel administrativo...</p>
         </div>
       ) : null}
 
@@ -362,19 +362,19 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             <div className="grid gap-3">
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 Correo
-                <input className="create-project-control" type="email" required value={userForm.email} onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))} />
+                <input className="create-project-control" type="email" autoComplete="email" required value={userForm.email} onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))} />
               </label>
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 Nombre completo
-                <input className="create-project-control" type="text" value={userForm.fullName} onChange={(e) => setUserForm((prev) => ({ ...prev, fullName: e.target.value }))} />
+                <input className="create-project-control" type="text" autoComplete="name" value={userForm.fullName} onChange={(e) => setUserForm((prev) => ({ ...prev, fullName: e.target.value }))} />
               </label>
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 Empresa
-                <input className="create-project-control" type="text" value={userForm.companyName} onChange={(e) => setUserForm((prev) => ({ ...prev, companyName: e.target.value }))} />
+                <input className="create-project-control" type="text" autoComplete="organization" value={userForm.companyName} onChange={(e) => setUserForm((prev) => ({ ...prev, companyName: e.target.value }))} />
               </label>
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 Rol
-                <select className="create-project-control" value={userForm.role} onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}>
+                <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}>
                   <option value="viewer">Viewer</option>
                   <option value="owner">Owner</option>
                   <option value="admin">Admin</option>
@@ -383,7 +383,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               {!selectedUser && (
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
                   Contraseña inicial
-                  <input className="create-project-control" type="password" required minLength={12} value={userForm.password} onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))} />
+                  <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))} />
                 </label>
               )}
               {selectedUser && (
@@ -414,7 +414,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 <form className="mt-3 grid gap-3" onSubmit={handleResetPassword}>
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
                     Nueva contraseña
-                    <input className="create-project-control" type="password" required minLength={12} value={passwordForm} onChange={(e) => setPasswordForm(e.target.value)} />
+                    <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={passwordForm} onChange={(e) => setPasswordForm(e.target.value)} />
                   </label>
                   <button type="submit" className="report-action-btn" disabled={savingKey === `reset-${selectedUser.id}`}>
                     <KeyRound className="h-4 w-4" />

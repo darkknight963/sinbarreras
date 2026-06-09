@@ -10646,6 +10646,25 @@ html body :where(.text-white, .text-white\/65, .text-white\/70, .text-white\/80,
   color: var(--sb-text) !important;
 }
 
+html body .project-overview-header > div > p,
+html body .project-empty-card > p,
+html body .project-empty-card p.text-slate-800,
+html body .project-empty-card p.text-slate-600,
+html body .report-empty-state.project-empty-card > p.text-slate-800,
+html body .report-empty-state.project-empty-card > p.text-slate-600 {
+  color: #334155 !important;
+}
+
+html body .project-overview-surface .text-slate-800,
+html body .project-overview-surface .text-slate-600,
+html body .project-overview-surface .text-slate-500 {
+  color: #475569 !important;
+}
+
+html body .project-overview-surface .project-summary-card span {
+  color: #475569 !important;
+}
+
 html body a,
 html body :where(.text-gob-blue, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) {
   color: var(--sb-primary) !important;

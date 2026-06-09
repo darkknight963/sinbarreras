@@ -118,7 +118,7 @@ export function ProjectsView({
         <div>
           <span className="project-overview-kicker">Panel de auditoría</span>
           <h2 className="text-2xl font-bold text-white">Proyectos Digitales</h2>
-          <p className="text-slate-300 text-sm">Monitorea y gestiona el cumplimiento de accesibilidad de los servicios públicos o privados.</p>
+          <p className="text-slate-800 text-sm">Monitorea y gestiona el cumplimiento de accesibilidad de los servicios públicos o privados.</p>
         </div>
         {canCreateProjects ? (
           <button
@@ -216,7 +216,7 @@ export function ProjectsView({
             <span className="project-empty-icon" aria-hidden="true">
               <FolderOpen className="h-7 w-7" />
             </span>
-            <p className="text-slate-400 font-medium mb-1">
+            <p className="text-slate-800 font-medium mb-1">
               {projects.length === 0 ? 'No hay proyectos registrados' : 'No hay proyectos en este filtro'}
             </p>
             <p className="text-slate-500 text-sm">
@@ -253,6 +253,7 @@ export function ProjectsView({
               key={p.id}
               className={`report-card-entity project-card-clickable ${projectStatusClass}`}
               aria-labelledby={`project-title-${p.id}`}
+              role="button"
               tabIndex={0}
               onClick={() => onProjectClick(p)}
               onKeyDown={(event) => {
