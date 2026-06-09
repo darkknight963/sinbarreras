@@ -985,7 +985,13 @@ export default function App() {
 
   const handleDeleteScan = async (scan: Scan, event: React.MouseEvent) => {
     event.stopPropagation();
-    const confirmed = window.confirm(`¿Eliminar este análisis ${scan.scanMode} del historial?`);
+    const scanModeLabel =
+      scan.scanMode === 'rápido'
+        ? 'análisis rápido de accesibilidad'
+        : scan.scanMode === 'profundo'
+          ? 'análisis profundo de accesibilidad'
+          : 'análisis especializado de accesibilidad';
+    const confirmed = window.confirm(`¿Eliminar este ${scanModeLabel} del historial?`);
     if (!confirmed) return;
 
     try {

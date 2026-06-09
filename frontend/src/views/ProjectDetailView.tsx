@@ -127,6 +127,11 @@ export function ProjectDetailView({
     && canonicalizePlanUrl(parsedNewScanUrls[0]) !== canonicalizePlanUrl(freeReservedUrl || '');
   const blocksFreeScan = exceedsUrlLimit || changesFreeUrl;
   const isManualLoginLocked = !canUseManualLogin;
+  const getScanModeLabel = (scanMode: string) => {
+    if (scanMode === 'rápido') return 'análisis rápido de accesibilidad';
+    if (scanMode === 'profundo') return 'análisis profundo de accesibilidad';
+    return 'análisis especializado de accesibilidad';
+  };
   const urlHelpText = freeReservedUrl
     ? `Puedes reescanear tu URL guardada: ${freeReservedUrl}.`
     : 'Ingresa una URL pública para este análisis.';
@@ -403,13 +408,13 @@ export function ProjectDetailView({
                   <div className="scan-history-main">
                     <div className="scan-history-title-row">
                       <div>
-                        <span>Análisis {scan.scanMode}</span>
+                        <span>{getScanModeLabel(scan.scanMode)}</span>
                         {renderStatusBadge(scan.status)}
                         {!isRunning && (
                           <button
                             type="button"
                             className="report-danger-icon-btn"
-                            aria-label={`Eliminar análisis ${scan.scanMode}`}
+                            aria-label={`Eliminar ${getScanModeLabel(scan.scanMode)}`}
                             onClick={(event) => onDeleteScan(scan, event)}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden="true" />
