@@ -12,6 +12,8 @@ import {
   Zap,
 } from 'lucide-react';
 
+type LegalPanel = 'terms' | 'returns' | 'complaints';
+
 interface AuthViewProps {
   authFormMode: 'login' | 'register';
   onToggleMode: () => void;
@@ -52,10 +54,21 @@ export function AuthView({
   useDemoCredentials,
 }: AuthViewProps) {
   const [showAccessPanel, setShowAccessPanel] = useState(false);
+  const [activeLegalPanel, setActiveLegalPanel] = useState<LegalPanel | null>(null);
+  const [complaintNotice, setComplaintNotice] = useState<string | null>(null);
 
   const openAccessPanel = () => setShowAccessPanel(true);
   const closeAccessPanel = () => setShowAccessPanel(false);
   const handleStartGuest = () => onStartGuest();
+  const openLegalPanel = (panel: LegalPanel) => {
+    setComplaintNotice(null);
+    setActiveLegalPanel(panel);
+  };
+  const closeLegalPanel = () => setActiveLegalPanel(null);
+  const handleComplaintSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setComplaintNotice('Tu registro fue recibido en el Libro de Reclamaciones virtual. Conserva una copia de la informacion enviada.');
+  };
 
   return (
     <div className="auth-landing min-h-screen">
@@ -468,12 +481,116 @@ export function AuthView({
           <span>Sin Barreras</span>
         </a>
         <nav aria-label="Legal">
-          <a href="#privacidad">Privacidad</a>
-          <a href="#terminos">T&eacute;rminos</a>
-          <a href="#contacto">Contacto</a>
+          <button type="button" onClick={() => openLegalPanel('terms')}>T&eacute;rminos y Condiciones</button>
+          <button type="button" onClick={() => openLegalPanel('returns')}>Cambios y devoluciones</button>
+          <button type="button" onClick={() => openLegalPanel('complaints')}>Libro de reclamaciones</button>
         </nav>
         <span>&copy; 2026 Sin Barreras &middot; Lima, Per&uacute;</span>
       </footer>
+
+      {activeLegalPanel && (
+        <div className="auth-legal-modal-overlay" role="presentation" onClick={closeLegalPanel}>
+          <section
+            className="auth-legal-modal"
+            aria-modal="true"
+            role="dialog"
+            aria-label="Informaci&oacute;n legal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button type="button" className="auth-access-close" aria-label="Cerrar informaci&oacute;n legal" onClick={closeLegalPanel}>
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+
+            {activeLegalPanel === 'terms' && (
+              <div className="auth-legal-content">
+                <span className="auth-section-eyebrow">Informaci&oacute;n legal</span>
+                <h2>T&eacute;rminos y Condiciones</h2>
+                <p>
+                  Sin Barreras brinda una plataforma digital de an&aacute;lisis de accesibilidad web basada en criterios t&eacute;cnicos WCAG y normativa peruana aplicable.
+                  Los reportes generados tienen finalidad informativa, t&eacute;cnica y de apoyo para procesos de mejora continua.
+                </p>
+                <ul>
+                  <li>El usuario es responsable de ingresar URLs propias o autorizadas para evaluaci&oacute;n.</li>
+                  <li>Los resultados pueden variar seg&uacute;n disponibilidad del sitio, cambios de contenido, bloqueos, autenticaci&oacute;n o restricciones t&eacute;cnicas.</li>
+                  <li>Los planes de pago habilitan funcionalidades adicionales como historial, exportaci&oacute;n y remediaci&oacute;n seg&uacute;n lo indicado en la tabla de planes.</li>
+                  <li>Sin Barreras no emite certificaciones oficiales; entrega reportes t&eacute;cnicos de cumplimiento y hallazgos.</li>
+                  <li>El uso de la plataforma implica la aceptaci&oacute;n de estas condiciones.</li>
+                </ul>
+                <p className="auth-legal-note">Contacto comercial y soporte: ventas@sinbarreras.pe</p>
+              </div>
+            )}
+
+            {activeLegalPanel === 'returns' && (
+              <div className="auth-legal-content">
+                <span className="auth-section-eyebrow">Pol&iacute;tica comercial</span>
+                <h2>Pol&iacute;ticas de cambio o devoluciones</h2>
+                <p>
+                  Al tratarse de un servicio digital, la activaci&oacute;n del plan y el acceso a funcionalidades Pro se realizan de forma inmediata o dentro del plazo operativo
+                  informado al usuario.
+                </p>
+                <ul>
+                  <li>Si el pago fue duplicado o hubo un error comprobable de cobro, el usuario puede solicitar revisi&oacute;n y devoluci&oacute;n.</li>
+                  <li>Si el servicio no pudo activarse por una incidencia atribuible a Sin Barreras, se ofrecer&aacute; correcci&oacute;n, cambio de acceso o devoluci&oacute;n seg&uacute;n corresponda.</li>
+                  <li>No aplican devoluciones por uso efectivo del servicio, descarga de reportes o cambio de decisi&oacute;n posterior a la activaci&oacute;n.</li>
+                  <li>Las solicitudes se revisan dentro de un plazo m&aacute;ximo de 7 d&iacute;as h&aacute;biles.</li>
+                </ul>
+                <p className="auth-legal-note">Solicitudes: ventas@sinbarreras.pe</p>
+              </div>
+            )}
+
+            {activeLegalPanel === 'complaints' && (
+              <div className="auth-legal-content">
+                <span className="auth-section-eyebrow">Atenci&oacute;n al consumidor</span>
+                <h2>Libro de Reclamaciones</h2>
+                <p>
+                  Conforme a la normativa peruana de protecci&oacute;n al consumidor, ponemos a disposici&oacute;n este Libro de Reclamaciones virtual
+                  para registrar reclamos o quejas sobre el servicio.
+                </p>
+                <form className="auth-complaint-form" onSubmit={handleComplaintSubmit}>
+                  <label>
+                    Nombre completo
+                    <input name="fullName" required />
+                  </label>
+                  <label>
+                    Documento de identidad
+                    <input name="document" required />
+                  </label>
+                  <label>
+                    Correo electr&oacute;nico
+                    <input name="email" type="email" required />
+                  </label>
+                  <label>
+                    Tel&eacute;fono
+                    <input name="phone" required />
+                  </label>
+                  <label>
+                    Tipo
+                    <select name="type" required>
+                      <option value="reclamo">Reclamo</option>
+                      <option value="queja">Queja</option>
+                    </select>
+                  </label>
+                  <label>
+                    Servicio contratado
+                    <input name="service" defaultValue="Sin Barreras - Plan Pro" required />
+                  </label>
+                  <label className="auth-complaint-wide">
+                    Detalle del reclamo o queja
+                    <textarea name="detail" rows={4} required />
+                  </label>
+                  <label className="auth-complaint-wide">
+                    Pedido del consumidor
+                    <textarea name="request" rows={3} required />
+                  </label>
+                  <button type="submit">Registrar reclamo</button>
+                </form>
+                {complaintNotice && <p className="auth-legal-success">{complaintNotice}</p>}
+                <p className="auth-legal-note">La respuesta ser&aacute; atendida dentro de los plazos establecidos por la normativa aplicable.</p>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }
