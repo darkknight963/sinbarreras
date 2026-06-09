@@ -9,17 +9,6 @@ import {
   Lock,
   ShieldCheck,
   X,
-import React, { useState } from 'react';
-import {
-  ArrowUpRight,
-  Cog,
-  EyeOff,
-  FileCheck2,
-  Globe2,
-  Landmark,
-  Lock,
-  ShieldCheck,
-  X,
   Zap,
 } from 'lucide-react';
 
