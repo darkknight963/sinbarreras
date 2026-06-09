@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import {
   Shield,
@@ -429,7 +429,9 @@ export default function App() {
   const canCreateProjects = Boolean(isAdminAccount || canUsePaidFeatures);
   const currentPlanLabel = isMasterAccount || (currentUser?.billingPlan === 'annual' && currentUser.billingStatus === 'active')
     ? 'Plan Enterprise'
-      : canUsePaidFeatures
+    : isAdminAccount
+      ? 'Cuenta Admin'
+      : (currentUser?.billingPlan && currentUser?.billingStatus === 'active')
         ? 'Plan Pro'
         : 'Plan Free';
   const currentUserLabel = isGuestUser
@@ -593,7 +595,7 @@ export default function App() {
   }, [authLoading, authMode]);
 
   useEffect(() => {
-    if (authLoading || view !== 'project') return;
+    if (authLoading || authMode !== 'session' || view !== 'project') return;
     if (!currentProject) return;
 
     const hasInProgressScans = (currentProject.scans || []).some(isScanInProgress);
@@ -609,6 +611,7 @@ export default function App() {
     return () => window.clearInterval(intervalId);
   }, [
     authLoading,
+    authMode,
     view,
     currentProject?.id,
     currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
@@ -619,14 +622,18 @@ export default function App() {
     if (!currentScan || !isScanInProgress(currentScan)) return;
 
     const refreshScan = () => {
-      void fetchScanDetails(currentScan.id);
+      if (authMode === 'public') {
+        void fetchPublicScanDetails(currentScan.id);
+      } else {
+        void fetchScanDetails(currentScan.id);
+      }
     };
 
     refreshScan();
     const intervalId = window.setInterval(refreshScan, 15000);
 
     return () => window.clearInterval(intervalId);
-  }, [authLoading, view, currentScan?.id, currentScan?.status]);
+  }, [authLoading, authMode, view, currentScan?.id, currentScan?.status]);
 
   useEffect(() => {
     if (authLoading || authMode === 'none' || view !== 'billing') return;
@@ -1785,6 +1792,13 @@ export default function App() {
             getApplicabilityStatusClass={getApplicabilityStatusClass}
             getFindingStatusLabel={getFindingStatusLabel}
             getFindingStatusClass={getFindingStatusClass}
+            onViewPlans={() => {
+              if (authMode === 'public') {
+                setAuthMode('none');
+              } else {
+                setView('billing');
+              }
+            }}
           />
         )}
 

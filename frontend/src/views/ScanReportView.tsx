@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Download,
@@ -541,6 +541,7 @@ interface ScanReportViewProps {
   getApplicabilityStatusClass: (status: string) => string;
   getFindingStatusLabel: (finding: any) => string;
   getFindingStatusClass: (finding: any) => string;
+  onViewPlans?: () => void;
 }
 
 export function ScanReportView({
@@ -580,6 +581,7 @@ export function ScanReportView({
   getApplicabilityStatusClass,
   getFindingStatusLabel,
   getFindingStatusClass,
+  onViewPlans,
 }: ScanReportViewProps) {
   const wcagLevelDashboard = getWcagLevelDashboard(applicabilityRows);
   const findingMessageGroups = getFindingMessageGroups(applicabilityRows);
@@ -640,8 +642,13 @@ export function ScanReportView({
                 <button onClick={() => onExport('excel')} className="report-action-btn report-action-btn-green"><Download className="h-4 w-4" />Exportar Excel</button>
               </div>
             ) : (
-              <div className="report-pro-lockout">
-                Exportes y remediaciones están disponibles en Pro.
+              <div className="report-pro-lockout flex items-center justify-between gap-4">
+                <span>Exportes y remediaciones están disponibles en Pro.</span>
+                {onViewPlans && (
+                  <button type="button" onClick={onViewPlans} className="report-action-btn report-action-btn-green shrink-0">
+                    Ver opciones de pago
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -912,7 +919,7 @@ export function ScanReportView({
                       <option value="no_aplica">No aplica</option>
                     </select>
                   ) : (
-                    <span className="report-pro-locked-pill">Plan Pro</span>
+                    <button type="button" onClick={onViewPlans} className="report-pro-locked-pill cursor-pointer hover:bg-slate-200">Plan Pro</button>
                   )}
                 </label>
                 <label>
@@ -926,7 +933,7 @@ export function ScanReportView({
                       <option value="na">N/A</option>
                     </select>
                   ) : (
-                    <span className="report-pro-locked-pill">Plan Pro</span>
+                    <button type="button" onClick={onViewPlans} className="report-pro-locked-pill cursor-pointer hover:bg-slate-200">Plan Pro</button>
                   )}
                 </label>
                 <label>
