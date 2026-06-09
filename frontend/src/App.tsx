@@ -717,7 +717,14 @@ export default function App() {
       const res = await fetchWithFallback('/projects');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setProjects([...data].sort((a: Project, b: Project) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setProjects(
+        [...data]
+          .map((project: Project) => ({
+            ...project,
+            scans: dedupeScansById(project.scans || []),
+          }))
+          .sort((a: Project, b: Project) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      );
     } catch (err) {
       handleApiError('No se pudieron cargar los proyectos', err);
     }
@@ -730,7 +737,10 @@ export default function App() {
       if (!res.ok) throw new Error(await readApiErrorMessage(res));
       const data = await readApiJson<Project>(res);
       if (!data) throw new Error('La API devolvió una respuesta vacía para el proyecto.');
-      setCurrentProject(data);
+      setCurrentProject({
+        ...data,
+        scans: dedupeScansById(data.scans || []),
+      });
     } catch (err) {
       handleApiError('No se pudo cargar el detalle del proyecto', err);
     }
@@ -771,7 +781,7 @@ export default function App() {
       if (scan.project) {
         setCurrentProject({
           ...scan.project,
-          scans: [scan],
+          scans: dedupeScansById([scan]),
         });
       }
       if (scan.urlResults && scan.urlResults.length > 0) {
@@ -808,7 +818,7 @@ export default function App() {
       });
       if (res.ok) {
         const createdProject = await res.json() as Project;
-        const projectWithScans = { ...createdProject, scans: createdProject.scans || [] };
+        const projectWithScans = { ...createdProject, scans: dedupeScansById(createdProject.scans || []) };
         setShowCreateProject(false);
         setNewProjectName('');
         setCurrentProject(projectWithScans);
@@ -907,7 +917,7 @@ export default function App() {
         if (scan.project) {
           setCurrentProject({
             ...scan.project,
-            scans: [scan],
+            scans: dedupeScansById([scan]),
           });
         }
         setSelectedUrlResult(null);
@@ -1167,6 +1177,16 @@ export default function App() {
     } finally {
       setBillingLoading(false);
     }
+  };
+
+  const dedupeScansById = (scans: Scan[] = []) => {
+    const uniqueScans = new Map<string, Scan>();
+    for (const scan of scans) {
+      if (!uniqueScans.has(scan.id)) {
+        uniqueScans.set(scan.id, scan);
+      }
+    }
+    return [...uniqueScans.values()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const handleBillingSubscribe = async (plan: BillingPlan) => {

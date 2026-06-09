@@ -66,7 +66,7 @@ export function ProjectDetailView({
   openInspectionUrl,
 }: ProjectDetailViewProps) {
   const urlCount = parsedNewScanUrls.length;
-  const scans = [...(currentProject.scans || [])].sort((a: any, b: any) => {
+  const scans = [...new Map((currentProject.scans || []).map((scan: any) => [scan.id, scan])).values()].sort((a: any, b: any) => {
     const bTime = new Date(b.createdAt || 0).getTime();
     const aTime = new Date(a.createdAt || 0).getTime();
     return bTime - aTime;
