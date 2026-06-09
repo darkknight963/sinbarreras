@@ -53,7 +53,8 @@ export class AuthService {
     const configuredAdminPassword = this.configService.get<string>('ADMIN_PASSWORD')?.trim();
 
     if (configuredAdminEmail && configuredAdminPassword) {
-      await this.ensureAdminUser(configuredAdminEmail, configuredAdminPassword);
+      const legacyAdminEmail = configuredAdminEmail === 'administrador@sinbarreras.com' ? undefined : 'administrador@sinbarreras.com';
+      await this.ensureAdminUser(configuredAdminEmail, configuredAdminPassword, legacyAdminEmail);
       return;
     }
 
@@ -175,7 +176,7 @@ export class AuthService {
     return this.buildSessionResponse(user, session.token);
   }
 
-  private hashPassword(password: string, salt = randomBytes(16).toString('hex')) {
+  hashPassword(password: string, salt = randomBytes(16).toString('hex')) {
     const derived = pbkdf2Sync(password, salt, PASSWORD_ITERATIONS, PASSWORD_KEY_LENGTH, 'sha256').toString('hex');
     return `${salt}:${derived}`;
   }

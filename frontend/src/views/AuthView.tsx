@@ -32,6 +32,16 @@ interface AuthViewProps {
   onViewPlans: () => void;
   appError: string | null;
   useDemoCredentials: () => void;
+  onSubmitComplaint: (payload: {
+    fullName: string;
+    document: string;
+    email: string;
+    phone: string;
+    type: 'reclamo' | 'queja';
+    service: string;
+    detail: string;
+    request: string;
+  }) => Promise<void>;
 }
 
 export function AuthView({
@@ -52,22 +62,45 @@ export function AuthView({
   onViewPlans,
   appError,
   useDemoCredentials,
+  onSubmitComplaint,
 }: AuthViewProps) {
   const [showAccessPanel, setShowAccessPanel] = useState(false);
   const [activeLegalPanel, setActiveLegalPanel] = useState<LegalPanel | null>(null);
   const [complaintNotice, setComplaintNotice] = useState<string | null>(null);
+  const [complaintError, setComplaintError] = useState<string | null>(null);
 
   const openAccessPanel = () => setShowAccessPanel(true);
   const closeAccessPanel = () => setShowAccessPanel(false);
   const handleStartGuest = () => onStartGuest();
   const openLegalPanel = (panel: LegalPanel) => {
     setComplaintNotice(null);
+    setComplaintError(null);
     setActiveLegalPanel(panel);
   };
   const closeLegalPanel = () => setActiveLegalPanel(null);
-  const handleComplaintSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleComplaintSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setComplaintNotice('Tu registro fue recibido en el Libro de Reclamaciones virtual. Conserva una copia de la informacion enviada.');
+    const form = event.currentTarget;
+    const data = new FormData(form);
+
+    try {
+      await onSubmitComplaint({
+        fullName: String(data.get('fullName') || ''),
+        document: String(data.get('document') || ''),
+        email: String(data.get('email') || ''),
+        phone: String(data.get('phone') || ''),
+        type: String(data.get('type') || 'reclamo') as 'reclamo' | 'queja',
+        service: String(data.get('service') || ''),
+        detail: String(data.get('detail') || ''),
+        request: String(data.get('request') || ''),
+      });
+      setComplaintError(null);
+      setComplaintNotice('Tu registro fue recibido en el Libro de Reclamaciones virtual. Conserva una copia de la informacion enviada.');
+      form.reset();
+    } catch (error) {
+      setComplaintNotice(null);
+      setComplaintError(error instanceof Error ? error.message : 'No se pudo registrar el reclamo.');
+    }
   };
 
   return (
@@ -635,6 +668,7 @@ export function AuthView({
                   <button type="submit">Registrar reclamo</button>
                 </form>
                 {complaintNotice && <p className="auth-legal-success">{complaintNotice}</p>}
+                {complaintError && <p className="auth-error">{complaintError}</p>}
                 <p className="auth-legal-note">La respuesta ser&aacute; atendida dentro de los plazos establecidos por la normativa aplicable.</p>
               </div>
             )}

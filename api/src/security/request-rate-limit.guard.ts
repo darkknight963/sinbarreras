@@ -10,6 +10,7 @@ export class RequestRateLimitGuard implements CanActivate {
     scan: { limit: 20, windowMs: 15 * 60 * 1000 },
     project: { limit: 60, windowMs: 60 * 60 * 1000 },
     report: { limit: 120, windowMs: 15 * 60 * 1000 },
+    complaint: { limit: 5, windowMs: 60 * 60 * 1000 },
   } as const;
 
   constructor(

@@ -11,6 +11,8 @@ import { UrlResult } from './url-results/entities/url-result.entity';
 import { User } from './auth/entities/user.entity';
 import { Session } from './auth/entities/session.entity';
 import { BillingSubscription } from './billing/entities/billing-subscription.entity';
+import { Complaint } from './complaints/entities/complaint.entity';
+import { AdminAuditLog } from './admin/entities/admin-audit-log.entity';
 import { ProjectsModule } from './projects/projects.module';
 import { ScansModule } from './scans/scans.module';
 import { UrlResultsModule } from './url-results/url-results.module';
@@ -19,6 +21,8 @@ import { ComplianceModule } from './compliance/compliance.module';
 import { ReportsModule } from './reports/reports.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
+import { ComplaintsModule } from './complaints/complaints.module';
 import { BillingModule } from './billing/billing.module';
 import { ApiTokenGuard } from './auth/api-token.guard';
 import { RequestRateLimitGuard } from './security/request-rate-limit.guard';
@@ -80,7 +84,7 @@ const buildRedisConnection = (
               password: config.get<string>('DB_PASSWORD', 'postgres'),
               database: config.get<string>('DB_NAME', 'accessibility_db'),
             }),
-        entities: [Project, Scan, UrlResult, User, Session, BillingSubscription],
+        entities: [Project, Scan, UrlResult, User, Session, BillingSubscription, Complaint, AdminAuditLog],
         synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
       }),
     }),
@@ -113,6 +117,8 @@ const buildRedisConnection = (
     ReportsModule,
     EvidenceModule,
     AuthModule,
+    AdminModule,
+    ComplaintsModule,
     BillingModule,
   ],
   controllers: [AppController],

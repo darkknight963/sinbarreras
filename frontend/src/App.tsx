@@ -15,6 +15,7 @@ import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, CULQI_PUB
 import { BillingView } from './BillingView';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
+import { AdminView } from './views/AdminView';
 import { ProjectsView } from './views/ProjectsView';
 import { ProjectDetailView } from './views/ProjectDetailView';
 import { ScanReportView } from './views/ScanReportView';
@@ -157,7 +158,7 @@ export default function App() {
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const [view, setView] = useState<'projects' | 'project' | 'scan' | 'billing'>('projects');
+  const [view, setView] = useState<'projects' | 'project' | 'scan' | 'billing' | 'admin'>('projects');
 
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -327,7 +328,7 @@ export default function App() {
 
   const useDemoCredentials = () => {
     setAuthFormMode('login');
-    setAuthEmail('administrador@sinbarreras.com');
+    setAuthEmail('administrador@gzakgroup.com');
     setAuthPassword('12345678');
     setAppError(null);
   };
@@ -382,7 +383,7 @@ export default function App() {
   };
 
   const isGuestUser = currentUser?.role === 'guest';
-  const isMasterAccount = currentUser?.role === 'admin' || currentUser?.email === 'administrador@sinbarreras.com';
+  const isMasterAccount = currentUser?.role === 'admin' || currentUser?.email === 'administrador@gzakgroup.com';
   const canUsePaidFeatures = Boolean(isMasterAccount || (currentUser?.billingPlan && currentUser?.billingStatus === 'active'));
   const canCreateProjects = canUsePaidFeatures;
   const currentPlanLabel = isMasterAccount || (currentUser?.billingPlan === 'annual' && currentUser.billingStatus === 'active')
@@ -453,6 +454,28 @@ export default function App() {
       setPasswordMessage('No se pudo cambiar la contraseña. Verifica tus datos e intenta nuevamente.');
     } finally {
       setPasswordSubmitting(false);
+    }
+  };
+
+  const handleSubmitComplaint = async (payload: {
+    fullName: string;
+    document: string;
+    email: string;
+    phone: string;
+    type: 'reclamo' | 'queja';
+    service: string;
+    detail: string;
+    request: string;
+  }) => {
+    const response = await fetchWithFallback('/complaints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `HTTP ${response.status}`);
     }
   };
 
@@ -1430,6 +1453,7 @@ export default function App() {
         onViewPlans={handleViewPlansFromLanding}
         appError={appError}
         useDemoCredentials={useDemoCredentials}
+        onSubmitComplaint={handleSubmitComplaint}
       />
     );
   }
@@ -1504,6 +1528,20 @@ export default function App() {
                         <span>Cambiar contraseña</span>
                       </button>
                     )}
+                    {isMasterAccount && (
+                      <button
+                        type="button"
+                        className="header-user-menu-item"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowAccountMenu(false);
+                          setView('admin');
+                        }}
+                      >
+                        <UserRound className="h-4 w-4" aria-hidden="true" />
+                        <span>Panel admin</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="header-user-menu-item"
@@ -1523,11 +1561,11 @@ export default function App() {
 
       <main
         id="main-content"
-        className={`app-main-content ${view === 'scan' ? 'report-page-main' : view === 'projects' ? 'projects-page-main' : view === 'project' ? 'project-detail-page-main' : 'billing-page-main'} mx-auto p-6`}
+        className={`app-main-content ${view === 'scan' ? 'report-page-main' : view === 'projects' ? 'projects-page-main' : view === 'project' ? 'project-detail-page-main' : view === 'admin' ? 'billing-page-main' : 'billing-page-main'} mx-auto p-6`}
         tabIndex={-1}
       >
         <p className="visually-hidden" aria-live="polite">
-          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : view === 'scan' ? 'Informe de escaneo' : 'Planes y pagos'}
+          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : view === 'scan' ? 'Informe de escaneo' : view === 'admin' ? 'Administración' : 'Planes y pagos'}
         </p>
         {appError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
@@ -1675,6 +1713,13 @@ export default function App() {
             onSubscribe={handleBillingSubscribe}
             onReload={loadBillingData}
             onBack={handleBackFromBilling}
+          />
+        )}
+
+        {view === 'admin' && currentUser && isMasterAccount && (
+          <AdminView
+            onBack={() => setView('projects')}
+            fetchWithAuth={(path, init) => fetchWithFallback(path, init)}
           />
         )}
       </main>
