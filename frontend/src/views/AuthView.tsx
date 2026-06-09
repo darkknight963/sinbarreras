@@ -164,20 +164,22 @@ export function AuthView({
                   <h2>Reporte de accesibilidad &mdash; miecommerce.com.pe</h2>
                   <p>Resultados agrupados por problema &middot; WCAG 2.0 o superior</p>
                 </div>
-                <div className="auth-report-preview-badges" aria-label="Resumen de hallazgos">
+                <section className="auth-report-preview-badges" aria-labelledby="auth-report-preview-badges-title">
+                  <h3 id="auth-report-preview-badges-title" className="visually-hidden">Resumen de hallazgos</h3>
                   <span className="auth-preview-badge auth-preview-badge-error">18 errores</span>
                   <span className="auth-preview-badge auth-preview-badge-review">19 revisiones</span>
                   <span className="auth-preview-badge auth-preview-badge-elements">138 elementos</span>
-                </div>
+                </section>
               </div>
 
-              <div className="auth-report-preview-metrics" aria-label="Metricas del reporte">
+              <section className="auth-report-preview-metrics" aria-labelledby="auth-report-preview-metrics-title">
+                <h3 id="auth-report-preview-metrics-title" className="visually-hidden">Metricas del reporte</h3>
                 <div><span>Total</span><strong>86</strong></div>
                 <div><span>Aplican</span><strong>55</strong></div>
                 <div><span>Cumplen</span><strong className="auth-preview-good">43</strong></div>
                 <div><span>Fallan</span><strong className="auth-preview-bad">8</strong></div>
                 <div><span>Revision</span><strong className="auth-preview-warn">4</strong></div>
-              </div>
+              </section>
 
               <div className="auth-report-preview-section-title">Resultados agrupados por problema</div>
               <div className="auth-report-preview-findings">
@@ -199,7 +201,13 @@ export function AuthView({
               </div>
 
               <div className="auth-report-preview-section-title">Criterios WCAG y hallazgos</div>
-              <div className="auth-report-preview-table-wrap">
+              <div
+                className="auth-report-preview-table-wrap"
+                tabIndex={0}
+                role="region"
+                aria-labelledby="auth-report-preview-table-title"
+              >
+                <h3 id="auth-report-preview-table-title" className="visually-hidden">Criterios WCAG y hallazgos</h3>
                 <table className="auth-report-preview-table">
                   <thead>
                     <tr>
@@ -316,7 +324,8 @@ export function AuthView({
             <p>Sin instalar nada. Sin configurar nada. Solo pega tu URL.</p>
           </div>
 
-          <div className="auth-flow-timeline" aria-label="Flujo de auditoria">
+          <section className="auth-flow-timeline" aria-labelledby="auth-flow-timeline-title">
+            <h2 id="auth-flow-timeline-title" className="visually-hidden">Flujo de auditoria</h2>
             <article className="auth-flow-step auth-flow-step-free">
               <span className="auth-flow-icon"><Globe2 className="h-5 w-5" aria-hidden="true" /></span>
               <div className="auth-flow-copy">
@@ -369,7 +378,7 @@ export function AuthView({
               </div>
               <button type="button" onClick={handleStartGuest} disabled={guestSubmitting}>Extensi&oacute;n gratuita</button>
             </aside>
-          </div>
+          </section>
         </section>
 
         <section className="auth-final-cta" aria-label="Comenzar analisis">

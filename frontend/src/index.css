@@ -15809,6 +15809,12 @@ html body .auth-report-preview-table-wrap {
   overflow-x: auto !important;
 }
 
+html body .auth-report-preview-table-wrap:focus-visible {
+  outline: 3px solid #1d4ed8 !important;
+  outline-offset: 3px !important;
+  border-radius: 10px !important;
+}
+
 html body .auth-report-preview-table {
   width: 100% !important;
   min-width: 720px !important;
