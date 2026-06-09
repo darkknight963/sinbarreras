@@ -84,6 +84,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({
     email: '',
     password: '',
@@ -96,6 +97,10 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) || null,
     [selectedUserId, users],
+  );
+  const selectedComplaint = useMemo(
+    () => complaints.find((complaint) => complaint.id === selectedComplaintId) || null,
+    [complaints, selectedComplaintId],
   );
 
   const loadData = async () => {
@@ -138,6 +143,12 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     });
     setPasswordForm('');
   }, [selectedUser]);
+
+  useEffect(() => {
+    if (selectedComplaintId && !selectedComplaint) {
+      setSelectedComplaintId(null);
+    }
+  }, [selectedComplaintId, selectedComplaint]);
 
   const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -504,6 +515,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                     <td>{formatDateTime(complaint.createdAt)}</td>
                     <td>
                       <div className="flex flex-wrap gap-2">
+                        <button type="button" className="report-ghost-btn" onClick={() => setSelectedComplaintId(complaint.id)}>
+                          Ver detalle
+                        </button>
                         <button type="button" className="report-ghost-btn" onClick={() => updateComplaintStatus(complaint, 'in_review')} disabled={savingKey === `complaint-${complaint.id}`}>
                           En revisión
                         </button>
@@ -520,6 +534,42 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               </tbody>
             </table>
           </div>
+
+          {selectedComplaint && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Detalle del reclamo</p>
+                  <h4 className="mt-1 text-lg font-bold text-slate-900">{selectedComplaint.fullName}</h4>
+                  <p className="text-sm text-slate-600">
+                    {selectedComplaint.type} · {selectedComplaint.email} · {selectedComplaint.phone}
+                  </p>
+                </div>
+                <button type="button" className="report-ghost-btn" onClick={() => setSelectedComplaintId(null)}>
+                  Cerrar detalle
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Servicio</p>
+                  <p className="mt-2 text-sm font-medium text-slate-900">{selectedComplaint.service}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Estado</p>
+                  <p className="mt-2 text-sm font-medium text-slate-900">{selectedComplaint.status}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Detalle</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">{selectedComplaint.detail}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pedido del consumidor</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">{selectedComplaint.request}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

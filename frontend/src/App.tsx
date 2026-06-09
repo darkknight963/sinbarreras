@@ -474,8 +474,7 @@ export default function App() {
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `HTTP ${response.status}`);
+      throw new Error(await readApiErrorMessage(response));
     }
   };
 
