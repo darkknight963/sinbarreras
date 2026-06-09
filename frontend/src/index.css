@@ -7855,7 +7855,7 @@ html body .billing-feature-list svg {
 
 html body .billing-feature-muted,
 html body .billing-feature-muted svg {
-  color: #94a3b8 !important;
+  color: #475569 !important;
 }
 
 html body .billing-contact-btn,
@@ -7961,7 +7961,7 @@ html body .billing-compare-table th.billing-compare-pro :is(span, small, em) {
 
 html body .billing-compare-table .billing-compare-enterprise {
   position: relative !important;
-  color: #94a3b8 !important;
+  color: #475569 !important;
 }
 
 html body .billing-compare-table th.billing-compare-enterprise {

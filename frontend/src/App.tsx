@@ -592,6 +592,42 @@ export default function App() {
   }, [authLoading, authMode]);
 
   useEffect(() => {
+    if (authLoading || view !== 'project') return;
+    if (!currentProject) return;
+
+    const hasInProgressScans = (currentProject.scans || []).some(isScanInProgress);
+    if (!hasInProgressScans) return;
+
+    const refreshProject = () => {
+      void fetchProjectDetails(currentProject.id);
+    };
+
+    refreshProject();
+    const intervalId = window.setInterval(refreshProject, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    authLoading,
+    view,
+    currentProject?.id,
+    currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
+  ]);
+
+  useEffect(() => {
+    if (authLoading || view !== 'scan') return;
+    if (!currentScan || !isScanInProgress(currentScan)) return;
+
+    const refreshScan = () => {
+      void fetchScanDetails(currentScan.id);
+    };
+
+    refreshScan();
+    const intervalId = window.setInterval(refreshScan, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [authLoading, view, currentScan?.id, currentScan?.status]);
+
+  useEffect(() => {
     if (authLoading || authMode === 'none' || view !== 'billing') return;
     loadBillingData();
   }, [authLoading, authMode, view]);
