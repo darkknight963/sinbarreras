@@ -1001,7 +1001,7 @@ export default function App() {
         ? 'análisis rápido de accesibilidad'
         : scan.scanMode === 'profundo'
           ? 'análisis profundo de accesibilidad'
-          : 'análisis especializado de accesibilidad';
+          : 'Escaneando sitio: Verificando estándares de accesibilidad...';
     const confirmed = window.confirm(`¿Eliminar este ${scanModeLabel} del historial?`);
     if (!confirmed) return;
 

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -130,7 +130,7 @@ export function ProjectDetailView({
   const getScanModeLabel = (scanMode: string) => {
     if (scanMode === 'rápido') return 'análisis rápido de accesibilidad';
     if (scanMode === 'profundo') return 'análisis profundo de accesibilidad';
-    return 'análisis especializado de accesibilidad';
+    return 'Escaneando sitio: Verificando estándares de accesibilidad...';
   };
   const urlHelpText = freeReservedUrl
     ? `Puedes reescanear tu URL guardada: ${freeReservedUrl}.`
