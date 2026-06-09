@@ -146,7 +146,18 @@ export class BillingService {
     const subscriptionId = this.extractSubscriptionId(payload);
     const customerEmail = this.extractCustomerEmail(payload);
 
-    if (!eventName.startsWith('subscription.')) {
+    const supportedEvents = [
+      'subscription.creation.succeeded',
+      'subscription.creation.failed',
+      'subscription.charge.succeeded',
+      'subscription.charge.failed',
+      'subscription.cancel.succeeded',
+      'subscription.cancel.failed',
+      'charge.succeeded',
+      'charge.failed',
+    ];
+
+    if (!supportedEvents.some((supportedEvent) => eventName === supportedEvent || eventName.startsWith('subscription.'))) {
       return { ok: true, ignored: true };
     }
 
@@ -172,6 +183,26 @@ export class BillingService {
 
   getWebhookSecret() {
     return this.configService.get<string>('CULQI_WEBHOOK_SECRET', '').trim();
+  }
+
+  getCulqiWebhookConfig() {
+    return {
+      path: '/billing/webhooks/culqi',
+      method: 'POST',
+      supportedEvents: [
+        'subscription.creation.succeeded',
+        'subscription.creation.failed',
+        'subscription.charge.succeeded',
+        'subscription.charge.failed',
+        'subscription.cancel.succeeded',
+        'subscription.cancel.failed',
+        'charge.succeeded',
+        'charge.failed',
+      ],
+      secretHeaderNames: ['x-culqi-webhook-secret', 'x-webhook-secret'],
+      secretEnvVar: 'CULQI_WEBHOOK_SECRET',
+      note: 'Registra la URL en Culqi y, si tu panel permite headers personalizados, usa el mismo secreto del backend.',
+    };
   }
 
   private async resolvePlan(planCode: BillingPlanCode, currency: BillingCurrency) {

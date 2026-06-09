@@ -72,4 +72,10 @@ export class BillingController {
       },
     });
   }
+
+  @Public()
+  @Get('webhooks/culqi/config')
+  getCulqiWebhookConfig() {
+    return this.billingService.getCulqiWebhookConfig();
+  }
 }
