@@ -536,10 +536,12 @@ export function AuthView({
           </div>
         )}
       </main>
+      <footer>
+        <nav>
           <button type="button" onClick={() => openLegalPanel('complaints')}>Libro de reclamaciones</button>
         </nav>
         <span>&copy; 2026 Sin Barreras &middot; Lima, Per&uacute;</span>
-      </footer >
+      </footer>
 
     { activeLegalPanel && (
       <div className="auth-legal-modal-overlay" role="presentation" onClick={closeLegalPanel}>
