@@ -21,17 +21,6 @@ type BillingViewProps = {
   onBack: () => void;
 };
 
-const formatAmount = (plan: BillingPlan | undefined) => {
-  if (!plan?.amount) return 'Pr\u00f3ximamente';
-  const symbol = plan.currency === 'PEN' ? 'S/' : '$';
-  return `${symbol} ${plan.amount}`;
-};
-
-const formatBeforeAmount = (plan: BillingPlan | undefined) => {
-  if (!plan?.amount) return null;
-  const symbol = plan.currency === 'PEN' ? 'S/' : '$';
-  return `${symbol} 199`;
-};
 
 type CompareCell =
   | { kind: 'mark'; value: boolean }
@@ -98,7 +87,7 @@ export function BillingView({
   onBack,
   onSubscribe,
 }: BillingViewProps) {
-  const [billingPeriod, setBillingPeriod] = useState<BillingPlanCode>('monthly');
+  const [billingPeriod] = useState<BillingPlanCode>('monthly');
   const currencyPlans = plans.filter((plan) => plan.currency === billingCurrency);
   const availablePlans = currencyPlans.filter((plan) => plan.available);
   const unavailablePlans = currencyPlans.filter((plan) => !plan.available);
@@ -122,17 +111,7 @@ export function BillingView({
       : selectedPlanUnavailable
         ? 'Empezar con Pro'
         : 'Empezar con Pro';
-  const beforeAnnualAmount = formatBeforeAmount(annualPlan);
-  const beforeProAmount = selectedPlan?.amount ? 'S/ 199' : null;
-  const isAnnual = billingPeriod === 'annual';
-  const proDisplayPrice = 'S/ 79';
-  const proAnnualNote = isAnnual
-    ? annualPlan?.amount
-      ? `${formatAmount(annualPlan)} facturado anualmente${beforeAnnualAmount ? ` - antes ${beforeAnnualAmount}` : ''}`
-      : 'S/ 199 facturado anualmente'
-    : null;
-  const enterprisePrice = '-';
-  const enterpriseBillingNote = null;
+
 
   return (
     <section className="billing-page billing-simple-page" aria-label="Planes y tarifas">
