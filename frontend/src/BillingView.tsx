@@ -96,7 +96,7 @@ export function BillingView({
     () => currencyPlans.find((plan) => plan.code === billingPeriod) || availablePlans[0] || currencyPlans[0],
     [availablePlans, billingPeriod, currencyPlans],
   );
-  const annualPlan = currencyPlans.find((plan) => plan.code === 'annual');
+
   const activeSelectedPlan = Boolean(
     selectedPlan &&
     billingState?.plan === selectedPlan.code &&
