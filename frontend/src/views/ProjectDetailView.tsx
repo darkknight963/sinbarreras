@@ -293,38 +293,10 @@ export function ProjectDetailView({
                         </p>
                         <ol className="list-decimal pl-5 space-y-1 mt-2">
                           <li>Haz clic en <strong className="text-blue-700">Iniciar escaneo</strong> al final de esta ventana.</li>
-                          <li><strong>(Automático)</strong> Los datos de Token e ID se enviarán a tu extensión.</li>
+                          <li>Los datos de Token e ID se enviarán automaticamente a tu extensión.</li>
                           <li>Ve a la pestaña que quieres analizar, abre la extensión y haz clic en <strong>Analizar</strong>.</li>
-                          <li className="text-gray-500 text-[11px] mt-1 italic list-none -ml-5">Si la conexión automática falla, puedes copiar los datos manualmente a continuación.</li>
+                          <li className="text-gray-500 text-[11px] mt-1 italic list-none -ml-5">Si la conexión automática falla, puedes copiar los datos de Token y ID que se mostrarán en la siguiente pantalla.</li>
                         </ol>
-                      </div>
-                      <div className="grid gap-3 md:grid-cols-2 mt-2">
-                        <div>
-                          <span className="block text-[11px] font-bold text-slate-500 mb-1">TOKEN DE ACCESO</span>
-                          <div
-                            className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
-                            onClick={() => handleCopy(typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '', 'token')}
-                            title="Copiar token"
-                          >
-                            <code className="text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
-                              {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
-                            </code>
-                            {copiedToken ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
-                          <div
-                            className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
-                            onClick={() => handleCopy(pendingScanId, 'id')}
-                            title="Copiar ID"
-                          >
-                            <code className="text-slate-800 select-all text-xs">
-                              {pendingScanId}
-                            </code>
-                            {copiedId ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
-                          </div>
-                        </div>
                       </div>
                       <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex">
                         <Download className="h-4 w-4" aria-hidden="true" />
