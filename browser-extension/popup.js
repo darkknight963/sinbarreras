@@ -1,4 +1,4 @@
-const apiBaseInput = document.getElementById('api-base');
+
 const apiTokenInput = document.getElementById('api-token');
 const scanIdInput = document.getElementById('scan-id');
 const currentUrl = document.getElementById('current-url');
@@ -19,15 +19,13 @@ const normalizeApiBase = (value) => value.replace(/\/+$/, '');
 
 const saveSettings = async () => {
   await chrome.storage.sync.set({
-    apiBase: apiBaseInput.value.trim(),
     apiToken: apiTokenInput.value.trim(),
     scanId: scanIdInput.value.trim(),
   });
 };
 
 const loadSettings = async () => {
-  const settings = await chrome.storage.sync.get(['apiBase', 'apiToken', 'scanId']);
-  apiBaseInput.value = settings.apiBase || 'http://localhost:3000';
+  const settings = await chrome.storage.sync.get(['apiToken', 'scanId']);
   apiTokenInput.value = settings.apiToken || '';
   scanIdInput.value = settings.scanId || '';
 };
@@ -77,7 +75,7 @@ const removeScreenshot = (audit) => ({
 });
 
 const postAudit = async (audit) => {
-  const apiBase = normalizeApiBase(apiBaseInput.value.trim());
+  const apiBase = normalizeApiBase('https://sinbarreras-production.up.railway.app');
   const token = apiTokenInput.value.trim();
   const scanId = scanIdInput.value.trim();
 
@@ -105,7 +103,7 @@ const runAudit = async () => {
     return;
   }
 
-  if (!apiBaseInput.value.trim() || !apiTokenInput.value.trim() || !scanIdInput.value.trim()) {
+  if (!apiTokenInput.value.trim() || !scanIdInput.value.trim()) {
     setStatus('Completa API, token e ID del escaneo antes de continuar.', 'error');
     return;
   }
@@ -150,4 +148,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 runButton.addEventListener('click', runAudit);
-[apiBaseInput, apiTokenInput, scanIdInput].forEach((input) => input.addEventListener('change', saveSettings));
+[apiTokenInput, scanIdInput].forEach((input) => input.addEventListener('change', saveSettings));
