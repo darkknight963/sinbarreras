@@ -38,10 +38,6 @@ export class ApiTokenGuard implements CanActivate {
       return true;
     }
 
-    if (isPublic) {
-      return true;
-    }
-
     const configuredToken = process.env.API_AUTH_TOKEN?.trim();
     const rawAuthorization = request.headers.authorization;
     const authorization = Array.isArray(rawAuthorization) ? rawAuthorization[0] : rawAuthorization;
@@ -49,25 +45,32 @@ export class ApiTokenGuard implements CanActivate {
 
     if (configuredToken && authorization === `Bearer ${configuredToken}`) {
       request.authMode = 'service';
-      return true;
+    } else if (normalizedAuthorization) {
+      try {
+        const session = await this.authService?.validateSessionToken(normalizedAuthorization);
+        if (session) {
+          request.authMode = 'session';
+          request.user = {
+            id: session.user.id,
+            email: session.user.email,
+            fullName: session.user.fullName,
+            role: normalizeRole(session.user.role),
+            companyName: session.user.companyName,
+            billingStatus: session.user.billingStatus,
+            billingPlan: session.user.billingPlan,
+          };
+          request.authSessionToken = normalizedAuthorization;
+        }
+      } catch (err) {
+        // Ignorar errores de token invalido si es publico, sino lanzar
+        if (!isPublic) {
+          throw new UnauthorizedException('Token invalido');
+        }
+      }
     }
 
-    if (normalizedAuthorization) {
-      const session = await this.authService?.validateSessionToken(normalizedAuthorization);
-      if (session) {
-        request.authMode = 'session';
-        request.user = {
-          id: session.user.id,
-          email: session.user.email,
-          fullName: session.user.fullName,
-          role: normalizeRole(session.user.role),
-          companyName: session.user.companyName,
-          billingStatus: session.user.billingStatus,
-          billingPlan: session.user.billingPlan,
-        };
-        request.authSessionToken = normalizedAuthorization;
-        return true;
-      }
+    if (request.authMode || isPublic) {
+      return true;
     }
 
     if (!configuredToken && process.env.NODE_ENV !== 'production') {
