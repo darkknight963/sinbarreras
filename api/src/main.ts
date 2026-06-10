@@ -28,19 +28,27 @@ async function bootstrap() {
     .flatMap((value) => value!.split(',').map((origin) => origin.trim()).filter(Boolean));
 
   app.enableCors({
-    origin: [
-      'http://localhost',
-      'http://localhost:80',
-      'http://localhost:5173',
-      'http://localhost:4173',
-      'http://127.0.0.1',
-      'http://127.0.0.1:80',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:4173',
-      'https://sinbarreras.gzakgroup.com',
-      'https://www.sinbarreras.gzakgroup.com',
-      ...configuredOrigins,
-    ],
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      const allowedOrigins = [
+        'http://localhost',
+        'http://localhost:80',
+        'http://localhost:5173',
+        'http://localhost:4173',
+        'http://127.0.0.1',
+        'http://127.0.0.1:80',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:4173',
+        'https://sinbarreras.gzakgroup.com',
+        'https://www.sinbarreras.gzakgroup.com',
+        ...configuredOrigins,
+      ];
+
+      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
