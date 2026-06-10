@@ -12,7 +12,7 @@ import {
   Zap,
 } from 'lucide-react';
 
-const EXTENSION_DOWNLOAD_URL = '/downloads/sin-barreras-extension.zip';
+const EXTENSION_DOWNLOAD_URL = 'https://chromewebstore.google.com/detail/sin-barreras-auditoria-au/bipiiijphpkdbodephdbahlkdcnopjao';
 
 interface ProjectDetailViewProps {
   currentProject: any;
@@ -265,11 +265,11 @@ export function ProjectDetailView({
                 <div className="scan-extension-helper">
                   <div>
                     <strong>Extensión para sitios con login</strong>
-                    <small>Descárgala, instálala en Chrome o Edge y ejecútala desde la pestaña autenticada. Los resultados se enviarán al reporte del sistema.</small>
+                    <small>Descárgala de la Chrome Web Store y ejecútala en tu sitio web. <strong className="text-gob-blue block mt-1">Nota: Una vez presiones "Iniciar escaneo", se generará el ID y el Token que necesitarás pegar en la extensión.</strong></small>
                   </div>
-                  <a href={EXTENSION_DOWNLOAD_URL} download>
+                  <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4" aria-hidden="true" />
-                    Descargar extensión
+                    Ir a Chrome Web Store
                   </a>
                 </div>
               )}
