@@ -424,9 +424,10 @@ export default function App() {
     setView('projects');
   };
 
-  const isGuestUser = currentUser?.role === 'guest';
-  const isMasterAccount = currentUser?.role === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
-  const isAdminAccount = currentUser?.role === 'admin';
+  const userRole = currentUser?.role?.toLowerCase() || 'free';
+  const isGuestUser = userRole === 'guest';
+  const isMasterAccount = userRole === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
+  const isAdminAccount = userRole === 'admin';
   const isProSubscriptionActive = Boolean(currentUser?.billingPlan && currentUser?.billingStatus === 'active');
   const isEnterprisePlanActive = Boolean(currentUser?.billingPlan === 'annual' && currentUser?.billingStatus === 'active');
   const canUsePaidFeatures = Boolean(
@@ -447,11 +448,11 @@ export default function App() {
     : currentUser?.fullName || currentUser?.companyName || currentUser?.email || 'Cuenta';
   const currentUserDetail = isGuestUser ? 'Sesion temporal sin cuenta' : currentUser?.email || '';
   const currentUserRoleLabel =
-    currentUser?.role === 'guest'
+    userRole === 'guest'
       ? 'Invitado'
-      : currentUser?.role === 'superadmin'
+      : userRole === 'superadmin'
       ? 'Superadministrador'
-      : currentUser?.role === 'admin'
+      : userRole === 'admin'
       ? 'Administrador'
         : 'Usuario';
   const currentUserInitials = currentUserLabel

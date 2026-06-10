@@ -7,12 +7,16 @@ import { Public } from '../auth/public.decorator';
 
 type BillingAwareUser = {
   id: string;
+  role?: string | null;
   billingPlan?: string | null;
   billingStatus?: string | null;
 };
 
-const hasPaidBillingAccess = (user: BillingAwareUser | null | undefined) =>
-  Boolean(user?.billingPlan && user.billingStatus === 'active');
+const hasPaidBillingAccess = (user: BillingAwareUser | null | undefined) => {
+  const role = user?.role?.toLowerCase() || 'free';
+  if (role === 'admin' || role === 'superadmin') return true;
+  return Boolean(user?.billingPlan && user.billingStatus === 'active');
+};
 
 @Controller('scans')
 export class ScansController {
