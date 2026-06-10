@@ -286,9 +286,16 @@ export function ProjectDetailView({
               {newScanLoginMode === 'manual_assisted' && (
                 <div className="scan-extension-helper flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
-                    <div>
-                      <strong>Extensión para sitios con login</strong>
-                      <small>Descárgala de la Chrome Web Store y ejecútala en tu sitio web. Copia los siguientes datos y pégalos en la extensión:</small>
+                    <div className="bg-blue-50 text-blue-900 border border-blue-200 p-3 rounded-md text-xs">
+                      <p className="font-bold mb-1 text-[13px] flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4" />
+                        ¡Sigue estos pasos en orden!
+                      </p>
+                      <ol className="list-decimal pl-5 space-y-1 mt-2">
+                        <li><strong>Copia</strong> el Token y el ID mostrados aquí abajo.</li>
+                        <li>Haz clic en el botón <strong className="text-blue-700">Iniciar escaneo</strong> al final de esta ventana para registrar la auditoría.</li>
+                        <li>Ve a la pestaña que quieres analizar, abre la extensión, pega los datos y haz clic en <strong>Analizar</strong>.</li>
+                      </ol>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 mt-2">
                       <div>
