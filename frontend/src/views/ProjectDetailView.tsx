@@ -451,18 +451,41 @@ export function ProjectDetailView({
                   </div>
 
                   {isRunning ? (
-                    <div className="scan-history-result">
-                      <div className="scan-history-priority">
-                        <span>Progreso</span>
-                        <strong>{scanPercent}%</strong>
+                    <div className="scan-history-result" style={scan.status === 'awaiting_login' ? { flexDirection: 'column', alignItems: 'flex-start' } : undefined}>
+                      <div className="flex w-full items-center justify-between" style={scan.status === 'awaiting_login' ? { width: '100%' } : undefined}>
+                        <div className="scan-history-priority">
+                          <span>Progreso</span>
+                          <strong>{scanPercent}%</strong>
+                        </div>
+                        <div className="scan-progress-track flex-1 mx-4">
+                          <div className="scan-progress-fill" style={{ width: `${scanPercent}%` }} />
+                        </div>
+                        <div className="scan-history-priority text-right">
+                          <span>{getScanStatusLabel(scan.status, scanPercent)}</span>
+                          <span className="text-gob-blue">Actualizando</span>
+                        </div>
                       </div>
-                      <div className="scan-progress-track">
-                        <div className="scan-progress-fill" style={{ width: `${scanPercent}%` }} />
-                      </div>
-                      <div className="scan-history-priority">
-                        <span>{getScanStatusLabel(scan.status, scanPercent)}</span>
-                        <span className="text-gob-blue">Actualizando</span>
-                      </div>
+
+                      {scan.status === 'awaiting_login' && (
+                        <div className="w-full bg-slate-50 p-4 rounded-md border border-slate-200 mt-4 text-sm" onClick={(e) => e.stopPropagation()}>
+                          <p className="font-semibold text-slate-800 mb-1">Instrucciones para la extensión:</p>
+                          <p className="text-slate-600 mb-4">Abre la extensión de Sin Barreras en la pestaña donde tienes la sesión iniciada y copia los siguientes datos:</p>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <span className="block text-xs font-bold text-slate-500 mb-1">TOKEN DE ACCESO (Haz clic para seleccionar)</span>
+                              <code className="block w-full bg-white border border-slate-300 p-2.5 rounded text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap">
+                                {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
+                              </code>
+                            </div>
+                            <div>
+                              <span className="block text-xs font-bold text-slate-500 mb-1">ID DEL ESCANEO (Haz clic para seleccionar)</span>
+                              <code className="block w-full bg-white border border-slate-300 p-2.5 rounded text-slate-800 select-all">
+                                {scan.id}
+                              </code>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : scan.status === 'cancelled' ? (
                     <div className="scan-history-result">
