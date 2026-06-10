@@ -1247,18 +1247,26 @@ export default function App() {
         throw new Error('No se cargó el script de Culqi Checkout');
       }
 
-      const checkout: CulqiCheckoutInstance = new CheckoutCtor(publicKey, {
+      const checkoutConfig = {
         settings: {
           title: BRAND_NAME,
           currency: plan.currency,
           amount,
         },
-      });
+        client: {
+          email: currentUser?.email || '',
+        }
+      };
+
+      console.log('Iniciando Culqi Checkout con:', checkoutConfig);
+
+      const checkout: CulqiCheckoutInstance = new CheckoutCtor(publicKey, checkoutConfig);
 
       checkout.culqi = async () => {
         try {
           if (!checkout.token?.id) {
-            setBillingNote('No se generó un token de pago.');
+            console.error('Culqi error (no token):', (checkout as any).error);
+            setBillingNote(`Error Culqi: ${(checkout as any).error?.user_message || 'No se generó token'}`);
             return;
           }
 
@@ -1284,6 +1292,7 @@ export default function App() {
           setBillingNote(`Tu plan ${plan.label} ya quedó registrado.`);
           await loadBillingData();
         } catch (err) {
+          console.error('Error al confirmar suscripción:', err);
           handleApiError('No se pudo confirmar la suscripción', err);
         } finally {
           setBillingSubmitting(null);
@@ -1292,7 +1301,8 @@ export default function App() {
 
       checkout.open();
       setBillingNote('Completa el pago en la ventana de Culqi.');
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Error al abrir Culqi:', err);
       handleApiError('No se pudo abrir Culqi Checkout', err);
       setBillingSubmitting(null);
     }
