@@ -10,6 +10,8 @@ import {
   Trash2,
   X,
   Zap,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 const EXTENSION_DOWNLOAD_URL = 'https://chromewebstore.google.com/detail/sin-barreras-auditoria-au/bipiiijphpkdbodephdbahlkdcnopjao';
@@ -78,6 +80,23 @@ export function ProjectDetailView({
   const onCloseNewScanRef = React.useRef(onCloseNewScan);
   const [cancellingScanId, setCancellingScanId] = React.useState<string | null>(null);
   const [pendingScanId, setPendingScanId] = React.useState('');
+  const [copiedToken, setCopiedToken] = React.useState(false);
+  const [copiedId, setCopiedId] = React.useState(false);
+
+  const handleCopy = async (text: string, type: 'token' | 'id') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === 'token') {
+        setCopiedToken(true);
+        setTimeout(() => setCopiedToken(false), 2000);
+      } else {
+        setCopiedId(true);
+        setTimeout(() => setCopiedId(false), 2000);
+      }
+    } catch (err) {
+      console.error('Error copying to clipboard', err);
+    }
+  };
 
   React.useEffect(() => {
     onCloseNewScanRef.current = onCloseNewScan;
@@ -273,16 +292,30 @@ export function ProjectDetailView({
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 mt-2">
                       <div>
-                        <span className="block text-[11px] font-bold text-slate-500 mb-1">TOKEN DE ACCESO (Haz clic para seleccionar)</span>
-                        <code className="block w-full bg-slate-100 border border-slate-200 p-2 rounded text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
-                          {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
-                        </code>
+                        <span className="block text-[11px] font-bold text-slate-500 mb-1">TOKEN DE ACCESO</span>
+                        <div
+                          className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
+                          onClick={() => handleCopy(typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '', 'token')}
+                          title="Copiar token"
+                        >
+                          <code className="text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
+                            {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
+                          </code>
+                          {copiedToken ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+                        </div>
                       </div>
                       <div>
-                        <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO (Haz clic para seleccionar)</span>
-                        <code className="block w-full bg-slate-100 border border-slate-200 p-2 rounded text-slate-800 select-all text-xs">
-                          {pendingScanId}
-                        </code>
+                        <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
+                        <div
+                          className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
+                          onClick={() => handleCopy(pendingScanId, 'id')}
+                          title="Copiar ID"
+                        >
+                          <code className="text-slate-800 select-all text-xs">
+                            {pendingScanId}
+                          </code>
+                          {copiedId ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+                        </div>
                       </div>
                     </div>
                     <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex">
