@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import {
-  Shield,
-  Globe2,
   CheckCircle,
   X,
   ChevronDown,
@@ -1592,7 +1590,7 @@ export default function App() {
         <div className="w-full max-w-md rounded-[28px] border border-white/50 bg-white/80 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.14)] backdrop-blur-xl">
           <div className="flex items-center gap-4">
             <div className="header-brand-mark" aria-hidden="true">
-              <Shield className="h-6 w-6 text-white" />
+              <img src="/sin-barreras-icon.png" alt="" className="h-8 w-8 object-contain" />
             </div>
             <div>
               <p className="header-kicker mb-2">Acceso seguro</p>
@@ -1640,7 +1638,7 @@ export default function App() {
       <header className="sticky top-0 z-50 px-8 py-5 min-h-20 flex items-center justify-between">
         <div className="header-brand-block">
           <div className="header-brand-mark" aria-hidden="true">
-            <Globe2 className="h-6 w-6 text-white" />
+            <img src="/sin-barreras-icon.png" alt="" className="h-8 w-8 object-contain" />
           </div>
           <div className="header-brand-copy">
             <span className="header-kicker">Auditoría web</span>
