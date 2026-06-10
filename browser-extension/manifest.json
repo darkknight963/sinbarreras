@@ -5,6 +5,18 @@
   "description": "Escanea la pestana autenticada actual sin guardar credenciales y envia resultados a Sin Barreras.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["https://sinbarreras.gzakgroup.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://sinbarreras.gzakgroup.com/*",
+      "https://www.sinbarreras.gzakgroup.com/*",
+      "https://sinbarreras-production.up.railway.app/*",
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*"
+    ]
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Auditar con Sin Barreras"

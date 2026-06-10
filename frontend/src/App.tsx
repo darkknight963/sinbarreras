@@ -947,6 +947,25 @@ export default function App() {
         })
       });
       if (res.ok) {
+        if (newScanLoginMode === 'manual_assisted') {
+          const EXTENSION_ID = 'bipiiijphpkdbodephdbahlkdcnopjao';
+          const token = typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '';
+          try {
+            if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime && (window as any).chrome.runtime.sendMessage) {
+              (window as any).chrome.runtime.sendMessage(EXTENSION_ID, {
+                type: 'SET_SCAN_DATA',
+                token,
+                scanId,
+              }, (response: any) => {
+                console.log('Mensaje enviado a la extensión', response);
+              });
+              alert('¡Listo! Los datos se enviaron automáticamente a la extensión. Ve a la pestaña destino, abre la extensión y dale a Analizar.');
+            }
+          } catch (error) {
+            console.error('Error comunicándose con la extensión:', error);
+          }
+        }
+
         setShowNewScan(false);
         setNewScanUrls('');
         setNewScanLoginMode('none');

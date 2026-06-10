@@ -292,9 +292,10 @@ export function ProjectDetailView({
                         ¡Sigue estos pasos en orden!
                       </p>
                       <ol className="list-decimal pl-5 space-y-1 mt-2">
-                        <li><strong>Copia</strong> el Token y el ID mostrados aquí abajo.</li>
-                        <li>Haz clic en el botón <strong className="text-blue-700">Iniciar escaneo</strong> al final de esta ventana para registrar la auditoría.</li>
-                        <li>Ve a la pestaña que quieres analizar, abre la extensión, pega los datos y haz clic en <strong>Analizar</strong>.</li>
+                        <li>Haz clic en <strong className="text-blue-700">Iniciar escaneo</strong> al final de esta ventana.</li>
+                        <li><strong>(Automático)</strong> Los datos de Token e ID se enviarán a tu extensión.</li>
+                        <li>Ve a la pestaña que quieres analizar, abre la extensión y haz clic en <strong>Analizar</strong>.</li>
+                        <li className="text-gray-500 text-[11px] mt-1 italic list-none -ml-5">Si la conexión automática falla, puedes copiar los datos manualmente a continuación.</li>
                       </ol>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 mt-2">
