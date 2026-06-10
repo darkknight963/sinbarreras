@@ -159,16 +159,18 @@ export function BillingView({
         <button
           type="button"
           disabled
-          className={`billing-toggle-track ${isAnnual ? 'billing-toggle-track-active' : ''} cursor-not-allowed opacity-50`}
+          className={`billing-toggle-track ${isAnnual ? 'billing-toggle-track-active' : ''}`}
           aria-label="Cambiar facturaci&oacute;n mensual o anual"
           aria-pressed={isAnnual}
+          style={{ opacity: 0.5, cursor: 'not-allowed' }}
         >
           <span />
         </button>
         <button
           type="button"
           disabled
-          className={`cursor-not-allowed opacity-50 ${isAnnual ? 'billing-period-label-active' : ''}`}
+          className={isAnnual ? 'billing-period-label-active' : ''}
+          style={{ opacity: 0.5, cursor: 'not-allowed' }}
         >
           Anual
         </button>
