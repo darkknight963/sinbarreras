@@ -111,7 +111,8 @@ export function BillingView({
       : selectedPlanUnavailable
         ? 'Empezar con Pro'
         : 'Empezar con Pro';
-
+  const enterprisePrice = '-';
+  const enterpriseBillingNote = null;
 
   return (
     <section className="billing-page billing-simple-page" aria-label="Planes y tarifas">
