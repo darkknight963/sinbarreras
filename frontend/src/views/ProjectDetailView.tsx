@@ -185,393 +185,407 @@ export function ProjectDetailView({
 
   return (
     <>
-    {showNewScan && (
-      <div
-        className="scan-launch-modal-overlay"
-        role="presentation"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget) onCloseNewScan();
-        }}
-      >
-        <section
-          ref={newScanDialogRef}
-          className="scan-launch-card scan-launch-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="new-scan-modal-title"
-          aria-describedby="new-scan-modal-description"
-          onMouseDown={(event) => event.stopPropagation()}
+      {showNewScan && (
+        <div
+          className="scan-launch-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) onCloseNewScan();
+          }}
         >
-          <div className="scan-launch-header scan-launch-modal-header">
-            <div>
-              <p className="scan-launch-kicker">Nuevo análisis</p>
-              <h2 id="new-scan-modal-title">Lanzar auditoría</h2>
-              <p id="new-scan-modal-description">Ingresa la URL del sitio que quieres auditar.</p>
-            </div>
-            <button
-              type="button"
-              className="scan-launch-modal-close"
-              onClick={onCloseNewScan}
-              aria-label="Cerrar nuevo análisis"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-
-          <form onSubmit={onTriggerScan} className="scan-launch-form">
-            <input type="hidden" name="scanId" value={pendingScanId} />
-            <div className="scan-launch-field scan-launch-url-field">
-              <div className="scan-launch-label-row">
-                <label htmlFor="new-scan-urls">URL a analizar</label>
-                <span>Debe ser pública</span>
+          <section
+            ref={newScanDialogRef}
+            className="scan-launch-card scan-launch-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-scan-modal-title"
+            aria-describedby="new-scan-modal-description"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="scan-launch-header scan-launch-modal-header">
+              <div>
+                <p className="scan-launch-kicker">Nuevo análisis</p>
+                <h2 id="new-scan-modal-title">Lanzar auditoría</h2>
+                <p id="new-scan-modal-description">Ingresa la URL del sitio que quieres auditar.</p>
               </div>
-              <input
-                id="new-scan-urls"
-                required
-                type="url"
-                inputMode="url"
-                autoComplete="url"
-                placeholder="https://www.tusitio.com.pe"
-                className={`scan-launch-control scan-launch-url-control ${blocksFreeScan ? 'scan-modal-control-error' : ''}`}
-                value={newScanUrls}
-                onChange={e => onNewScanUrlsChange(e.target.value)}
-                aria-describedby="scan-url-help scan-url-count"
-                aria-invalid={blocksFreeScan}
-              />
+              <button
+                type="button"
+                className="scan-launch-modal-close"
+                onClick={onCloseNewScan}
+                aria-label="Cerrar nuevo análisis"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
             </div>
 
-            <p id="scan-url-help" className="scan-launch-help">{urlHelpText}</p>
-            <p id="scan-url-count" className={`scan-launch-url-count ${blocksFreeScan ? 'scan-url-count-error' : ''}`}>
-              {urlCount === 0 ? 'Sin URL detectada' : '1 URL detectada'}
-            </p>
+            <form onSubmit={onTriggerScan} className="scan-launch-form">
+              <input type="hidden" name="scanId" value={pendingScanId} />
+              <div className="scan-launch-field scan-launch-url-field">
+                <div className="scan-launch-label-row">
+                  <label htmlFor="new-scan-urls">URL a analizar</label>
+                  <span>Debe ser pública</span>
+                </div>
+                <input
+                  id="new-scan-urls"
+                  required
+                  type="url"
+                  inputMode="url"
+                  autoComplete="url"
+                  placeholder="https://www.tusitio.com.pe"
+                  className={`scan-launch-control scan-launch-url-control ${blocksFreeScan ? 'scan-modal-control-error' : ''}`}
+                  value={newScanUrls}
+                  onChange={e => onNewScanUrlsChange(e.target.value)}
+                  aria-describedby="scan-url-help scan-url-count"
+                  aria-invalid={blocksFreeScan}
+                />
+              </div>
 
-            <fieldset className="scan-login-mode-group">
-              <legend>Acceso al sitio</legend>
-              <label className={`scan-login-mode-option ${newScanLoginMode === 'none' ? 'scan-login-mode-option-active' : ''}`}>
-                <input
-                  type="radio"
-                  name="scan-login-mode"
-                  value="none"
-                  checked={newScanLoginMode === 'none'}
-                  onChange={() => onNewScanLoginModeChange('none')}
-                />
-                <span>
-                  <strong>Escaneo público</strong>
-                  <small>Usa esta opción si la página puede evaluarse sin iniciar sesión.</small>
-                </span>
-              </label>
-              <label
-                className={`scan-login-mode-option ${newScanLoginMode === 'manual_assisted' ? 'scan-login-mode-option-active' : ''} ${isManualLoginLocked ? 'scan-login-mode-option-locked' : ''}`}
-                aria-disabled={isManualLoginLocked}
-              >
-                <input
-                  type="radio"
-                  name="scan-login-mode"
-                  value="manual_assisted"
-                  checked={newScanLoginMode === 'manual_assisted'}
-                  disabled={isManualLoginLocked}
-                  onChange={() => {
-                    if (!isManualLoginLocked) onNewScanLoginModeChange('manual_assisted');
-                  }}
-                />
-                <span>
-                  <strong>Login manual asistido</strong>
-                  <small>
-                    {isManualLoginLocked
-                      ? 'Disponible con suscripción para escanear páginas privadas o con sesión.'
-                      : 'Usa la extensión Sin Barreras en la pestaña donde ya iniciaste sesión. No guardamos contraseñas, cookies ni sesiones.'}
-                  </small>
-                </span>
-              </label>
-              {newScanLoginMode === 'manual_assisted' && (
-                <div className="scan-extension-helper flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <div className="bg-blue-50 text-blue-900 border border-blue-200 p-3 rounded-md text-xs">
-                      <p className="font-bold mb-1 text-[13px] flex items-center gap-1">
-                        <AlertTriangle className="w-4 h-4" />
-                        ¡Sigue estos pasos en orden!
-                      </p>
-                      <ol className="list-decimal pl-5 space-y-1 mt-2">
-                        <li>Haz clic en <strong className="text-blue-700">Iniciar escaneo</strong> al final de esta ventana.</li>
-                        <li><strong>(Automático)</strong> Los datos de Token e ID se enviarán a tu extensión.</li>
-                        <li>Ve a la pestaña que quieres analizar, abre la extensión y haz clic en <strong>Analizar</strong>.</li>
-                        <li className="text-gray-500 text-[11px] mt-1 italic list-none -ml-5">Si la conexión automática falla, puedes copiar los datos manualmente a continuación.</li>
-                      </ol>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2 mt-2">
-                      <div>
-                        <span className="block text-[11px] font-bold text-slate-500 mb-1">TOKEN DE ACCESO</span>
-                        <div
-                          className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
-                          onClick={() => handleCopy(typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '', 'token')}
-                          title="Copiar token"
-                        >
-                          <code className="text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
-                            {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
-                          </code>
-                          {copiedToken ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+              <p id="scan-url-help" className="scan-launch-help">{urlHelpText}</p>
+              <p id="scan-url-count" className={`scan-launch-url-count ${blocksFreeScan ? 'scan-url-count-error' : ''}`}>
+                {urlCount === 0 ? 'Sin URL detectada' : '1 URL detectada'}
+              </p>
+
+              <fieldset className="scan-login-mode-group">
+                <legend>Acceso al sitio</legend>
+                <label className={`scan-login-mode-option ${newScanLoginMode === 'none' ? 'scan-login-mode-option-active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="scan-login-mode"
+                    value="none"
+                    checked={newScanLoginMode === 'none'}
+                    onChange={() => onNewScanLoginModeChange('none')}
+                  />
+                  <span>
+                    <strong>Escaneo público</strong>
+                    <small>Usa esta opción si la página puede evaluarse sin iniciar sesión.</small>
+                  </span>
+                </label>
+                <label
+                  className={`scan-login-mode-option ${newScanLoginMode === 'manual_assisted' ? 'scan-login-mode-option-active' : ''} ${isManualLoginLocked ? 'scan-login-mode-option-locked' : ''}`}
+                  aria-disabled={isManualLoginLocked}
+                >
+                  <input
+                    type="radio"
+                    name="scan-login-mode"
+                    value="manual_assisted"
+                    checked={newScanLoginMode === 'manual_assisted'}
+                    disabled={isManualLoginLocked}
+                    onChange={() => {
+                      if (!isManualLoginLocked) onNewScanLoginModeChange('manual_assisted');
+                    }}
+                  />
+                  <span>
+                    <strong>Login manual asistido</strong>
+                    <small>
+                      {isManualLoginLocked
+                        ? 'Disponible con suscripción para escanear páginas privadas o con sesión.'
+                        : 'Usa la extensión Sin Barreras en la pestaña donde ya iniciaste sesión. No guardamos contraseñas, cookies ni sesiones.'}
+                    </small>
+                  </span>
+                </label>
+                {newScanLoginMode === 'manual_assisted' && (
+                  <div className="scan-extension-helper flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="bg-blue-50 text-blue-900 border border-blue-200 p-3 rounded-md text-xs">
+                        <p className="font-bold mb-1 text-[13px] flex items-center gap-1">
+                          <AlertTriangle className="w-4 h-4" />
+                          ¡Sigue estos pasos en orden!
+                        </p>
+                        <ol className="list-decimal pl-5 space-y-1 mt-2">
+                          <li>Haz clic en <strong className="text-blue-700">Iniciar escaneo</strong> al final de esta ventana.</li>
+                          <li><strong>(Automático)</strong> Los datos de Token e ID se enviarán a tu extensión.</li>
+                          <li>Ve a la pestaña que quieres analizar, abre la extensión y haz clic en <strong>Analizar</strong>.</li>
+                          <li className="text-gray-500 text-[11px] mt-1 italic list-none -ml-5">Si la conexión automática falla, puedes copiar los datos manualmente a continuación.</li>
+                        </ol>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2 mt-2">
+                        <div>
+                          <span className="block text-[11px] font-bold text-slate-500 mb-1">TOKEN DE ACCESO</span>
+                          <div
+                            className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
+                            onClick={() => handleCopy(typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '', 'token')}
+                            title="Copiar token"
+                          >
+                            <code className="text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
+                              {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
+                            </code>
+                            {copiedToken ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
+                          <div
+                            className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
+                            onClick={() => handleCopy(pendingScanId, 'id')}
+                            title="Copiar ID"
+                          >
+                            <code className="text-slate-800 select-all text-xs">
+                              {pendingScanId}
+                            </code>
+                            {copiedId ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
-                        <div
-                          className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors"
-                          onClick={() => handleCopy(pendingScanId, 'id')}
-                          title="Copiar ID"
-                        >
-                          <code className="text-slate-800 select-all text-xs">
-                            {pendingScanId}
-                          </code>
-                          {copiedId ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
-                        </div>
-                      </div>
+                      <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex">
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        Ir a Chrome Web Store
+                      </a>
                     </div>
-                    <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex">
-                      <Download className="h-4 w-4" aria-hidden="true" />
-                      Ir a Chrome Web Store
-                    </a>
+                  </div>
+                )}
+              </fieldset>
+
+              {blocksFreeScan && (
+                <div className="scan-url-limit-alert" role="alert">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  <span>
+                    {changesFreeUrl
+                      ? 'Tu plan Free ya tiene una URL guardada. Reescanea esa misma URL o cambia a Pro para auditar otra.'
+                      : 'Deja solo una URL para continuar. Para otra URL, crea un nuevo escaneo.'}
+                  </span>
+                </div>
+              )}
+
+              {parsedNewScanUrls.length > 0 && (
+                <div className="scan-modal-url-tools">
+                  <p>
+                    Abrir URL te permite revisar la página antes de auditarla. Si requiere sesión, usa la extensión desde la pestaña autenticada.
+                  </p>
+                  <div className="scan-modal-url-actions">
+                    <button
+                      type="button"
+                      className="scan-modal-secondary-btn"
+                      onClick={() => openInspectionUrl(parsedNewScanUrls[0])}
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                      Abrir URL
+                    </button>
                   </div>
                 </div>
               )}
-            </fieldset>
 
-            {blocksFreeScan && (
-              <div className="scan-url-limit-alert" role="alert">
-                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                <span>
-                  {changesFreeUrl
-                    ? 'Tu plan Free ya tiene una URL guardada. Reescanea esa misma URL o cambia a Pro para auditar otra.'
-                    : 'Deja solo una URL para continuar. Para otra URL, crea un nuevo escaneo.'}
-                </span>
+              <div className="scan-launch-modal-actions">
+                <button
+                  type="button"
+                  className="scan-launch-secondary"
+                  onClick={onCloseNewScan}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="scan-launch-submit"
+                  disabled={parsedNewScanUrls.length === 0 || blocksFreeScan}
+                >
+                  <Zap className="h-5 w-5" aria-hidden="true" />
+                  Iniciar escaneo
+                </button>
               </div>
-            )}
-
-            {parsedNewScanUrls.length > 0 && (
-              <div className="scan-modal-url-tools">
-                <p>
-                  Abrir URL te permite revisar la página antes de auditarla. Si requiere sesión, usa la extensión desde la pestaña autenticada.
-                </p>
-                <div className="scan-modal-url-actions">
-                  <button
-                    type="button"
-                    className="scan-modal-secondary-btn"
-                    onClick={() => openInspectionUrl(parsedNewScanUrls[0])}
-                  >
-                    <LinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    Abrir URL
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="scan-launch-modal-actions">
-              <button
-                type="button"
-                className="scan-launch-secondary"
-                onClick={onCloseNewScan}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="scan-launch-submit"
-                disabled={parsedNewScanUrls.length === 0 || blocksFreeScan}
-              >
-                <Zap className="h-5 w-5" aria-hidden="true" />
-                Iniciar escaneo
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    )}
-    <div className="project-detail-surface report-surface page-entrance">
-      <div className="flex items-center gap-10">
-        <button
-          onClick={onBack}
-          className="report-ghost-btn report-back-btn"
-          aria-label={backLabel}
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span>Volver</span>
-        </button>
-        <div>
-          <div className="flex items-center gap-5 flex-nowrap">
-            <h2 className="text-2xl font-bold text-white">{currentProject.name}</h2>
-            <span className="report-entity-badge shrink-0">{currentProject.entityType}</span>
-          </div>
-          {currentProject.domain && <p className="text-slate-300 text-sm">{currentProject.domain}</p>}
+            </form>
+          </section>
         </div>
-      </div>
-
-      <div className="project-detail-history-stack">
-        {hasScans && (
-          <div className="project-detail-actions-row">
-            <button
-              onClick={onNewScanClick}
-              className="report-action-btn report-action-btn-scan project-new-analysis-btn"
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              <span>Nuevo análisis</span>
-            </button>
+      )}
+      <div className="project-detail-surface report-surface page-entrance">
+        <div className="flex items-center gap-10">
+          <button
+            onClick={onBack}
+            className="report-ghost-btn report-back-btn"
+            aria-label={backLabel}
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span>Volver</span>
+          </button>
+          <div>
+            <div className="flex items-center gap-5 flex-nowrap">
+              <h2 className="text-2xl font-bold text-white">{currentProject.name}</h2>
+              <span className="report-entity-badge shrink-0">{currentProject.entityType}</span>
+            </div>
+            {currentProject.domain && <p className="text-slate-300 text-sm">{currentProject.domain}</p>}
           </div>
-        )}
+        </div>
 
-        <div className="report-panel report-panel-spacious space-y-8 project-history-panel">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-lg text-gob-dark">Historial de análisis</h3>
-            <div className="text-xs text-slate-500">Total: {currentProject.scans?.length || 0} análisis</div>
-          </div>
-
-          {!hasScans && (
-            <div className="project-history-empty-state">
-              <span className="project-history-empty-icon" aria-hidden="true">
-                <FileSearch className="h-6 w-6" />
-              </span>
-              <div>
-                <h4>Aún no hay análisis</h4>
-                <p>Lanza tu primer escaneo gratuito para generar el reporte, detectar hallazgos y revisar el cumplimiento WCAG 2.2.</p>
-              </div>
+        <div className="project-detail-history-stack">
+          {hasScans && (
+            <div className="project-detail-actions-row">
               <button
-                type="button"
                 onClick={onNewScanClick}
-                className="report-action-btn report-action-btn-scan"
+                className="report-action-btn report-action-btn-scan project-new-analysis-btn"
               >
-                <RefreshCw className="h-4 w-4" />
-                <span>Lanzar análisis gratis</span>
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                <span>Nuevo análisis</span>
               </button>
             </div>
           )}
 
-          <div className="scan-history-list">
-            {scans.map((scan: any) => {
-              const progress = scanProgress[scan.id];
-              const isRunning = scan.status === 'running' || scan.status === 'pending' || scan.status === 'awaiting_login';
-              const scanPercent = getScanProgressValue(scan, progress);
-              const score = typeof scan.globalScore === 'number' ? scan.globalScore : null;
-              const scanToneClass = scan.status === 'cancelled'
-                ? 'scan-history-card-canceled'
-                : isRunning
-                  ? 'scan-history-card-running'
-                  : score === null
-                    ? 'scan-history-card-pending'
-                    : score >= 85
-                      ? 'scan-history-card-good'
-                      : score >= 70
-                        ? 'scan-history-card-warning'
-                        : 'scan-history-card-danger';
+          <div className="report-panel report-panel-spacious space-y-8 project-history-panel">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-lg text-gob-dark">Historial de análisis</h3>
+              <div className="text-xs text-slate-500">Total: {currentProject.scans?.length || 0} análisis</div>
+            </div>
 
-              return (
-                <div
-                  key={scan.id}
-                  onClick={() => {
-                    if (isRunning) {
-                      return;
-                    }
-                    onScanClick(scan);
-                  }}
-                  className={`scan-history-item ${scanToneClass} ${isRunning ? 'scan-history-item-live' : 'cursor-pointer'}`}
+            {!hasScans && (
+              <div className="project-history-empty-state">
+                <span className="project-history-empty-icon" aria-hidden="true">
+                  <FileSearch className="h-6 w-6" />
+                </span>
+                <div>
+                  <h4>Aún no hay análisis</h4>
+                  <p>Lanza tu primer escaneo gratuito para generar el reporte, detectar hallazgos y revisar el cumplimiento WCAG 2.2.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onNewScanClick}
+                  className="report-action-btn report-action-btn-scan"
                 >
-                  <div className="scan-history-main">
-                    <div className="scan-history-title-row">
-                      <div>
-                        <span>{getScanModeLabel(scan.scanMode)}</span>
-                        {renderStatusBadge(scan.status)}
-                        {isRunning && onCancelScan && (
-                          <button
-                            type="button"
-                            className="report-danger-icon-btn"
-                            aria-label="Cancelar escaneo"
-                            disabled={cancellingScanId === scan.id}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setCancellingScanId(scan.id);
-                              Promise.resolve(onCancelScan(scan.id)).finally(() => setCancellingScanId(null));
-                            }}
-                          >
-                            <X className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        )}
-                        {!isRunning && (
-                          <button
-                            type="button"
-                            className="report-danger-icon-btn"
-                            aria-label={`Eliminar ${getScanModeLabel(scan.scanMode)}`}
-                            onClick={(event) => onDeleteScan(scan, event)}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        )}
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Lanzar análisis gratis</span>
+                </button>
+              </div>
+            )}
+
+            <div className="scan-history-list">
+              {scans.map((scan: any) => {
+                const progress = scanProgress[scan.id];
+                const isRunning = scan.status === 'running' || scan.status === 'pending' || scan.status === 'awaiting_login';
+                const scanPercent = getScanProgressValue(scan, progress);
+                const score = typeof scan.globalScore === 'number' ? scan.globalScore : null;
+                const scanToneClass = scan.status === 'cancelled'
+                  ? 'scan-history-card-canceled'
+                  : isRunning
+                    ? 'scan-history-card-running'
+                    : score === null
+                      ? 'scan-history-card-pending'
+                      : score >= 85
+                        ? 'scan-history-card-good'
+                        : score >= 70
+                          ? 'scan-history-card-warning'
+                          : 'scan-history-card-danger';
+
+                return (
+                  <div
+                    key={scan.id}
+                    onClick={() => {
+                      if (isRunning) {
+                        return;
+                      }
+                      onScanClick(scan);
+                    }}
+                    className={`scan-history-item ${scanToneClass} ${isRunning ? 'scan-history-item-live' : 'cursor-pointer'}`}
+                  >
+                    <div className="scan-history-main">
+                      <div className="scan-history-title-row">
+                        <div>
+                          <span>{getScanModeLabel(scan.scanMode)}</span>
+                          {renderStatusBadge(scan.status)}
+                          {isRunning && onCancelScan && (
+                            <button
+                              type="button"
+                              className="report-danger-icon-btn"
+                              aria-label="Cancelar escaneo"
+                              disabled={cancellingScanId === scan.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setCancellingScanId(scan.id);
+                                Promise.resolve(onCancelScan(scan.id)).finally(() => setCancellingScanId(null));
+                              }}
+                            >
+                              <X className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          )}
+                          {!isRunning && (
+                            <button
+                              type="button"
+                              className="report-danger-icon-btn"
+                              aria-label={`Eliminar ${getScanModeLabel(scan.scanMode)}`}
+                              onClick={(event) => onDeleteScan(scan, event)}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="scan-history-date">
+                        <Clock className="h-3 w-3" />
+                        <span>{new Date(scan.createdAt).toLocaleString()}</span>
                       </div>
                     </div>
-                    <div className="scan-history-date">
-                      <Clock className="h-3 w-3" />
-                      <span>{new Date(scan.createdAt).toLocaleString()}</span>
-                    </div>
-                  </div>
 
-                  {isRunning ? (
-                    <div className="scan-history-result" style={scan.status === 'awaiting_login' ? { flexDirection: 'column', alignItems: 'flex-start' } : undefined}>
-                      <div className="flex w-full items-center justify-between" style={scan.status === 'awaiting_login' ? { width: '100%' } : undefined}>
-                        <div className="scan-history-priority">
-                          <span>Progreso</span>
-                          <strong>{scanPercent}%</strong>
-                        </div>
-                        <div className="scan-progress-track flex-1 mx-4">
-                          <div className="scan-progress-fill" style={{ width: `${scanPercent}%` }} />
-                        </div>
-                        <div className="scan-history-priority text-right">
-                          <span>{getScanStatusLabel(scan.status, scanPercent)}</span>
-                          <span className="text-gob-blue">Actualizando</span>
-                        </div>
-                      </div>
-
-                      {scan.status === 'awaiting_login' && (
-                        <div className="w-full bg-slate-50 p-4 rounded-md border border-slate-200 mt-4 text-sm" onClick={(e) => e.stopPropagation()}>
-                          <p className="font-semibold text-slate-800 mb-1">Instrucciones para la extensión:</p>
-                          <p className="text-slate-600 mb-4">Abre la pestaña donde tienes la sesión iniciada y abre la extensión. Si los campos no se llenaron automáticamente, copia el Token y el ID mostrados abajo. Finalmente, haz clic en <strong>Analizar</strong>.</p>
-                          <div className="grid gap-4 md:grid-cols-2 mt-2 pt-2 border-t border-slate-200">
-                            <div>
-                              <span className="block text-xs font-bold text-slate-500 mb-1">Copia manual (Si falló el envío automático)</span>
-                              <code className="block w-full bg-white border border-slate-300 p-2.5 rounded text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap">
-                                {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
-                              </code>
-                            </div>
-                            <div>
-                              <span className="block text-xs font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
-                              <code className="block w-full bg-white border border-slate-300 p-2.5 rounded text-slate-800 select-all">
-                                {scan.id}
-                              </code>
-                            </div>
+                    {isRunning ? (
+                      <div className="scan-history-result" style={scan.status === 'awaiting_login' ? { flexDirection: 'column', alignItems: 'flex-start' } : undefined}>
+                        <div className="flex w-full items-center justify-between" style={scan.status === 'awaiting_login' ? { width: '100%' } : undefined}>
+                          <div className="scan-history-priority">
+                            <span>Progreso</span>
+                            <strong>{scanPercent}%</strong>
+                          </div>
+                          <div className="scan-progress-track flex-1 mx-4">
+                            <div className="scan-progress-fill" style={{ width: `${scanPercent}%` }} />
+                          </div>
+                          <div className="scan-history-priority text-right">
+                            <span>{getScanStatusLabel(scan.status, scanPercent)}</span>
+                            <span className="text-gob-blue">Actualizando</span>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ) : scan.status === 'cancelled' ? (
-                    <div className="scan-history-result">
-                      <div className="scan-history-priority">
-                        <span>Escaneo cancelado</span>
+
+                        {scan.status === 'awaiting_login' && (
+                          <div className="w-full bg-slate-50 p-4 rounded-md border border-slate-200 mt-4 text-sm" onClick={(e) => e.stopPropagation()}>
+                            <p className="font-semibold text-slate-800 mb-1">Instrucciones para la extensión:</p>
+                            <p className="text-slate-600 mb-4">Abre la pestaña que quieres escanear y abre la extensión. Si los campos no se llenaron automáticamente, copia el Token y el ID mostrados abajo. Finalmente, haz clic en <strong>Analizar</strong>.</p>
+                            <div className="grid gap-4 md:grid-cols-2 mt-2 pt-2 border-t border-slate-200">
+                              <div>
+                                <span className="block text-xs font-bold text-slate-500 mb-1">Copia manual (Si falló el envío automático)</span>
+                              <div
+                                className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors mt-1"
+                                onClick={() => handleCopy(typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '', 'token')}
+                                title="Copiar token"
+                              >
+                                <code className="text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
+                                  {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
+                                </code>
+                                {copiedToken ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
+                              <div
+                                className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors mt-1"
+                                onClick={() => handleCopy(scan.id, 'id')}
+                                title="Copiar ID"
+                              >
+                                <code className="text-slate-800 select-all text-xs">
+                                  {scan.id}
+                                </code>
+                                {copiedId ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
+                              </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="scan-history-result">
-                      {renderScoreMeter(scan.globalScore, 'Puntaje')}
-                      <div className="scan-history-priority">
-                        <span>Priorización (Vp)</span>
-                        <span className={getVpCategory(scan.vp).color}>
-                          {getVpCategory(scan.vp).label} ({scan.vp})
-                        </span>
+                    ) : scan.status === 'cancelled' ? (
+                      <div className="scan-history-result">
+                        <div className="scan-history-priority">
+                          <span>Escaneo cancelado</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    ) : (
+                      <div className="scan-history-result">
+                        {renderScoreMeter(scan.globalScore, 'Puntaje')}
+                        <div className="scan-history-priority">
+                          <span>Priorización (Vp)</span>
+                          <span className={getVpCategory(scan.vp).color}>
+                            {getVpCategory(scan.vp).label} ({scan.vp})
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-    </div>
+      </div>
     </>
   );
 }
