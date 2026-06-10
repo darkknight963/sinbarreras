@@ -536,8 +536,16 @@ export function AuthView({
           </div>
         )}
       </main>
-      <footer>
-        <nav>
+      <footer className="auth-landing-footer">
+        <a className="auth-landing-brand" href="#top" aria-label="Sin Barreras inicio">
+          <span className="auth-landing-logo" aria-hidden="true">
+            <ShieldCheck className="h-4 w-4" />
+          </span>
+          <span>Sin Barreras</span>
+        </a>
+        <nav aria-label="Legal">
+          <button type="button" onClick={() => openLegalPanel('terms')}>T&eacute;rminos y Condiciones</button>
+          <button type="button" onClick={() => openLegalPanel('returns')}>Cambios y devoluciones</button>
           <button type="button" onClick={() => openLegalPanel('complaints')}>Libro de reclamaciones</button>
         </nav>
         <span>&copy; 2026 Sin Barreras &middot; Lima, Per&uacute;</span>
