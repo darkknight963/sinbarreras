@@ -1372,13 +1372,14 @@ export default function App() {
     const normalized = status.toLowerCase();
     const isCompleted = normalized === 'completed';
     const isFailed = normalized === 'failed';
+    const isCancelled = normalized === 'cancelled';
     const isAwaitingLogin = normalized === 'awaiting_login';
-    const Icon = isCompleted ? CheckCircle : isFailed ? X : null;
-    const label = isAwaitingLogin ? 'Login manual pendiente' : status;
+    const Icon = isCompleted ? CheckCircle : isFailed || isCancelled ? X : null;
+    const label = isAwaitingLogin ? 'Login manual pendiente' : isCancelled ? 'Cancelado' : status;
     return (
       <span className={`report-analysis-status ${
         isCompleted ? 'report-analysis-completed' :
-        isFailed ? 'report-analysis-failed' :
+        isFailed || isCancelled ? 'report-analysis-failed' :
         'report-analysis-running'
       }`}>
         {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden="true" /> : <span className="report-spinner" aria-hidden="true" />}
