@@ -546,6 +546,7 @@ export class ScansService {
     const ruleSetVersion = this.configService.get<string>('RULESET_VERSION', '2026-05');
 
     const scan = this.scanRepository.create({
+      ...(createScanDto.id ? { id: createScanDto.id } : {}),
       status: loginMode === 'manual_assisted' ? 'awaiting_login' : 'pending',
       scanMode,
       loginMode,

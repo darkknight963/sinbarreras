@@ -77,6 +77,7 @@ export function ProjectDetailView({
   const newScanDialogRef = React.useRef<HTMLDivElement>(null);
   const onCloseNewScanRef = React.useRef(onCloseNewScan);
   const [cancellingScanId, setCancellingScanId] = React.useState<string | null>(null);
+  const [pendingScanId, setPendingScanId] = React.useState('');
 
   React.useEffect(() => {
     onCloseNewScanRef.current = onCloseNewScan;
@@ -84,6 +85,7 @@ export function ProjectDetailView({
 
   React.useEffect(() => {
     if (!showNewScan) return;
+    setPendingScanId(crypto.randomUUID());
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusTarget = window.setTimeout(() => {
       newScanDialogRef.current?.querySelector<HTMLInputElement>('#new-scan-urls')?.focus();
@@ -198,6 +200,7 @@ export function ProjectDetailView({
           </div>
 
           <form onSubmit={onTriggerScan} className="scan-launch-form">
+            <input type="hidden" name="scanId" value={pendingScanId} />
             <div className="scan-launch-field scan-launch-url-field">
               <div className="scan-launch-label-row">
                 <label htmlFor="new-scan-urls">URL a analizar</label>
@@ -262,15 +265,31 @@ export function ProjectDetailView({
                 </span>
               </label>
               {newScanLoginMode === 'manual_assisted' && (
-                <div className="scan-extension-helper">
-                  <div>
-                    <strong>Extensión para sitios con login</strong>
-                    <small>Descárgala de la Chrome Web Store y ejecútala en tu sitio web. <strong className="text-gob-blue block mt-1">Nota: Una vez presiones "Iniciar escaneo", se generará el ID y el Token que necesitarás pegar en la extensión.</strong></small>
+                <div className="scan-extension-helper flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <strong>Extensión para sitios con login</strong>
+                      <small>Descárgala de la Chrome Web Store y ejecútala en tu sitio web. Copia los siguientes datos y pégalos en la extensión:</small>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2 mt-2">
+                      <div>
+                        <span className="block text-[11px] font-bold text-slate-500 mb-1">TOKEN DE ACCESO (Haz clic para seleccionar)</span>
+                        <code className="block w-full bg-slate-100 border border-slate-200 p-2 rounded text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap text-xs">
+                          {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
+                        </code>
+                      </div>
+                      <div>
+                        <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO (Haz clic para seleccionar)</span>
+                        <code className="block w-full bg-slate-100 border border-slate-200 p-2 rounded text-slate-800 select-all text-xs">
+                          {pendingScanId}
+                        </code>
+                      </div>
+                    </div>
+                    <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex">
+                      <Download className="h-4 w-4" aria-hidden="true" />
+                      Ir a Chrome Web Store
+                    </a>
                   </div>
-                  <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
-                    <Download className="h-4 w-4" aria-hidden="true" />
-                    Ir a Chrome Web Store
-                  </a>
                 </div>
               )}
             </fieldset>

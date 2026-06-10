@@ -10,9 +10,14 @@ import {
   IsString,
   Max,
   Min,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateScanDto {
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
   @IsString()
   projectId!: string;
 

@@ -865,6 +865,9 @@ export default function App() {
     e.preventDefault();
     if (!currentProject) return;
 
+    const formData = new FormData(e.target as HTMLFormElement);
+    const scanId = formData.get('scanId') as string;
+
     const urls = parseScanUrls(newScanUrls);
     if (urls.length === 0) {
       setAppError('Ingresa al menos una URL válida para iniciar el escaneo.');
@@ -934,6 +937,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: scanId || undefined,
           projectId: projectForScan.id,
           urls,
           scanMode,
