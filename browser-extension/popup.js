@@ -1,7 +1,6 @@
 
 const apiTokenInput = document.getElementById('api-token');
 const scanIdInput = document.getElementById('scan-id');
-const currentUrl = document.getElementById('current-url');
 const runButton = document.getElementById('run-audit');
 const statusBox = document.getElementById('status');
 
@@ -143,8 +142,6 @@ const runAudit = async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
-  const tab = await getActiveTab();
-  currentUrl.textContent = tab?.url || 'No detectada';
 });
 
 runButton.addEventListener('click', runAudit);
