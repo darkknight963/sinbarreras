@@ -148,33 +148,15 @@ export function BillingView({
         </button>
       </div>
 
-      <div className="billing-toolbar billing-period-toolbar">
+      <div className="billing-toolbar billing-period-toolbar" style={{ justifyContent: 'center' }}>
         <button
           type="button"
-          onClick={() => setBillingPeriod('monthly')}
-          className={!isAnnual ? 'billing-period-label-active' : ''}
+          disabled
+          className="billing-period-label-active"
+          style={{ cursor: 'default' }}
         >
           Mensual
         </button>
-        <button
-          type="button"
-          disabled
-          className={`billing-toggle-track ${isAnnual ? 'billing-toggle-track-active' : ''}`}
-          aria-label="Cambiar facturaci&oacute;n mensual o anual"
-          aria-pressed={isAnnual}
-          style={{ opacity: 0.5, cursor: 'not-allowed' }}
-        >
-          <span />
-        </button>
-        <button
-          type="button"
-          disabled
-          className={isAnnual ? 'billing-period-label-active' : ''}
-          style={{ opacity: 0.5, cursor: 'not-allowed' }}
-        >
-          Anual
-        </button>
-        <span className="billing-save-pill" style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}>Pr&oacute;ximamente</span>
       </div>
 
       {!loading && !hasPlansForCurrency && (
