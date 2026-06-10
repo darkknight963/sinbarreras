@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -158,21 +158,21 @@ export function BillingView({
         </button>
         <button
           type="button"
-          className={`billing-toggle-track ${isAnnual ? 'billing-toggle-track-active' : ''}`}
+          disabled
+          className={`billing-toggle-track ${isAnnual ? 'billing-toggle-track-active' : ''} cursor-not-allowed opacity-50`}
           aria-label="Cambiar facturaci&oacute;n mensual o anual"
           aria-pressed={isAnnual}
-          onClick={() => setBillingPeriod(isAnnual ? 'monthly' : 'annual')}
         >
           <span />
         </button>
         <button
           type="button"
-          onClick={() => setBillingPeriod('annual')}
-          className={isAnnual ? 'billing-period-label-active' : ''}
+          disabled
+          className={`cursor-not-allowed opacity-50 ${isAnnual ? 'billing-period-label-active' : ''}`}
         >
           Anual
         </button>
-        <span className="billing-save-pill">Ahorra 20%</span>
+        <span className="billing-save-pill" style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}>Pr&oacute;ximamente</span>
       </div>
 
       {!loading && !hasPlansForCurrency && (
@@ -217,12 +217,11 @@ export function BillingView({
                 <h3>Pro</h3>
               </div>
             </div>
-            <div className={`billing-price-row ${selectedPlanUnavailable ? 'billing-price-unavailable' : ''}`}>
-              <strong>{proDisplayPrice}</strong>
+            <div className={`billing-price-row ${selectedPlanUnavailable ? 'billing-price-unavailable' : ''}`} style={{ alignItems: 'baseline', gap: '0.5rem' }}>
+              <strong>S/ 79/mes</strong>
+              <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#ef4444' }}>por tiempo limitado</span>
             </div>
-            {beforeProAmount && <p className="billing-price-note">Antes {beforeProAmount}</p>}
-            <p className="billing-price-note">por mes</p>
-            {proAnnualNote && <p className="billing-price-note">{proAnnualNote}</p>}
+            <p className="billing-price-note" style={{ textDecoration: 'line-through' }}>Antes S/ 199/mes</p>
             <ul className="billing-feature-list">
               <li><CheckCircle className="h-4 w-4" />An&aacute;lisis ilimitados</li>
               <li><CheckCircle className="h-4 w-4" />Exportar PDF ejecutivo y t&eacute;cnico</li>
@@ -249,9 +248,9 @@ export function BillingView({
                   <p>Empresa</p>
                 </div>
               </div>
-            <div className="billing-price-row">
-              <strong>{enterprisePrice}</strong>
-            </div>
+              <div className="billing-price-row">
+                <strong>{enterprisePrice}</strong>
+              </div>
               <p className="billing-price-note">por mes</p>
               {enterpriseBillingNote && <p className="billing-price-note">{enterpriseBillingNote}</p>}
               <ul className="billing-feature-list">
