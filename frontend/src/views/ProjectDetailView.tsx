@@ -529,16 +529,16 @@ export function ProjectDetailView({
                       {scan.status === 'awaiting_login' && (
                         <div className="w-full bg-slate-50 p-4 rounded-md border border-slate-200 mt-4 text-sm" onClick={(e) => e.stopPropagation()}>
                           <p className="font-semibold text-slate-800 mb-1">Instrucciones para la extensión:</p>
-                          <p className="text-slate-600 mb-4">Abre la extensión de Sin Barreras en la pestaña donde tienes la sesión iniciada y copia los siguientes datos:</p>
-                          <div className="grid gap-4 md:grid-cols-2">
+                          <p className="text-slate-600 mb-4">Abre la pestaña donde tienes la sesión iniciada, abre la extensión y haz clic en <strong>Analizar</strong>. Los datos debieron enviarse automáticamente.</p>
+                          <div className="grid gap-4 md:grid-cols-2 mt-2 pt-2 border-t border-slate-200">
                             <div>
-                              <span className="block text-xs font-bold text-slate-500 mb-1">TOKEN DE ACCESO (Haz clic para seleccionar)</span>
+                              <span className="block text-xs font-bold text-slate-500 mb-1">Copia manual (Si falló el envío automático)</span>
                               <code className="block w-full bg-white border border-slate-300 p-2.5 rounded text-slate-800 select-all overflow-hidden text-ellipsis whitespace-nowrap">
                                 {typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || 'Inicia sesión para obtener tu token' : ''}
                               </code>
                             </div>
                             <div>
-                              <span className="block text-xs font-bold text-slate-500 mb-1">ID DEL ESCANEO (Haz clic para seleccionar)</span>
+                              <span className="block text-xs font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
                               <code className="block w-full bg-white border border-slate-300 p-2.5 rounded text-slate-800 select-all">
                                 {scan.id}
                               </code>
