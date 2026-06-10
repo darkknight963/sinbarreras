@@ -139,6 +139,33 @@ export class ScansService {
     return reservedUrls;
   }
 
+  async cancelScan(id: string, ownerId: string | null): Promise<Scan> {
+    const scan = await this.scanRepository
+      .createQueryBuilder('scan')
+      .leftJoinAndSelect('scan.project', 'project')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .where('scan.id = :id', { id })
+      .getOne();
+
+    if (!scan) {
+      throw new NotFoundException('Escaneo no encontrado.');
+    }
+
+    const projectOwnerId = scan.project?.owner?.id ?? null;
+    const isPublic = !projectOwnerId;
+
+    if (!isPublic && projectOwnerId !== ownerId) {
+      throw new ForbiddenException('No tienes permiso para cancelar este escaneo.');
+    }
+
+    if (!['pending', 'running', 'awaiting_login'].includes(scan.status)) {
+      throw new BadRequestException('Solo se pueden cancelar escaneos en cola o en ejecución.');
+    }
+
+    scan.status = 'cancelled';
+    return this.scanRepository.save(scan);
+  }
+
   private async enforceSingleFreeUrl(ownerId: string, project: Project, urls: string[]): Promise<void> {
     if (urls.length > 1) {
       throw new ForbiddenException('El plan Free permite solo 1 URL por escaneo.');

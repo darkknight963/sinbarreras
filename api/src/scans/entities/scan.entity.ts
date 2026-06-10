@@ -10,7 +10,7 @@ export class Scan {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ default: 'pending' }) // pending, running, completed, failed
+  @Column({ default: 'pending' }) // pending, running, completed, failed, cancelled
   status!: string;
 
   @Column({ type: 'int', nullable: true })

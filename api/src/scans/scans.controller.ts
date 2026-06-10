@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { ScansService } from './scans.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { RateLimit } from '../security/rate-limit.decorator';
@@ -75,5 +75,13 @@ export class ScansController {
   remove(@Param('id') id: string, @CurrentUser() user: BillingAwareUser | null, @Req() request: { authMode?: string }) {
     const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
     return this.scansService.remove(id, ownerId);
+  }
+
+  @Public()
+  @Patch(':id/cancel')
+  @RateLimit({ scope: 'scan', limit: 20, windowMs: 15 * 60 * 1000 })
+  cancel(@Param('id') id: string, @CurrentUser() user: BillingAwareUser | null, @Req() request: { authMode?: string }) {
+    const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
+    return this.scansService.cancelScan(id, ownerId);
   }
 }

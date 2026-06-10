@@ -21,6 +21,7 @@ interface ProjectDetailViewProps {
   onNewScanClick: () => void;
   onScanClick: (scan: any) => void;
   onDeleteScan: (scan: any, event: React.MouseEvent) => void;
+  onCancelScan?: (scanId: string) => Promise<void> | void;
   showNewScan: boolean;
   onCloseNewScan: () => void;
   onTriggerScan: (e: React.FormEvent) => void;
@@ -48,6 +49,7 @@ export function ProjectDetailView({
   onNewScanClick,
   onScanClick,
   onDeleteScan,
+  onCancelScan,
   showNewScan,
   onCloseNewScan,
   onTriggerScan,
@@ -74,6 +76,7 @@ export function ProjectDetailView({
   const hasScans = scans.length > 0;
   const newScanDialogRef = React.useRef<HTMLDivElement>(null);
   const onCloseNewScanRef = React.useRef(onCloseNewScan);
+  const [cancellingScanId, setCancellingScanId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     onCloseNewScanRef.current = onCloseNewScan;
@@ -151,8 +154,10 @@ export function ProjectDetailView({
   const getScanStatusLabel = (status: string, progress: number) => {
     if (status === 'awaiting_login') return 'Login manual pendiente';
     if (status === 'pending') return 'En cola';
+    if (status === 'running') return 'Corriendo';
     if (status === 'completed') return 'Completado';
     if (status === 'failed') return 'Falló';
+    if (status === 'cancelled') return 'Cancelado';
     if (progress >= 95) return 'Finalizando';
     return 'Corriendo';
   };
@@ -384,15 +389,17 @@ export function ProjectDetailView({
               const isRunning = scan.status === 'running' || scan.status === 'pending' || scan.status === 'awaiting_login';
               const scanPercent = getScanProgressValue(scan, progress);
               const score = typeof scan.globalScore === 'number' ? scan.globalScore : null;
-              const scanToneClass = isRunning
-                ? 'scan-history-card-running'
-                : score === null
-                  ? 'scan-history-card-pending'
-                  : score >= 85
-                    ? 'scan-history-card-good'
-                    : score >= 70
-                      ? 'scan-history-card-warning'
-                      : 'scan-history-card-danger';
+              const scanToneClass = scan.status === 'cancelled'
+                ? 'scan-history-card-canceled'
+                : isRunning
+                  ? 'scan-history-card-running'
+                  : score === null
+                    ? 'scan-history-card-pending'
+                    : score >= 85
+                      ? 'scan-history-card-good'
+                      : score >= 70
+                        ? 'scan-history-card-warning'
+                        : 'scan-history-card-danger';
 
               return (
                 <div
@@ -410,6 +417,21 @@ export function ProjectDetailView({
                       <div>
                         <span>{getScanModeLabel(scan.scanMode)}</span>
                         {renderStatusBadge(scan.status)}
+                        {isRunning && onCancelScan && (
+                          <button
+                            type="button"
+                            className="report-danger-icon-btn"
+                            aria-label="Cancelar escaneo"
+                            disabled={cancellingScanId === scan.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setCancellingScanId(scan.id);
+                              Promise.resolve(onCancelScan(scan.id)).finally(() => setCancellingScanId(null));
+                            }}
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        )}
                         {!isRunning && (
                           <button
                             type="button"
@@ -440,6 +462,12 @@ export function ProjectDetailView({
                       <div className="scan-history-priority">
                         <span>{getScanStatusLabel(scan.status, scanPercent)}</span>
                         <span className="text-gob-blue">Actualizando</span>
+                      </div>
+                    </div>
+                  ) : scan.status === 'cancelled' ? (
+                    <div className="scan-history-result">
+                      <div className="scan-history-priority">
+                        <span>Escaneo cancelado</span>
                       </div>
                     </div>
                   ) : (

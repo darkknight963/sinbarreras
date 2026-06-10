@@ -112,6 +112,13 @@ export async function processScan(job: Job): Promise<void> {
   const results = [];
 
   for (let i = 0; i < totalUrls; i++) {
+    const cancelCheck = await pool.query(`SELECT status FROM scans WHERE id = $1`, [scanId]);
+    if (cancelCheck.rows[0]?.status === 'cancelled') {
+      await pool.query(`UPDATE scans SET status = 'cancelled' WHERE id = $1`, [scanId]);
+      console.log(`Scan ${scanId} was cancelled. Aborting.`);
+      return;
+    }
+
     const url = validatedUrls[i];
 
     try {

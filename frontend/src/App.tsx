@@ -1039,6 +1039,19 @@ export default function App() {
     }
   };
 
+  const handleCancelScan = async (scanId: string) => {
+    try {
+      setAppError(null);
+      const res = await fetchWithFallback(`/scans/${scanId}/cancel`, { method: 'PATCH' });
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      if (currentProject) fetchProjectDetails(currentProject.id);
+      fetchProjects();
+    } catch (err) {
+      handleApiError('No se pudo cancelar el análisis', err);
+      throw err;
+    }
+  };
+
   const handleApplicabilityUpdate = async (criterionId: string, estado: 'aplica' | 'no_aplica') => {
     if (!selectedUrlResult) return;
 
@@ -1775,6 +1788,7 @@ export default function App() {
             onNewScanClick={() => setShowNewScan(true)}
             onScanClick={(scan) => { authMode === 'public' ? fetchPublicScanDetails(scan.id) : fetchScanDetails(scan.id); setView('scan'); }}
             onDeleteScan={handleDeleteScan}
+            onCancelScan={handleCancelScan}
             showNewScan={showNewScan}
             onCloseNewScan={() => setShowNewScan(false)}
             onTriggerScan={handleTriggerScan}

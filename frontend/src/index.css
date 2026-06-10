@@ -6657,6 +6657,15 @@ html body .scan-history-card-danger::before {
   background: #c24141 !important;
 }
 
+html body .scan-history-card-canceled {
+  background: linear-gradient(100deg, #f8fafc 0%, #ffffff 42%, #f5f8fc 100%) !important;
+  border-color: #cbd5e1 !important;
+}
+
+html body .scan-history-card-canceled::before {
+  background: #94a3b8 !important;
+}
+
 html body .scan-history-card-pending,
 html body .scan-history-card-running {
   background: linear-gradient(100deg, #f8fafc 0%, #ffffff 42%, #f5f8fc 100%) !important;
