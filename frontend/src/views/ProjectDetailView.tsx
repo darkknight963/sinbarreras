@@ -529,7 +529,7 @@ export function ProjectDetailView({
                       {scan.status === 'awaiting_login' && (
                         <div className="w-full bg-slate-50 p-4 rounded-md border border-slate-200 mt-4 text-sm" onClick={(e) => e.stopPropagation()}>
                           <p className="font-semibold text-slate-800 mb-1">Instrucciones para la extensión:</p>
-                          <p className="text-slate-600 mb-4">Abre la pestaña donde tienes la sesión iniciada, abre la extensión y haz clic en <strong>Analizar</strong>. Los datos debieron enviarse automáticamente.</p>
+                          <p className="text-slate-600 mb-4">Abre la pestaña donde tienes la sesión iniciada y abre la extensión. Si los campos no se llenaron automáticamente, copia el Token y el ID mostrados abajo. Finalmente, haz clic en <strong>Analizar</strong>.</p>
                           <div className="grid gap-4 md:grid-cols-2 mt-2 pt-2 border-t border-slate-200">
                             <div>
                               <span className="block text-xs font-bold text-slate-500 mb-1">Copia manual (Si falló el envío automático)</span>
