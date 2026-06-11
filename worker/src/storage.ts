@@ -16,11 +16,13 @@ const storageEndpoint = process.env.STORAGE_ENDPOINT
     ? `${process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http'}://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}`
     : 'http://localhost:9000');
 const accessKeyId = process.env.STORAGE_ACCESS_KEY
+  || process.env.STORAGE_ACCESS_KEY_ID
   || process.env.R2_ACCESS_KEY_ID
   || process.env.MINIO_ACCESS_KEY
   || process.env.MINIO_ROOT_USER
   || 'admin';
 const secretAccessKey = process.env.STORAGE_SECRET_KEY
+  || process.env.STORAGE_SECRET_ACCESS_KEY
   || process.env.R2_SECRET_ACCESS_KEY
   || process.env.MINIO_SECRET_KEY
   || process.env.MINIO_ROOT_PASSWORD

@@ -9,11 +9,13 @@ const endpoint = process.env.STORAGE_ENDPOINT
 const bucketName = process.env.STORAGE_BUCKET_NAME || process.env.R2_BUCKET_NAME || process.env.MINIO_BUCKET || 'accessibility-evidence';
 const region = process.env.STORAGE_REGION || process.env.R2_REGION || 'us-east-1';
 const accessKeyId = process.env.STORAGE_ACCESS_KEY
+  || process.env.STORAGE_ACCESS_KEY_ID
   || process.env.R2_ACCESS_KEY_ID
   || process.env.MINIO_ACCESS_KEY
   || process.env.MINIO_ROOT_USER
   || 'admin';
 const secretAccessKey = process.env.STORAGE_SECRET_KEY
+  || process.env.STORAGE_SECRET_ACCESS_KEY
   || process.env.R2_SECRET_ACCESS_KEY
   || process.env.MINIO_SECRET_KEY
   || process.env.MINIO_ROOT_PASSWORD
