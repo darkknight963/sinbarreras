@@ -651,6 +651,14 @@ export class ScansService {
     }
 
     const [url] = await validateScanTargetUrls([payload.url], { maxUrls: 1 });
+    if (scan.status !== 'awaiting_login') {
+      throw new BadRequestException('Este escaneo ya fue procesado o no está esperando resultados de la extensión.');
+    }
+
+    if (scan.urlResults?.length) {
+      throw new BadRequestException('Este escaneo ya tiene resultados y no puede sobrescribirse.');
+    }
+
     const violations = Array.isArray(payload.violations) ? payload.violations : [];
     const manualVerifications = Array.isArray(payload.manualVerifications) ? payload.manualVerifications : [];
     const score = Number.isFinite(Number(payload.score))

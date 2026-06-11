@@ -65,6 +65,27 @@ export class BillingService {
       throw new BadRequestException(`No existe el plan Culqi configurado para ${plan.label} en ${plan.currency}`);
     }
 
+    const existingActive = await this.subscriptionRepository.findOne({
+      where: {
+        user: { id: user.id },
+        plan: plan.code,
+        currency: plan.currency,
+        status: 'active',
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (existingActive) {
+      await this.updateUserBilling(user, {
+        status: existingActive.status,
+        plan: existingActive.plan,
+        currency: existingActive.currency,
+        currentPeriodEnd: existingActive.currentPeriodEnd,
+        customerId: existingActive.providerCustomerId,
+        subscriptionId: existingActive.providerSubscriptionId,
+      });
+      return this.serializeBillingState(user);
+    }
+
     const customerPayload = this.buildCustomerPayload(user);
     const customer = await this.culqiClient.createCustomer(customerPayload);
     const card = await this.culqiClient.createCard({
@@ -89,7 +110,7 @@ export class BillingService {
       provider: BILLING_PROVIDER,
       plan: plan.code,
       currency: plan.currency,
-      status: this.mapStatusFromCulqi(subscription?.status ?? 'active'),
+      status: this.mapStatusFromCulqi(subscription?.status ?? 'pending'),
       providerPlanId: plan.providerPlanId,
       providerCustomerId: customer?.id || null,
       providerSubscriptionId: subscription?.id || null,
@@ -186,8 +207,11 @@ export class BillingService {
   }
 
   getCulqiWebhookConfig() {
+    const webhookSecret = this.getWebhookSecret();
     return {
-      path: '/billing/webhooks/culqi',
+      path: webhookSecret
+        ? `/billing/webhooks/culqi?secret=${encodeURIComponent(webhookSecret)}`
+        : '/billing/webhooks/culqi',
       method: 'POST',
       supportedEvents: [
         'subscription.creation.succeeded',
@@ -201,7 +225,7 @@ export class BillingService {
       ],
       secretHeaderNames: ['x-culqi-webhook-secret', 'x-webhook-secret'],
       secretEnvVar: 'CULQI_WEBHOOK_SECRET',
-      note: 'Registra la URL en Culqi y, si tu panel permite headers personalizados, usa el mismo secreto del backend.',
+      note: 'Registra la URL completa en Culqi. El secreto puede enviarse por query string o por header.',
     };
   }
 

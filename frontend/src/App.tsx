@@ -945,6 +945,7 @@ export default function App() {
         })
       });
       if (res.ok) {
+        const createdScan = await res.json() as Scan;
         if (newScanLoginMode === 'manual_assisted') {
           const EXTENSION_ID = 'bipiiijphpkdbodephdbahlkdcnopjao';
           const token = typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '';
@@ -953,7 +954,7 @@ export default function App() {
               (window as any).chrome.runtime.sendMessage(EXTENSION_ID, {
                 type: 'SET_SCAN_DATA',
                 token,
-                scanId,
+                scanId: createdScan.id,
               }, (response: any) => {
                 console.log('Mensaje enviado a la extensión', response);
               });
@@ -1206,6 +1207,11 @@ export default function App() {
           throw new Error(`HTTP ${stateResponse.status}`);
         }
         setBillingState(await stateResponse.json());
+        const userResponse = await fetchWithFallback('/auth/me');
+        if (!userResponse.ok) {
+          throw new Error(`HTTP ${userResponse.status}`);
+        }
+        setCurrentUser(await userResponse.json());
       } else {
         setBillingState(null);
       }
@@ -1315,6 +1321,11 @@ export default function App() {
 
           const state = await confirmResponse.json();
           setBillingState(state);
+          const userResponse = await fetchWithFallback('/auth/me');
+          if (!userResponse.ok) {
+            throw new Error(`HTTP ${userResponse.status}`);
+          }
+          setCurrentUser(await userResponse.json());
           setBillingNote(`Tu plan ${plan.label} ya quedó registrado.`);
           await loadBillingData();
         } catch (err) {

@@ -45,4 +45,51 @@ describe('ScansController', () => {
 
     expect(scansService.triggerScan).not.toHaveBeenCalled();
   });
+
+  it('allows active Pro users to scan multiple urls', async () => {
+    scansService.triggerScan.mockResolvedValueOnce({ id: 'scan-1' });
+
+    await expect(
+      controller.triggerScan(
+        {
+          projectId: 'project-1',
+          urls: ['https://example.com', 'https://example.org'],
+        } as any,
+        {
+          id: 'user-1',
+          role: 'free',
+          billingPlan: 'monthly',
+          billingStatus: 'active',
+        },
+        { authMode: 'session' },
+      ),
+    ).resolves.toEqual({ id: 'scan-1' });
+
+    expect(scansService.triggerScan).toHaveBeenCalledWith(
+      expect.any(Object),
+      'user-1',
+      { enforceSingleFreeUrl: false },
+    );
+  });
+
+  it.each(['pending', 'past_due', 'canceled'])(
+    'keeps the free scan restriction while billing is %s',
+    (billingStatus) => {
+      expect(() =>
+        controller.triggerScan(
+          {
+            projectId: 'project-1',
+            urls: ['https://example.com', 'https://example.org'],
+          } as any,
+          {
+            id: 'user-1',
+            role: 'free',
+            billingPlan: 'monthly',
+            billingStatus,
+          },
+          { authMode: 'session' },
+        ),
+      ).toThrow(ForbiddenException);
+    },
+  );
 });

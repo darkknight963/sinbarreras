@@ -17,16 +17,23 @@ const getActiveTab = async () => {
 const normalizeApiBase = (value) => value.replace(/\/+$/, '');
 
 const saveSettings = async () => {
-  await chrome.storage.sync.set({
+  await chrome.storage.local.set({
     apiToken: apiTokenInput.value.trim(),
     scanId: scanIdInput.value.trim(),
   });
 };
 
 const loadSettings = async () => {
-  const settings = await chrome.storage.sync.get(['apiToken', 'scanId']);
+  const settings = await chrome.storage.local.get(['apiToken', 'scanId']);
   apiTokenInput.value = settings.apiToken || '';
   scanIdInput.value = settings.scanId || '';
+  return settings;
+};
+
+const clearScanSession = async () => {
+  await chrome.storage.local.remove(['apiToken', 'scanId', 'targetUrl']);
+  apiTokenInput.value = '';
+  scanIdInput.value = '';
 };
 
 const injectAuditScripts = async (tabId) => {
@@ -129,8 +136,9 @@ const runAudit = async () => {
         throw error;
       }
     }
+    await clearScanSession();
     setStatus(
-      `Listo. Score ${audit.score}/100, ${audit.violations.length} hallazgos confirmados y ${audit.manualVerifications.length} revisiones.`,
+      `Listo. Score ${audit.score}/100. La sesión de este escaneo fue cerrada y no puede reutilizarse.`,
       'success'
     );
   } catch (error) {

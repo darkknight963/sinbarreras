@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
@@ -51,11 +51,16 @@ export class BillingController {
 
   @Public()
   @Post('webhooks/culqi')
-  handleWebhook(@Body() payload: CulqiWebhookDto, @Req() request: Request) {
+  handleWebhook(
+    @Body() payload: CulqiWebhookDto,
+    @Req() request: Request,
+    @Query('secret') querySecret?: string,
+  ) {
     const webhookSecret = this.billingService.getWebhookSecret();
     const incomingSecret = String(
       request.headers['x-culqi-webhook-secret'] ||
       request.headers['x-webhook-secret'] ||
+      querySecret ||
       '',
     ).trim();
 

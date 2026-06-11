@@ -36,6 +36,7 @@ STORAGE_PUBLIC_BASE_URL=http://localhost:3000
 CULQI_API_BASE_URL=https://api.culqi.com/v2
 CULQI_PUBLIC_KEY=pk_test_xxx
 CULQI_SECRET_KEY=sk_test_xxx
+CULQI_WEBHOOK_SECRET=replace_with_a_long_random_secret
 CULQI_MONTHLY_PEN_PLAN_ID=pln_test_xxx
 CULQI_ANNUAL_PEN_PLAN_ID=pln_test_xxx
 CULQI_MONTHLY_USD_PLAN_ID=pln_test_xxx
@@ -84,8 +85,11 @@ VITE_CULQI_PUBLIC_KEY=pk_test_xxx
 Register the public endpoint in Culqi:
 
 ```text
-POST https://your-domain.com/billing/webhooks/culqi
+POST https://your-api-domain.com/billing/webhooks/culqi?secret=<CULQI_WEBHOOK_SECRET>
 ```
+
+Use the API domain, not the frontend domain, unless your reverse proxy explicitly forwards
+`/billing` to the API. The same URL can receive all supported subscription events.
 
 For local development you can use a tunnel such as ngrok or Cloudflare Tunnel.
 

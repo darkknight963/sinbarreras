@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { BillingController } from './billing.controller';
 
 describe('BillingController', () => {
@@ -26,10 +27,43 @@ describe('BillingController', () => {
     await expect(
       controller.handleWebhook(
         { event: 'subscription.creation.succeeded' } as any,
-        { headers: { 'x-culqi-webhook-secret': 'whsec_test_123' } } as any,
+        { headers: {} } as any,
+        'whsec_test_123',
       ),
     ).resolves.toEqual({
       ok: true,
     });
+  });
+
+  it('rejects Culqi webhooks with an invalid secret', () => {
+    const billingService = {
+      getWebhookSecret: jest.fn(() => 'whsec_test_123'),
+      handleWebhook: jest.fn(),
+    } as any;
+    const controller = new BillingController(billingService);
+
+    expect(() =>
+      controller.handleWebhook(
+        { event: 'subscription.creation.succeeded' } as any,
+        { headers: {} } as any,
+        'wrong-secret',
+      ),
+    ).toThrow(UnauthorizedException);
+    expect(billingService.handleWebhook).not.toHaveBeenCalled();
+  });
+
+  it('accepts the webhook secret through a header', async () => {
+    const billingService = {
+      getWebhookSecret: jest.fn(() => 'whsec_test_123'),
+      handleWebhook: jest.fn(async () => ({ ok: true })),
+    } as any;
+    const controller = new BillingController(billingService);
+
+    await expect(
+      controller.handleWebhook(
+        { event: 'subscription.charge.succeeded' } as any,
+        { headers: { 'x-culqi-webhook-secret': 'whsec_test_123' } } as any,
+      ),
+    ).resolves.toEqual({ ok: true });
   });
 });

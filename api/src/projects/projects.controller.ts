@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Req } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { RateLimit } from '../security/rate-limit.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -14,9 +14,22 @@ export class ProjectsController {
     @Body('domain') domain: string,
     @Body('vo') vo: number,
     @Body('entityType') entityType: string,
-    @CurrentUser() user: { id: string } | null,
+    @CurrentUser() user: {
+      id: string;
+      role?: string | null;
+      billingStatus?: string | null;
+      billingPlan?: string | null;
+    } | null,
     @Req() request: { authMode?: string },
   ) {
+    const role = user?.role?.toLowerCase() || 'free';
+    const hasPaidAccess =
+      role === 'admin' ||
+      role === 'superadmin' ||
+      Boolean(user?.billingPlan && user.billingStatus === 'active');
+    if (request.authMode !== 'service' && !hasPaidAccess) {
+      throw new ForbiddenException('La creación de proyectos está disponible en Pro.');
+    }
     const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
     return this.projectsService.create(name, domain, vo, entityType, ownerId);
   }

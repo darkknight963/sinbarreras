@@ -562,11 +562,11 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
-    await user.click(screen.getByRole('button', { name: /planes/i }))
+    await user.click(screen.getByRole('button', { name: /^admin$/i }))
     await screen.findByRole('heading', { name: /simple y transparente/i })
     expect(screen.getByRole('button', { name: /volver al sistema/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /empezar gratis/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /contactar ventas/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /contactar ventas/i })).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: /empezar con pro/i }))
 
@@ -643,7 +643,7 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
-    await user.click(screen.getByRole('button', { name: /plan pro/i }))
+    await user.click(screen.getByRole('button', { name: /^admin$/i }))
     await screen.findByRole('heading', { name: /simple y transparente/i })
 
     await user.click(screen.getByRole('button', { name: /volver al sistema/i }))

@@ -145,6 +145,65 @@ describe('BillingService', () => {
     );
   });
 
+  it('does not create a duplicate active subscription', async () => {
+    subscriptionRepository.findOne.mockResolvedValueOnce({
+      id: 'billing-1',
+      status: 'active',
+      plan: 'monthly',
+      currency: 'PEN',
+      currentPeriodEnd: null,
+      providerCustomerId: 'cus_existing',
+      providerSubscriptionId: 'sxn_existing',
+    });
+    userRepository.findOne.mockResolvedValue({
+      id: 'user-1',
+      email: 'cliente@demo.pe',
+      fullName: 'Cliente Demo',
+      companyName: 'Demo SAC',
+      billingStatus: 'active',
+      billingPlan: 'monthly',
+      billingProvider: 'culqi',
+      billingCurrency: 'PEN',
+      billingPeriodEnd: null,
+      billingCustomerId: 'cus_existing',
+      billingSubscriptionId: 'sxn_existing',
+    });
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+
+    await expect(
+      service.confirmSubscription('user-1', {
+        planCode: 'monthly',
+        currency: 'PEN',
+        tokenId: 'tok_duplicate',
+      }),
+    ).resolves.toMatchObject({
+      status: 'active',
+      plan: 'monthly',
+      subscriptionId: 'sxn_existing',
+    });
+    expect(culqiClient.createCustomer).not.toHaveBeenCalled();
+    expect(culqiClient.createSubscription).not.toHaveBeenCalled();
+  });
+
+  it('keeps billing pending when Culqi omits the subscription status', async () => {
+    culqiClient.createSubscription.mockResolvedValueOnce({
+      id: 'sxn_pending',
+      next_billing_date: 1767225600,
+    });
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+
+    await expect(
+      service.confirmSubscription('user-1', {
+        planCode: 'monthly',
+        currency: 'PEN',
+        tokenId: 'tok_pending',
+      }),
+    ).resolves.toMatchObject({
+      status: 'pending',
+      plan: 'monthly',
+    });
+  });
+
   it('returns the current billing state', async () => {
     const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
 
@@ -154,5 +213,58 @@ describe('BillingService', () => {
       provider: 'culqi',
       currency: null,
     });
+  });
+
+  it.each([
+    ['subscription.creation.succeeded', 'active'],
+    ['subscription.charge.succeeded', 'active'],
+    ['subscription.charge.failed', 'past_due'],
+    ['subscription.cancel.succeeded', 'canceled'],
+  ])('updates user access after webhook %s', async (event, expectedStatus) => {
+    const user = {
+      id: 'user-1',
+      billingStatus: 'pending',
+      billingPlan: 'monthly',
+      billingProvider: 'culqi',
+      billingCurrency: 'PEN',
+      billingPeriodEnd: null,
+      billingCustomerId: 'cus_test_123',
+      billingSubscriptionId: 'sxn_test_123',
+    };
+    const record = {
+      id: 'billing-1',
+      user,
+      status: 'pending',
+      plan: 'monthly',
+      currency: 'PEN',
+      currentPeriodEnd: null,
+      providerCustomerId: 'cus_test_123',
+      providerSubscriptionId: 'sxn_test_123',
+    };
+    subscriptionRepository.findOne.mockResolvedValueOnce(record);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+
+    await expect(
+      service.handleWebhook({
+        event,
+        data: { id: 'sxn_test_123' },
+      } as any),
+    ).resolves.toEqual({ ok: true, matched: true });
+
+    expect(record.status).toBe(expectedStatus);
+    expect(user.billingStatus).toBe(expectedStatus);
+    expect(userRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ billingStatus: expectedStatus }),
+    );
+  });
+
+  it('ignores unrelated webhook events without changing billing', async () => {
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+
+    await expect(
+      service.handleWebhook({ event: 'refund.creation.succeeded' } as any),
+    ).resolves.toEqual({ ok: true, ignored: true });
+    expect(subscriptionRepository.save).not.toHaveBeenCalled();
+    expect(userRepository.save).not.toHaveBeenCalled();
   });
 });

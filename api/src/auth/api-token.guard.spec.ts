@@ -58,4 +58,35 @@ describe('ApiTokenGuard', () => {
 
     await expect(new ApiTokenGuard().canActivate(optionsContext())).resolves.toBe(true);
   });
+
+  it('preserves the free role from an authenticated session', async () => {
+    delete process.env.API_AUTH_TOKEN;
+    process.env.NODE_ENV = 'production';
+    const request: any = {
+      method: 'GET',
+      headers: { authorization: 'Bearer session-token' },
+    };
+    const context = {
+      switchToHttp: () => ({ getRequest: () => request }),
+      getHandler: () => undefined,
+      getClass: () => undefined,
+    } as unknown as ExecutionContext;
+    const reflector = {
+      getAllAndOverride: jest.fn(() => false),
+    } as any;
+    const authService = {
+      validateSessionToken: jest.fn(async () => ({
+        user: {
+          id: 'user-free',
+          email: 'free@example.com',
+          role: 'free',
+          billingStatus: 'inactive',
+          billingPlan: null,
+        },
+      })),
+    } as any;
+
+    await expect(new ApiTokenGuard(reflector, authService).canActivate(context)).resolves.toBe(true);
+    expect(request.user.role).toBe('free');
+  });
 });

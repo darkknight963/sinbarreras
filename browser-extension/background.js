@@ -3,7 +3,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
     const { token, scanId } = request;
     
     if (token && scanId) {
-      chrome.storage.sync.set({
+      chrome.storage.local.set({
         apiToken: token,
         scanId: scanId
       }, () => {

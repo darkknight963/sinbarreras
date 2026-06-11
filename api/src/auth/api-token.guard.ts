@@ -5,8 +5,9 @@ import { AuthService } from './auth.service';
 
 const normalizeRole = (role?: string) => {
   if (role === 'superadmin') return 'superadmin';
+  if (role === 'admin') return 'admin';
   if (role === 'guest') return 'guest';
-  return 'admin';
+  return 'free';
 };
 
 @Injectable()
