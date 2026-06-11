@@ -555,6 +555,15 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
 async function runPa11y(url: string, port: number): Promise<RawFinding[]> {
   const pa11yModule: any = await import('pa11y' as any);
   const pa11y = pa11yModule.default || pa11yModule;
+  const puppeteerModule: any = await import('puppeteer-core');
+  const puppeteer = puppeteerModule.default || puppeteerModule;
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_PATH ||
+    process.env.PLAYWRIGHT_CHROME_PATH ||
+    puppeteer.executablePath?.() ||
+    '/usr/bin/chrome-headless-shell';
+
   const result = await pa11y(url, {
     ignoreUrl: false,
     standard: 'WCAG2AA',
@@ -565,6 +574,7 @@ async function runPa11y(url: string, port: number): Promise<RawFinding[]> {
     wait: 1000,
     chromeLaunchConfig: {
       ignoreHTTPSErrors: true,
+      executablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     },
   });
