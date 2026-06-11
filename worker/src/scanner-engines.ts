@@ -1,5 +1,5 @@
 import axeCore from 'axe-core';
-import { Page } from 'playwright';
+import { chromium, Page } from 'playwright';
 import { buildManualGuidance } from './manualGuidanceBuilder.js';
 import { enforceClassification } from './classificationPolicy.js';
 import { getRuleDetails } from './wcagRules.js';
@@ -552,17 +552,14 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
   return findings;
 }
 
-async function runPa11y(url: string, port: number): Promise<RawFinding[]> {
+async function runPa11y(url: string, _port: number): Promise<RawFinding[]> {
   const pa11yModule: any = await import('pa11y' as any);
   const pa11y = pa11yModule.default || pa11yModule;
-  const puppeteerModule: any = await import('puppeteer-core');
-  const puppeteer = puppeteerModule.default || puppeteerModule;
   const executablePath =
     process.env.PUPPETEER_EXECUTABLE_PATH ||
     process.env.CHROME_PATH ||
     process.env.PLAYWRIGHT_CHROME_PATH ||
-    puppeteer.executablePath?.() ||
-    '/usr/bin/chrome-headless-shell';
+    chromium.executablePath();
 
   const result = await pa11y(url, {
     ignoreUrl: false,
@@ -597,10 +594,25 @@ async function runPa11y(url: string, port: number): Promise<RawFinding[]> {
   return findings;
 }
 
+let ibmScanSequence = 0;
+
+async function configureIbmEqualAccess(aChecker: any): Promise<void> {
+  const currentConfig = await aChecker.getConfig();
+  await aChecker.setConfig({
+    ...currentConfig,
+    puppeteerArgs: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+    ],
+  });
+}
+
 async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
   const checkerModule: any = await import('accessibility-checker');
   const aChecker = checkerModule.default || checkerModule;
-  const report = await aChecker.getCompliance(html, 'scan-page');
+  await configureIbmEqualAccess(aChecker);
+  const report = await aChecker.getCompliance(html, `scan-html-${Date.now()}-${++ibmScanSequence}`);
 
   const violations = report?.results?.violations || [];
   const needsReview = report?.results?.needsReview || [];
@@ -642,7 +654,46 @@ async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
 }
 
 async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
-  return runIbmEqualAccessHtml(await page.content());
+  const checkerModule: any = await import('accessibility-checker');
+  const aChecker = checkerModule.default || checkerModule;
+  await configureIbmEqualAccess(aChecker);
+  const report = await aChecker.getCompliance(page, `scan-page-${Date.now()}-${++ibmScanSequence}`);
+
+  const violations = report?.results?.violations || [];
+  const needsReview = report?.results?.needsReview || [];
+  const findings: RawFinding[] = [];
+
+  for (const v of violations) {
+    const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+    findings.push({
+      tool: 'ibm-equal-access',
+      ruleId: v?.ruleId || v?.id || 'ibm-unknown',
+      normalizedRuleId: normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || ''),
+      category: 'violation',
+      description: v?.message || v?.reasonId || 'Hallazgo de IBM Equal Access',
+      selector: normalizeSelector(path?.dom || path?.target || 'document'),
+      elementHtml: path?.snippet || '',
+      severity: toSeverityEs(v?.level || v?.impact),
+      suggestedFix: v?.help || 'Revisar recomendacion de IBM Equal Access.',
+    });
+  }
+
+  for (const v of needsReview) {
+    const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+    findings.push({
+      tool: 'ibm-equal-access',
+      ruleId: v?.ruleId || v?.id || 'ibm-needs-review',
+      normalizedRuleId: normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || ''),
+      category: 'manual_check',
+      description: v?.message || v?.reasonId || 'Revision manual recomendada por IBM Equal Access',
+      selector: normalizeSelector(path?.dom || path?.target || 'document'),
+      elementHtml: path?.snippet || '',
+      severity: 'medio',
+      suggestedFix: v?.help || 'Validar manualmente el criterio en el contexto funcional.',
+    });
+  }
+
+  return findings;
 }
 
 async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
