@@ -32,6 +32,7 @@ STORAGE_ACCESS_KEY=
 STORAGE_SECRET_KEY=
 STORAGE_BUCKET_NAME=accessibility-evidence
 STORAGE_FORCE_PATH_STYLE=false
+STORAGE_PUBLIC_BASE_URL=http://localhost:3000
 CULQI_API_BASE_URL=https://api.culqi.com/v2
 CULQI_PUBLIC_KEY=pk_test_xxx
 CULQI_SECRET_KEY=sk_test_xxx
@@ -54,6 +55,7 @@ STORAGE_ACCESS_KEY=your_r2_access_key
 STORAGE_SECRET_KEY=your_r2_secret_key
 STORAGE_BUCKET_NAME=your_bucket_name
 STORAGE_FORCE_PATH_STYLE=false
+STORAGE_PUBLIC_BASE_URL=https://your-api-domain.com
 ```
 
 ### Frontend

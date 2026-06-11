@@ -129,8 +129,13 @@ export async function uploadEvidence(
 
   await s3Client.send(command);
 
-  const publicApiEndpoint = process.env.PUBLIC_API_ENDPOINT || 'http://localhost:3000';
-  return `${publicApiEndpoint}/evidence/${encodeURIComponent(key)}`;
+  const publicEvidenceBaseUrl =
+    process.env.STORAGE_PUBLIC_BASE_URL ||
+    process.env.PUBLIC_API_ENDPOINT ||
+    process.env.PUBLIC_STORAGE_URL ||
+    'http://localhost:3000';
+
+  return `${publicEvidenceBaseUrl.replace(/\/+$/, '')}/evidence/${encodeURIComponent(key)}`;
 }
 
 export async function deleteEvidenceUrls(urls: string[]): Promise<number> {

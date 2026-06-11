@@ -6725,6 +6725,7 @@ html body .scan-history-result {
   align-content: center !important;
   gap: 12px !important;
   min-width: 0 !important;
+  min-height: 124px !important;
   padding: 18px !important;
   border: 1px solid #d7e2f2 !important;
   border-radius: 14px !important;
@@ -6749,6 +6750,7 @@ html body .scan-history-card-danger .scan-history-result {
 
 html body .scan-history-result .report-score-meter {
   min-width: 0 !important;
+  min-height: 70px !important;
 }
 
 html body .scan-history-result .report-score-meter-head {
@@ -6769,6 +6771,7 @@ html body .scan-history-priority {
   align-items: center !important;
   gap: 8px !important;
   flex-wrap: wrap !important;
+  min-height: 34px !important;
   margin-top: 0 !important;
 }
 
