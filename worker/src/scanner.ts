@@ -184,6 +184,18 @@ export async function scanUrl(url: string, options: {
       console.warn('Final visual evidence capture failed.', err);
       return null;
     });
+    const fallbackScreenshotUrl =
+      currentVisualEvidence?.screenshotUrl ||
+      initialVisualEvidence?.screenshotUrl ||
+      '';
+
+    if (fallbackScreenshotUrl) {
+      for (const finding of formattedViolations) {
+        if (!finding.screenshotUrl) {
+          finding.screenshotUrl = fallbackScreenshotUrl;
+        }
+      }
+    }
     await reportProgress(85);
 
     const focusTraversal = await captureFocusTraversal(page);
