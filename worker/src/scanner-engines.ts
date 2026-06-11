@@ -555,47 +555,36 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
 async function runPa11y(url: string, port: number): Promise<RawFinding[]> {
   const pa11yModule: any = await import('pa11y' as any);
   const pa11y = pa11yModule.default || pa11yModule;
-  const puppeteerModule: any = await import('puppeteer-core');
-  const puppeteer = puppeteerModule.default || puppeteerModule;
+  const result = await pa11y(url, {
+    ignoreUrl: false,
+    standard: 'WCAG2AA',
+    runners: ['axe', 'htmlcs'],
+    includeWarnings: true,
+    includeNotices: false,
+    timeout: 30000,
+    wait: 1000,
+    chromeLaunchConfig: {
+      ignoreHTTPSErrors: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    },
+  });
 
-  const browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${port}` });
-  const page = await browser.newPage();
-
-  try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-
-    const result = await pa11y(url, {
-      browser,
-      page,
-      ignoreUrl: true,
-      standard: 'WCAG2AA',
-      runners: ['axe', 'htmlcs'],
-      includeWarnings: true,
-      includeNotices: false,
-      timeout: 30000,
-      wait: 1000,
+  const findings: RawFinding[] = [];
+  for (const issue of result?.issues || []) {
+    findings.push({
+      tool: 'pa11y',
+      ruleId: issue.code || 'pa11y-unknown',
+      normalizedRuleId: normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || ''),
+      category: issue.typeCode === 1 ? 'violation' : 'alert',
+      description: issue.message || 'Hallazgo de Pa11y',
+      selector: normalizeSelector(issue.selector || 'document'),
+      elementHtml: issue.context || '',
+      severity: toSeverityEs(issue.type || issue.typeCode),
+      suggestedFix: issue.runner ? `Revisar regla ${issue.runner}:${issue.code}` : 'Revisar hallazgo de Pa11y.',
     });
-
-    const findings: RawFinding[] = [];
-    for (const issue of result?.issues || []) {
-      findings.push({
-        tool: 'pa11y',
-        ruleId: issue.code || 'pa11y-unknown',
-        normalizedRuleId: normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || ''),
-        category: issue.typeCode === 1 ? 'violation' : 'alert',
-        description: issue.message || 'Hallazgo de Pa11y',
-        selector: normalizeSelector(issue.selector || 'document'),
-        elementHtml: issue.context || '',
-        severity: toSeverityEs(issue.type || issue.typeCode),
-        suggestedFix: issue.runner ? `Revisar regla ${issue.runner}:${issue.code}` : 'Revisar hallazgo de Pa11y.',
-      });
-    }
-
-    return findings;
-  } finally {
-    await page.close().catch(() => { });
-    await browser.disconnect().catch(() => { });
   }
+
+  return findings;
 }
 
 async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
