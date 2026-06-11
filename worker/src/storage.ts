@@ -11,21 +11,37 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const minioProtocol = process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http';
-const endpoint = process.env.MINIO_ENDPOINT ? `${minioProtocol}://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}` : 'http://localhost:9000';
-const accessKeyId = process.env.MINIO_ACCESS_KEY || process.env.MINIO_ROOT_USER || 'admin';
-const secretAccessKey = process.env.MINIO_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD || 'admin123';
-const bucketName = process.env.MINIO_BUCKET || 'accessibility-evidence';
+const storageEndpoint = process.env.STORAGE_ENDPOINT
+  || (process.env.MINIO_ENDPOINT
+    ? `${process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http'}://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}`
+    : 'http://localhost:9000');
+const accessKeyId = process.env.STORAGE_ACCESS_KEY
+  || process.env.R2_ACCESS_KEY_ID
+  || process.env.MINIO_ACCESS_KEY
+  || process.env.MINIO_ROOT_USER
+  || 'admin';
+const secretAccessKey = process.env.STORAGE_SECRET_KEY
+  || process.env.R2_SECRET_ACCESS_KEY
+  || process.env.MINIO_SECRET_KEY
+  || process.env.MINIO_ROOT_PASSWORD
+  || 'admin123';
+const bucketName = process.env.STORAGE_BUCKET_NAME
+  || process.env.R2_BUCKET_NAME
+  || process.env.MINIO_BUCKET
+  || 'accessibility-evidence';
+const region = process.env.STORAGE_REGION || process.env.R2_REGION || 'us-east-1';
+const forcePathStyle = String(process.env.STORAGE_FORCE_PATH_STYLE || process.env.MINIO_FORCE_PATH_STYLE || '').toLowerCase() === 'true'
+  || (!process.env.STORAGE_ENDPOINT && !process.env.R2_REGION && process.env.MINIO_ENDPOINT ? true : false);
 const retentionDays = Number.parseInt(process.env.EVIDENCE_RETENTION_DAYS || '0', 10);
 
 export const s3Client = new S3Client({
-  endpoint,
-  region: 'us-east-1', // MinIO ignores region but SDK needs it
+  endpoint: storageEndpoint,
+  region,
   credentials: {
     accessKeyId,
     secretAccessKey,
   },
-  forcePathStyle: true, // required for MinIO
+  forcePathStyle,
 });
 
 export async function initializeStorage(): Promise<void> {

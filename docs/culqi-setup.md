@@ -26,6 +26,12 @@ It does not use Culqi Link for the subscription flow.
 Fill these in `api/.env`:
 
 ```bash
+STORAGE_ENDPOINT=
+STORAGE_REGION=auto
+STORAGE_ACCESS_KEY=
+STORAGE_SECRET_KEY=
+STORAGE_BUCKET_NAME=accessibility-evidence
+STORAGE_FORCE_PATH_STYLE=false
 CULQI_API_BASE_URL=https://api.culqi.com/v2
 CULQI_PUBLIC_KEY=pk_test_xxx
 CULQI_SECRET_KEY=sk_test_xxx
@@ -37,6 +43,17 @@ CULQI_MONTHLY_PEN_AMOUNT=4900
 CULQI_ANNUAL_PEN_AMOUNT=49000
 CULQI_MONTHLY_USD_AMOUNT=15
 CULQI_ANNUAL_USD_AMOUNT=150
+```
+
+For Cloudflare R2, you can keep the generic `STORAGE_*` names and set:
+
+```bash
+STORAGE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+STORAGE_REGION=auto
+STORAGE_ACCESS_KEY=your_r2_access_key
+STORAGE_SECRET_KEY=your_r2_secret_key
+STORAGE_BUCKET_NAME=your_bucket_name
+STORAGE_FORCE_PATH_STYLE=false
 ```
 
 ### Frontend
