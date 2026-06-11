@@ -8,6 +8,7 @@ import {
   ListTree,
   TableProperties,
 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 const SESSION_STORAGE_KEY = 'sin-barreras-session-token';
 
@@ -33,7 +34,18 @@ function EvidencePreview({ url }: { url: string }) {
 
     const loadEvidence = async () => {
       try {
-        const response = await fetch(url, {
+        let evidenceUrl = url;
+        try {
+          const parsed = new URL(url, window.location.origin);
+          const evidenceMatch = parsed.pathname.match(/\/(?:api\/)?evidence\/(.+)$/);
+          if (evidenceMatch) {
+            evidenceUrl = `${API_BASE_URL.replace(/\/+$/, '')}/evidence/${evidenceMatch[1]}`;
+          }
+        } catch {
+          // Keep the original URL if it cannot be normalized.
+        }
+
+        const response = await fetch(evidenceUrl, {
           headers: withAuthHeaders(),
         });
 
@@ -184,6 +196,12 @@ function SemanticStructureViewer({ structure }: { structure: any }) {
     </section>
   );
 }
+
+const getVisualMapEvidenceUrl = (visualMap: any, pageState?: string) => {
+  const states = Array.isArray(visualMap?.states) ? visualMap.states : [];
+  const matchingState = states.find((state: any) => state?.pageState === pageState && state?.screenshotUrl);
+  return matchingState?.screenshotUrl || states.find((state: any) => state?.screenshotUrl)?.screenshotUrl || '';
+};
 const normalizeText = (value?: string) =>
   (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
@@ -1172,6 +1190,7 @@ export function ScanReportView({
                                     const occurrenceItems = affectedSelectors.length > 0 ? affectedSelectors : affectedSamples;
                                     const occurrenceCount = getAffectedElementsCount(item);
                                     const groupType = getFindingGroupType(item);
+                                    const evidenceUrl = item.screenshotUrl || getVisualMapEvidenceUrl(selectedUrlResult?.visualMap, item.pageState);
                                     return (
                                       <details key={`${row.id}-${itemIndex}`} className={`report-finding-group report-finding-group-${groupType}`} open={itemIndex === 0}>
                                         <summary>
@@ -1269,7 +1288,7 @@ export function ScanReportView({
                                               <p className="report-finding-detail-kicker">HTML afectado</p>
                                               <pre className="report-html-block"><code>{item.elementHtml || 'Sin fragmento HTML disponible.'}</code></pre>
                                             </div>
-                                            {item.screenshotUrl ? <EvidencePreview url={item.screenshotUrl} /> : <div className="report-no-evidence">Sin evidencia visual disponible</div>}
+                                            {evidenceUrl ? <EvidencePreview url={evidenceUrl} /> : <div className="report-no-evidence">Sin evidencia visual disponible</div>}
                                           </div>
                                         </article>
                                       </details>
