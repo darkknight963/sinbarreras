@@ -4,6 +4,7 @@ import { buildCoverageReport } from './coverageReport.js';
 import { detectPageContent } from './content-detector.js';
 import { captureFocusTraversal } from './focusTraversal.js';
 import { captureSemanticStructure } from './semanticStructure.js';
+import { uploadEvidence } from './storage.js';
 import { captureVisualEvidence } from './visualEvidence.js';
 import { buildApplicability, conservativeApplicability, summarizeApplicability } from './wcag-applicability.js';
 import { validateScanTargetUrl } from './urlPolicy.js';
@@ -184,8 +185,46 @@ export async function scanUrl(url: string, options: {
       console.warn('Final visual evidence capture failed.', err);
       return null;
     });
+    const mandatoryVisualEvidence = !currentVisualEvidence && formattedViolations.length > 0
+      ? await (async () => {
+          try {
+            const buffer = await page.screenshot({ fullPage: true }).catch(() =>
+              page.screenshot({ fullPage: false }),
+            );
+            const screenshotUrl = await uploadEvidence(
+              `visual-fallback-${currentVisualEvidenceState}-${Date.now()}.png`,
+              buffer,
+              'image/png',
+            );
+            const dimensions = await page.evaluate(() => ({
+              viewport: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+              },
+              pageSize: {
+                width: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0, window.innerWidth),
+                height: Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0, window.innerHeight),
+              },
+            }));
+
+            console.log(`Created mandatory visual evidence for ${formattedViolations.length} finding(s).`);
+            return {
+              pageState: currentVisualEvidenceState,
+              pageStateLabel: currentVisualEvidenceState === 'initial' ? 'Estado inicial' : 'Despues de cerrar modales',
+              screenshotUrl,
+              viewport: dimensions.viewport,
+              pageSize: dimensions.pageSize,
+              markers: [],
+            };
+          } catch (err) {
+            console.warn('Mandatory visual evidence capture failed.', err);
+            return null;
+          }
+        })()
+      : null;
     const fallbackScreenshotUrl =
       currentVisualEvidence?.screenshotUrl ||
+      mandatoryVisualEvidence?.screenshotUrl ||
       initialVisualEvidence?.screenshotUrl ||
       '';
 
@@ -228,7 +267,7 @@ export async function scanUrl(url: string, options: {
       visualMap: {
         states: [
           initialOverlays.length > 0 ? initialVisualEvidence : null,
-          currentVisualEvidence,
+          currentVisualEvidence || mandatoryVisualEvidence,
         ].filter(Boolean),
       },
       coverageReport,
