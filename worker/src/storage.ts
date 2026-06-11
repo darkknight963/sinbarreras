@@ -12,6 +12,9 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const storageEndpoint = process.env.STORAGE_ENDPOINT
+  || (process.env.CLOUDFLARE_ACCOUNT_ID
+    ? `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    : '')
   || (process.env.MINIO_ENDPOINT
     ? `${process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http'}://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || '9000'}`
     : 'http://localhost:9000');

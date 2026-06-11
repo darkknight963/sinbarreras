@@ -4,7 +4,7 @@ import { EvidenceService } from './evidence.service';
 import { Public } from '../auth/public.decorator';
 
 @Public()
-@Controller('evidence')
+@Controller(['evidence', 'api/evidence'])
 export class EvidenceController {
   constructor(private readonly evidenceService: EvidenceService) {}
 
