@@ -10677,6 +10677,26 @@ html body .project-overview-surface .project-summary-card span {
   color: #475569 !important;
 }
 
+html body .project-empty-title {
+  margin: 12px 0 6px;
+  color: var(--sb-text-strong) !important;
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+html body .project-empty-description {
+  max-width: 560px;
+  margin: 0 auto;
+  color: var(--sb-text-muted) !important;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+html body .project-empty-actions {
+  margin-top: 20px;
+}
+
 html body a,
 html body :where(.text-gob-blue, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) {
   color: var(--sb-primary) !important;
@@ -16468,6 +16488,15 @@ html body .auth-landing-nav .auth-nav-login:hover {
   border-color: var(--sb-primary-hover) !important;
   background: var(--sb-primary-hover) !important;
   color: #ffffff !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+#how-it-works,
+#normative-coverage {
+  scroll-margin-top: 104px;
 }
 
 @media (max-width: 760px) {

@@ -216,12 +216,12 @@ export function ProjectsView({
             <span className="project-empty-icon" aria-hidden="true">
               <FolderOpen className="h-7 w-7" />
             </span>
-            <p className="text-slate-800 font-medium mb-1">
+            <h3 className="project-empty-title">
               {projects.length === 0 ? 'No hay proyectos registrados' : 'No hay proyectos en este filtro'}
-            </p>
-            <p className="text-slate-500 text-sm">
+            </h3>
+            <p className="project-empty-description">
               {projects.length === 0
-                ? 'Crea tu primer proyecto para comenzar a auditar sitios y gestionar hallazgos de accesibilidad.'
+                ? 'Organiza tus auditorías, centraliza los hallazgos y consulta el avance de cada sitio desde un solo lugar.'
                 : 'Cambia el filtro o crea un proyecto con otra clasificación.'}
             </p>
             {projects.length === 0 && (
@@ -237,9 +237,6 @@ export function ProjectsView({
                     <span>Crear primer proyecto</span>
                   </button>
                 ) : null}
-                <button type="button" className="report-ghost-btn project-empty-secondary">
-                  Ver ejemplo
-                </button>
               </div>
             )}
           </div>

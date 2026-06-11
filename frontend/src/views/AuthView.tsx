@@ -272,7 +272,7 @@ export function AuthView({
           </div>
         </section>
 
-        <section id="how-it-works" className="auth-how-section">
+        <section className="auth-how-section">
           <section id="normative-coverage" className="auth-standards-block" aria-labelledby="auth-standards-title">
             <span className="auth-section-eyebrow">Cobertura normativa</span>
             <h3 id="auth-standards-title">Analiza tu sitio bas&aacute;ndose en est&aacute;ndares globales y la normativa peruana vigente.</h3>
@@ -336,7 +336,7 @@ export function AuthView({
             </div>
           </section>
 
-          <div className="auth-process-heading">
+          <div id="how-it-works" className="auth-process-heading">
             <span className="auth-section-eyebrow">C&oacute;mo funciona</span>
             <h2>De la URL al reporte en segundos</h2>
             <p>Sin instalar nada. Sin configurar nada. Solo pega tu URL.</p>
