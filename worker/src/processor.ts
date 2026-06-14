@@ -125,7 +125,7 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
     if (cancelCheck.rows[0]?.status === 'cancelled') {
       await pool.query(`UPDATE scans SET status = 'cancelled' WHERE id = $1`, [scanId]);
       console.log(`Scan ${scanId} was cancelled. Aborting.`);
-      return;
+      return { scanId, publicScan };
     }
 
     const url = validatedUrls[i];
