@@ -525,15 +525,21 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
   return findings;
 }
 
-async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
+export async function runLighthouse(url: string): Promise<RawFinding[]> {
   const lighthouseModule: any = await import('lighthouse');
   const lighthouse = lighthouseModule.default || lighthouseModule;
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_PATH ||
+    process.env.PLAYWRIGHT_CHROME_PATH ||
+    chromium.executablePath();
   const report = await lighthouse(url, {
-    port,
     output: 'json',
     logLevel: 'error',
     onlyCategories: ['accessibility'],
     disableStorageReset: true,
+    chromePath: executablePath,
+    chromeFlags: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--headless=new'],
   });
 
   const lhr = report?.lhr;
@@ -1230,22 +1236,10 @@ export async function runOverlayAccessibilityEngines(
   };
 }
 
-export async function runSupportingEngines(url: string, port: number, pageState: PageState = 'post_overlay'): Promise<EngineRunResult<RawFinding[]>> {
-  // Pa11y is run before the Playwright browser opens in scanner.ts to prevent concurrent
-  // Chrome processes from crashing each other under memory pressure.
-  const result = await runEngineSeries([
-    {
-      engine: 'lighthouse',
-      pageState,
-      onFailureMessage: 'Lighthouse execution failed; continuing with other engines.',
-      run: async () => runLighthouse(url, port),
-    },
-  ]);
-
-  return {
-    findings: tagFindingsWithPageState(result.findings, pageState),
-    report: result.report,
-  };
+export async function runSupportingEngines(_url: string, _port: number, _pageState: PageState = 'post_overlay'): Promise<EngineRunResult<RawFinding[]>> {
+  // Lighthouse and Pa11y are run before the Playwright browser opens in scanner.ts to
+  // prevent concurrent Chrome processes from crashing each other under memory pressure.
+  return { findings: [], report: [] };
 }
 
 export async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {

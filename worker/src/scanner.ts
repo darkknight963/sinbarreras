@@ -17,6 +17,7 @@ import {
   runStatefulPageEngines,
   runSupportingEngines,
   runPa11y,
+  runLighthouse,
 } from './scanner-engines.js';
 import {
   dedupeByRuleAndSelector,
@@ -66,8 +67,8 @@ export async function scanUrl(url: string, options: {
     await options.onProgress(Math.max(0, Math.min(100, Math.round(progress))));
   };
 
-  // Pa11y spawns its own Puppeteer/Chrome. Running it before Playwright avoids two
-  // concurrent Chrome processes competing for memory and crashing each other.
+  // Lighthouse and Pa11y each spawn their own Chrome. Running them sequentially before
+  // Playwright avoids concurrent Chrome processes competing for memory and crashing each other.
   const pa11yStart = Date.now();
   let pa11yFindings: any[] = [];
   let pa11yReportEntry: any = null;
@@ -79,6 +80,19 @@ export async function scanUrl(url: string, options: {
   } catch (err) {
     console.warn('Pa11y pre-scan failed; continuing without Pa11y.', err);
     pa11yReportEntry = { engine: 'pa11y', pageState: 'initial', status: 'failed', durationMs: Date.now() - pa11yStart, findingsCount: 0, errorMessage: String(err) };
+  }
+
+  const lighthouseStart = Date.now();
+  let lighthouseFindings: any[] = [];
+  let lighthouseReportEntry: any = null;
+  try {
+    console.log(`Running Lighthouse pre-scan: ${url}`);
+    lighthouseFindings = await runLighthouse(url);
+    lighthouseReportEntry = { engine: 'lighthouse', pageState: 'initial', status: 'ok', durationMs: Date.now() - lighthouseStart, findingsCount: lighthouseFindings.length };
+    console.log(`Lighthouse pre-scan complete: ${lighthouseFindings.length} finding(s).`);
+  } catch (err) {
+    console.warn('Lighthouse pre-scan failed; continuing without Lighthouse.', err);
+    lighthouseReportEntry = { engine: 'lighthouse', pageState: 'initial', status: 'failed', durationMs: Date.now() - lighthouseStart, findingsCount: 0, errorMessage: String(err) };
   }
 
   const debugPort = await getFreePort();
@@ -188,6 +202,7 @@ export async function scanUrl(url: string, options: {
       ...interactiveStateEngineRun.findings,
       ...supportingEngineRun.findings,
       ...pa11yFindings,
+      ...lighthouseFindings,
     ];
     const coverageReport = buildCoverageReport(mergedRaw);
     const dedupedRaw = dedupeByRuleAndSelector(mergedRaw);
@@ -289,6 +304,7 @@ export async function scanUrl(url: string, options: {
         ...interactiveStateEngineRun.report,
         ...supportingEngineRun.report,
         ...(pa11yReportEntry ? [pa11yReportEntry] : []),
+        ...(lighthouseReportEntry ? [lighthouseReportEntry] : []),
       ],
       device: options.viewport?.width === 375 ? 'Movil' : options.viewport?.width === 768 ? 'Tablet' : 'Desktop',
       htmlDumpUrl: '',
