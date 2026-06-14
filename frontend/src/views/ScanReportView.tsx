@@ -130,17 +130,47 @@ const getWcagLevelDashboard = (rows: any[]) => {
 };
 
 function SemanticStructureViewer({ structure }: { structure: any }) {
+  const [activeTab, setActiveTab] = useState<'headings' | 'outline'>('headings');
   const items = Array.isArray(structure?.items) ? structure.items : [];
-  const headingItems = items.filter((item: any) => item.kind === 'heading');
+
+  const getLevel = (item: any): number => {
+    const l = item.level || parseInt(String(item.label || '1').replace(/[^0-9]/g, ''), 10);
+    return Math.min(6, Math.max(1, l || 1));
+  };
+
+  const headingItems = items.filter((item: any) => {
+    const label = String(item.label || '').toUpperCase();
+    return item.kind === 'heading' && /^H[1-6]$/.test(label);
+  });
+  const landmarkItems = items.filter((item: any) => item.kind === 'landmark');
+
   const headingLevelCounts = headingItems.reduce((counts: Record<string, number>, item: any) => {
-    const label = String(item.label || (item.level ? `H${item.level}` : '')).toUpperCase();
-    if (/^H[1-6]$/.test(label)) {
-      counts[label] = (counts[label] || 0) + 1;
-    }
+    const key = `H${getLevel(item)}`;
+    counts[key] = (counts[key] || 0) + 1;
     return counts;
-  }, {});
+  }, {} as Record<string, number>);
   const headingWarnings = headingItems.filter((item: any) => item.status === 'warning').length;
   const headingErrors = headingItems.filter((item: any) => item.status === 'error').length;
+
+  const isLastChild = (i: number): boolean => {
+    const level = getLevel(headingItems[i]);
+    for (let j = i + 1; j < headingItems.length; j++) {
+      const jl = getLevel(headingItems[j]);
+      if (jl < level) return true;
+      if (jl === level) return false;
+    }
+    return true;
+  };
+
+  const hasGuideAt = (i: number, col: number): boolean => {
+    const ancLevel = col + 1;
+    for (let j = i + 1; j < headingItems.length; j++) {
+      const jl = getLevel(headingItems[j]);
+      if (jl < ancLevel) return false;
+      if (jl === ancLevel) return true;
+    }
+    return false;
+  };
 
   if (!structure || headingItems.length === 0) {
     return (
@@ -148,7 +178,7 @@ function SemanticStructureViewer({ structure }: { structure: any }) {
         <div className="focus-map-empty">
           <ListTree className="h-5 w-5" aria-hidden="true" />
           <div>
-            <h3 className="report-section-title">Indicadores tipo WAVE</h3>
+            <h3 className="report-section-title">Mapa de Encabezados</h3>
             <p>No se detectaron encabezados H1-H6 visibles para esta página.</p>
           </div>
         </div>
@@ -161,38 +191,103 @@ function SemanticStructureViewer({ structure }: { structure: any }) {
       <div className="semantic-structure-header">
         <div>
           <p className="report-kicker">Estructura y orden de lectura</p>
-          <h3 className="report-section-title">Indicadores tipo WAVE</h3>
-          <p>Inventario de encabezados visibles H1, H2, H3, H4, H5 y H6.</p>
+          <h3 className="report-section-title">Mapa de Encabezados</h3>
+          <p>Jerarquía visual de encabezados H1–H6 y landmarks semánticos de la página.</p>
         </div>
       </div>
 
-      <div className="semantic-summary-grid">
-        <div><span>Encabezados</span><strong>{headingItems.length}</strong></div>
-        {['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].map((level) => (
-          <div key={level}><span>{level}</span><strong>{headingLevelCounts[level] ?? 0}</strong></div>
+      <div className="hmap-stats">
+        <div className="hmap-stat"><span>Total</span><strong>{headingItems.length}</strong></div>
+        {['H1','H2','H3','H4','H5','H6'].map((lv) => (
+          <div key={lv} className={`hmap-stat hmap-stat-${lv.toLowerCase()}`}>
+            <span>{lv}</span><strong>{headingLevelCounts[lv] ?? 0}</strong>
+          </div>
         ))}
-        <div><span>Alertas</span><strong>{headingWarnings}</strong></div>
-        <div><span>Errores</span><strong>{headingErrors}</strong></div>
+        <div className={`hmap-stat${headingWarnings > 0 ? ' hmap-stat-warn' : ''}`}>
+          <span>Alertas</span><strong>{headingWarnings}</strong>
+        </div>
+        <div className={`hmap-stat${headingErrors > 0 ? ' hmap-stat-err' : ''}`}>
+          <span>Errores</span><strong>{headingErrors}</strong>
+        </div>
       </div>
 
-      <div className="semantic-structure-list">
-        {headingItems.map((item: any) => (
-          <article key={`${item.index}-${item.kind}-${item.selector}`} className={`semantic-structure-item semantic-structure-${item.status}`}>
-            <div className="semantic-structure-marker" aria-hidden="true">
-              {item.label}
-            </div>
-            <div className="semantic-structure-copy">
-              <div className="semantic-structure-title-row">
-                <h4>{item.accessibleName || item.text || item.label}</h4>
-                <span>{item.label}</span>
-              </div>
-              <p>{item.issue}</p>
-              <code>{item.selector}</code>
-              {item.status !== 'ok' && <small>{item.suggestedFix}</small>}
-            </div>
-          </article>
-        ))}
+      <div className="hmap-tabstrip" role="tablist" aria-label="Tipo de vista">
+        <button role="tab" aria-selected={activeTab === 'headings'}
+          className={`hmap-tab${activeTab === 'headings' ? ' hmap-tab-on' : ''}`}
+          onClick={() => setActiveTab('headings')}>
+          <ListTree className="h-4 w-4" aria-hidden="true" />
+          Estructura de encabezados
+          <em>{headingItems.length}</em>
+        </button>
+        <button role="tab" aria-selected={activeTab === 'outline'}
+          className={`hmap-tab${activeTab === 'outline' ? ' hmap-tab-on' : ''}`}
+          onClick={() => setActiveTab('outline')}>
+          <TableProperties className="h-4 w-4" aria-hidden="true" />
+          Esquema HTML5
+          <em>{landmarkItems.length}</em>
+        </button>
       </div>
+
+      {activeTab === 'headings' && (
+        <div className="hmap-tree" role="tabpanel">
+          {headingItems.map((item: any, i: number) => {
+            const level = getLevel(item);
+            const text = (item.accessibleName || item.text || '').trim();
+            const isEmpty = !text;
+            const last = isLastChild(i);
+            return (
+              <div key={i} className={`hmap-node hmap-node-${item.status}`}>
+                <div className="hmap-row">
+                  <span className="hmap-tree-prefix" aria-hidden="true">
+                    {Array.from({ length: level - 1 }).map((_, d) => (
+                      <span key={d} className="hmap-tree-char">
+                        {d === level - 2
+                          ? (last ? '└' : '├')
+                          : (hasGuideAt(i, d) ? '│' : '  ')}
+                      </span>
+                    ))}
+                  </span>
+                  <span className={`hmap-badge hmap-h${level}`}>H{level}</span>
+                  <span className="hmap-seq">{i + 1}</span>
+                  <span className={`hmap-htext${isEmpty ? ' hmap-htext-empty' : ''}${item.status === 'error' ? ' hmap-htext-error' : item.status === 'warning' ? ' hmap-htext-warn' : ''}`}>
+                    {isEmpty ? '(sin texto accesible)' : text}
+                  </span>
+                  {item.status === 'error' && <span className="hmap-flag hmap-flag-err" title={item.issue}>✕</span>}
+                  {item.status === 'warning' && <span className="hmap-flag hmap-flag-warn" title={item.issue}>⚠</span>}
+                </div>
+                {item.status !== 'ok' && (
+                  <div className="hmap-node-issue">
+                    <span className="hmap-node-msg">{item.issue}</span>
+                    {item.suggestedFix && <span className="hmap-node-fix">{item.suggestedFix}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {activeTab === 'outline' && (
+        <div className="hmap-outline" role="tabpanel">
+          {landmarkItems.length === 0 ? (
+            <p className="hmap-outline-empty">No se detectaron landmarks semánticos (header, nav, main, aside, footer, section) en esta página.</p>
+          ) : landmarkItems.map((item: any, i: number) => {
+            const role = (item.role || item.label || 'region').toLowerCase().replace(/[^a-z0-9]/g, '');
+            return (
+              <div key={i} className={`hmap-landmark hmap-landmark-${item.status}`}>
+                <span className={`hmap-lm-badge hmap-lm-${role}`}>{role.toUpperCase()}</span>
+                <div className="hmap-lm-info">
+                  <strong className="hmap-lm-name">{item.accessibleName || item.text || '(sin nombre accesible)'}</strong>
+                  {item.status !== 'ok' && <span className="hmap-lm-issue">{item.issue}</span>}
+                  <code className="hmap-lm-selector">{item.selector}</code>
+                </div>
+                {item.status === 'error' && <span className="hmap-flag hmap-flag-err">✕</span>}
+                {item.status === 'warning' && <span className="hmap-flag hmap-flag-warn">⚠</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -249,7 +344,10 @@ const looksLikeCodeOrSelector = (value?: string | null) => {
 const getFindingDisplayDescription = (finding: any, fallback?: string) => {
   const rawDescription = splitReportText(finding?.description)[0];
   if (looksLikeCodeOrSelector(rawDescription)) return rawDescription;
-  return finding?.nameEs || rawDescription || fallback || 'Hallazgo de accesibilidad';
+  const cleanRaw = rawDescription
+    ? rawDescription.replace(/^\[.*?\]\s*/, '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim()
+    : '';
+  return finding?.nameEs || cleanRaw || fallback || 'Hallazgo de accesibilidad';
 };
 
 const formatRepeatedTextSummary = (counts: Map<string, number>) =>
@@ -1163,7 +1261,7 @@ export function ScanReportView({
                                 )}
                               </div>
                             ) : '') : <span className="report-pro-locked-pill">Disponible en Pro</span>}</td>
-                            <td>{canUsePaidFeatures ? descriptionSummary : <span className="report-pro-locked-pill">Disponible en Pro</span>}</td>
+                            <td>{canUsePaidFeatures ? (findingCount > 0 ? descriptionSummary : '') : <span className="report-pro-locked-pill">Disponible en Pro</span>}</td>
                             <td>{canUsePaidFeatures ? (roleSummary.length > 0 ? roleSummary.join(', ') : finding?.role || '') : <span className="report-pro-locked-pill">Disponible en Pro</span>}</td>
                             <td>{canUsePaidFeatures ? (finding?.suggestedFix || '') : <span className="report-pro-locked-pill">Disponible en Pro</span>}</td>
                             <td>

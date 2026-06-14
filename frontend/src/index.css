@@ -14617,6 +14617,363 @@ html body main#main-content.app-main-content.projects-page-main .project-card-me
   }
 }
 
+/* ============================================================
+   HeadingsMap Tree  — hmap-*
+   ============================================================ */
+
+.hmap-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.hmap-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  gap: 3px;
+}
+
+.hmap-stat span {
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.hmap-stat strong {
+  font-size: 1.35rem;
+  font-weight: 950;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.hmap-stat-h1 strong { color: #dc2626; }
+.hmap-stat-h2 strong { color: #c2410c; }
+.hmap-stat-h3 strong { color: #854d0e; }
+.hmap-stat-h4 strong { color: #166534; }
+.hmap-stat-h5 strong { color: #1d4ed8; }
+.hmap-stat-h6 strong { color: #7e22ce; }
+.hmap-stat-warn strong { color: #b45309; }
+.hmap-stat-err strong { color: #b91c1c; }
+
+/* Tab strip */
+.hmap-tabstrip {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.hmap-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition: color 0.12s;
+}
+
+.hmap-tab:hover {
+  color: #1e40af;
+  background: #eff6ff;
+}
+
+.hmap-tab-on {
+  color: #1e40af;
+  border-bottom-color: #1e40af;
+  background: #f8fafc;
+}
+
+.hmap-tab em {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 950;
+  font-style: normal;
+}
+
+.hmap-tab-on em {
+  background: #1e40af;
+  color: #ffffff;
+}
+
+/* Tree panel */
+.hmap-tree {
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  background: #ffffff;
+  padding: 6px 0;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.hmap-node {
+  padding: 0 14px;
+}
+
+.hmap-node + .hmap-node {
+  border-top: 1px solid #f1f5f9;
+}
+
+.hmap-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  min-height: 36px;
+}
+
+/* Tree connector chars */
+.hmap-tree-prefix {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.hmap-tree-char {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+}
+
+/* H-level colored badges */
+.hmap-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  padding: 0 5px;
+}
+
+.hmap-h1 { background: #fee2e2; color: #dc2626; }
+.hmap-h2 { background: #ffedd5; color: #c2410c; }
+.hmap-h3 { background: #fef9c3; color: #854d0e; }
+.hmap-h4 { background: #dcfce7; color: #166534; }
+.hmap-h5 { background: #dbeafe; color: #1d4ed8; }
+.hmap-h6 { background: #f3e8ff; color: #7e22ce; }
+
+/* Sequence number */
+.hmap-seq {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 800;
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Heading text */
+.hmap-htext {
+  flex: 1 1 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.hmap-htext-empty {
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.hmap-htext-error { color: #dc2626; }
+.hmap-htext-warn  { color: #b45309; }
+
+/* Status flag icons */
+.hmap-flag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 950;
+  cursor: default;
+}
+
+.hmap-flag-err  { background: #fee2e2; color: #dc2626; }
+.hmap-flag-warn { background: #fef3c7; color: #b45309; }
+
+/* Left accent for issue nodes */
+.hmap-node-error  { border-left: 3px solid #fca5a5; }
+.hmap-node-warning { border-left: 3px solid #fde68a; }
+.hmap-node-ok { border-left: 3px solid transparent; }
+
+/* Issue + fix message */
+.hmap-node-issue {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0 8px 56px;
+}
+
+.hmap-node-msg {
+  font-size: 0.79rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.hmap-node-fix {
+  font-size: 0.77rem;
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.hmap-node-fix::before {
+  content: '→ ';
+  color: #3b82f6;
+}
+
+/* HTML5 Outline */
+.hmap-outline {
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  background: #ffffff;
+  padding: 4px 0;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.hmap-outline-empty {
+  padding: 24px 20px;
+  color: #64748b;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.hmap-landmark {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.hmap-landmark:last-child { border-bottom: none; }
+
+.hmap-lm-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  font-size: 0.65rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  background: #f1f5f9;
+  color: #475569;
+  margin-top: 1px;
+}
+
+.hmap-lm-main        { background: #fee2e2; color: #dc2626; }
+.hmap-lm-navigation,
+.hmap-lm-nav         { background: #dcfce7; color: #166534; }
+.hmap-lm-banner,
+.hmap-lm-header      { background: #dbeafe; color: #1d4ed8; }
+.hmap-lm-complementary,
+.hmap-lm-aside       { background: #f3e8ff; color: #7e22ce; }
+.hmap-lm-contentinfo,
+.hmap-lm-footer      { background: #f1f5f9; color: #475569; }
+.hmap-lm-search      { background: #fef3c7; color: #b45309; }
+.hmap-lm-region,
+.hmap-lm-section     { background: #f0fdf4; color: #166534; }
+.hmap-lm-form        { background: #eff6ff; color: #1e40af; }
+
+.hmap-lm-info {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.hmap-lm-name {
+  font-size: 0.87rem;
+  font-weight: 900;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hmap-lm-issue {
+  font-size: 0.77rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.hmap-lm-selector {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  color: #1e40af;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .hmap-stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .hmap-tab {
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    gap: 5px;
+  }
+}
+
 html body .scan-launch-nav-row {
   width: min(100%, 1080px);
   margin: 0 auto;

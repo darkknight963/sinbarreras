@@ -87,8 +87,7 @@ export class ExcelService {
     // ── Sheet 7: WCAG Completa ──
     this.createWcagEvaluationSheet(workbook, scan);
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer);
+    return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
   }
 
   private async findScanForReport(scanId: string, ownerId: string | null) {
@@ -160,7 +159,9 @@ export class ExcelService {
     this.styleHeader(sheet);
 
     for (const v of violations) {
-      sheet.addRow({
+      const status = this.findingStatus(v);
+      const result = status === 'confirmed' ? 'Falla' : this.isReviewFinding(v) ? 'Requiere revision' : 'Cumple';
+      const vRow = sheet.addRow({
         url: v.url,
         criterion: v.criterion,
         nameEs: v.nameEs,
@@ -175,6 +176,7 @@ export class ExcelService {
         selector: v.selector,
         suggestedFix: v.suggestedFix,
       });
+      this.colorRow(vRow, result);
     }
   }
 
@@ -260,7 +262,7 @@ export class ExcelService {
                 ? 'Requiere revision'
                 : 'Cumple';
           const findingCount = this.countAffectedFindings(findings);
-          sheet.addRow({
+          const wcagRow = sheet.addRow({
             url: ur.url,
             type: 'Criterio',
             principle: `${principle.id}. ${principle.name}`,
@@ -276,11 +278,12 @@ export class ExcelService {
             severity: primaryFinding?.severity || '',
             findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
             pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales') : '',
-            description: this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '',
+            description: criterion.estado !== 'no_aplica' ? (this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '') : '',
             selector: primaryFinding?.selector || '',
             role: primaryFinding?.role || '',
-            suggestedFix: primaryFinding?.suggestedFix || '',
+            suggestedFix: criterion.estado !== 'no_aplica' ? (primaryFinding?.suggestedFix || '') : '',
           });
+          this.colorRow(wcagRow, result);
         }
       }
     }
@@ -336,7 +339,7 @@ export class ExcelService {
               : 'Cumple';
         const findingCount = this.countAffectedFindings(findings);
 
-        sheet.addRow({
+        const row = sheet.addRow({
           url: ur.url,
           criterion: criterion.id,
           name: criterion.nombre,
@@ -348,12 +351,13 @@ export class ExcelService {
           severity: primaryFinding?.severity || '',
           findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
           pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales') : '',
-            description: this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '',
+          description: criterion.estado !== 'no_aplica' ? (this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '') : '',
           selector: primaryFinding?.selector || '',
           role: primaryFinding?.role || '',
-          suggestedFix: primaryFinding?.suggestedFix || '',
+          suggestedFix: criterion.estado !== 'no_aplica' ? (primaryFinding?.suggestedFix || '') : '',
           resolutionArticle: primaryFinding?.resolutionArticle || '',
         });
+        this.colorRow(row, result);
       }
     }
   }
@@ -364,9 +368,26 @@ export class ExcelService {
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF002C76' }, // Official Gob.pe Blue
+      fgColor: { argb: 'FF002C76' },
     };
-    headerRow.alignment = { vertical: 'middle' };
+    headerRow.alignment = { vertical: 'middle', wrapText: true };
+    headerRow.height = 22;
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    if (sheet.columnCount > 0) {
+      sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: sheet.columnCount } };
+    }
+  }
+
+  private colorRow(row: ExcelJS.Row, result: string) {
+    const argb =
+      result === 'Falla' ? 'FFFFF0F0' :
+      result === 'Cumple' ? 'FFF0FFF0' :
+      result === 'N/A' ? 'FFF5F5F5' :
+      result === 'Requiere revision' ? 'FFFFF8E1' : undefined;
+    if (!argb) return;
+    row.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } };
+    });
   }
 
   private findingStatus(v: any): string {

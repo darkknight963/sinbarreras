@@ -92,11 +92,9 @@ export function labelPageState(state: PageState): string {
 }
 
 export function tagFindingsWithPageState(findings: RawFinding[], pageState: PageState): RawFinding[] {
-  const label = labelPageState(pageState);
   return findings.map((finding) => ({
     ...finding,
     pageState,
-    description: `[${label}] ${finding.description}`,
   }));
 }
 

@@ -339,26 +339,69 @@ export class PdfService {
   }
 
   private drawFindingCard(doc: PDFKit.PDFDocument, finding: PdfFinding, index: number) {
-    this.ensureSpace(doc, 135);
     const x = doc.page.margins.left;
-    const y = doc.y;
     const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const tw = width - 28;
+    const fs = 8.5;
+    const lg = 1.5;
+
+    const titleText = `${index}. ${finding.criterion ?? 'N/A'} — ${finding.nameEs ?? 'Hallazgo de accesibilidad'}`;
+    const urlText = `URL: ${finding.url ?? '-'}`;
+    const metaText = `Nivel: ${finding.level ?? 'N/A'} | Severidad: ${finding.severity ?? 'N/A'} | Estado: ${finding.statusLabel ?? this.findingStatusLabel(finding)} | Rol: ${finding.role ?? '-'}`;
+    const stateText = `Vista: ${finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales')}`;
+    const descText = finding.description ? `Descripción: ${String(finding.description).slice(0, 400)}` : null;
+    const selectorText = `Selector: ${finding.selector ?? '-'}`;
+    const fixText = `Solución: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`;
+    const refText = `Referencia: ${finding.resolutionArticle ?? '-'}`;
+
+    doc.fontSize(10).font('Helvetica-Bold');
+    const hTitle = doc.heightOfString(titleText, { width: tw, lineGap: 1 });
+    doc.fontSize(fs).font('Helvetica');
+    const hUrl = doc.heightOfString(urlText, { width: tw, lineGap: lg });
+    const hMeta = doc.heightOfString(metaText, { width: tw, lineGap: lg });
+    const hState = doc.heightOfString(stateText, { width: tw, lineGap: lg });
+    const hDesc = descText ? doc.heightOfString(descText, { width: tw, lineGap: lg }) : 0;
+    const hSel = doc.heightOfString(selectorText, { width: tw, lineGap: lg });
+    doc.font('Helvetica-Bold');
+    const hFix = doc.heightOfString(fixText, { width: tw, lineGap: lg });
+    doc.font('Helvetica');
+    const hRef = doc.heightOfString(refText, { width: tw, lineGap: lg });
+    const cardH = 14 + hTitle + 4 + hUrl + 3 + hMeta + 3 + hState + 3 + (descText ? hDesc + 3 : 0) + hSel + 3 + hFix + 3 + hRef + 10;
+
+    this.ensureSpace(doc, cardH + 10);
+
+    const y = doc.y;
     const severity = this.normalizeSeverity(finding.severity);
     const tone = severity === 'critico' || severity === 'alto' ? 'danger' : severity === 'medio' ? 'warning' : 'neutral';
     const color = this.toneColor(tone);
 
-    doc.roundedRect(x, y, width, 118, 8).fillAndStroke(COLORS.white, COLORS.slate200);
-    doc.rect(x, y, 5, 118).fill(color.fg);
+    doc.roundedRect(x, y, width, cardH, 8).fillAndStroke(COLORS.white, COLORS.slate200);
+    doc.rect(x, y, 5, cardH).fill(color.fg);
+
+    let cy = y + 10;
     doc.fillColor(COLORS.slate900).font('Helvetica-Bold').fontSize(10)
-      .text(`${index}. ${finding.criterion ?? 'N/A'} | ${finding.nameEs ?? finding.description ?? 'Hallazgo de accesibilidad'}`, x + 14, y + 12, { width: width - 28, lineGap: 1 });
-    doc.font('Helvetica').fontSize(8.5).fillColor(COLORS.slate600)
-      .text(`URL: ${finding.url}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.text(`Nivel: ${finding.level ?? finding.wcagLevel ?? 'N/A'} | Severidad: ${finding.severity ?? 'N/A'} | Estado: ${finding.statusLabel ?? this.findingStatusLabel(finding)} | Rol: ${finding.role ?? '-'}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.text(`Vista: ${finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales')}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.text(`Selector: ${finding.selector ?? '-'}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.text(`Acción: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.text(`Referencia: ${finding.resolutionArticle ?? '-'}`, x + 14, doc.y + 3, { width: width - 28 });
-    doc.y = y + 132;
+      .text(titleText, x + 14, cy, { width: tw, lineGap: 1 });
+    cy = doc.y + 4;
+    doc.font('Helvetica').fontSize(fs).fillColor(COLORS.slate600)
+      .text(urlText, x + 14, cy, { width: tw, lineGap: lg });
+    cy = doc.y + 3;
+    doc.text(metaText, x + 14, cy, { width: tw, lineGap: lg });
+    cy = doc.y + 3;
+    doc.text(stateText, x + 14, cy, { width: tw, lineGap: lg });
+    cy = doc.y + 3;
+    if (descText) {
+      doc.fillColor(COLORS.slate700).text(descText, x + 14, cy, { width: tw, lineGap: lg });
+      cy = doc.y + 3;
+    }
+    doc.fillColor(COLORS.slate600).text(selectorText, x + 14, cy, { width: tw, lineGap: lg });
+    cy = doc.y + 3;
+    doc.fillColor(COLORS.slate900).font('Helvetica-Bold').fontSize(fs)
+      .text(fixText, x + 14, cy, { width: tw, lineGap: lg });
+    cy = doc.y + 3;
+    doc.font('Helvetica').fillColor(COLORS.slate500)
+      .text(refText, x + 14, cy, { width: tw, lineGap: lg });
+
+    doc.y = y + cardH + 10;
   }
 
   private drawSectionTitle(doc: PDFKit.PDFDocument, title: string) {

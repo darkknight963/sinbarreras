@@ -60,7 +60,7 @@ describe('ExcelService', () => {
     const buffer = await service.generateExcel('scan-1');
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(buffer as any);
 
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
       'Resumen Ejecutivo',

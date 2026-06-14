@@ -489,20 +489,25 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
 
   const findings: RawFinding[] = [];
   for (const violation of results.violations || []) {
+    const axeRuleKey = normalizeRuleId(violation.id || 'axe-unknown', violation.description || violation.help || '');
+    const axeRuleInfo = getRuleDetails(axeRuleKey);
+    const axeRawDesc = (violation.description || violation.help || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const axeIsMapped = !axeRuleInfo.nameEs.startsWith('Regla Automática');
+    const axeDescription = (axeIsMapped ? axeRuleInfo.nameEs : null) || axeRawDesc || 'Violacion detectada por axe-core';
     for (const node of violation.nodes || []) {
       const selector = Array.isArray(node.target) ? node.target.join(' ') : 'document';
       const fix = (node.any || []).map((item: any) => item.message).join('. ') || 'Asegurar cumplimiento WCAG.';
       findings.push({
         tool: 'axe',
         ruleId: violation.id || 'axe-unknown',
-        normalizedRuleId: normalizeRuleId(violation.id || 'axe-unknown', violation.description || violation.help || ''),
+        normalizedRuleId: axeRuleKey,
         category: 'violation',
         ...parseWcagTags(violation.tags),
-        description: violation.description || violation.help || 'Violacion detectada por axe-core',
+        description: axeDescription,
         selector: normalizeSelector(selector),
         elementHtml: node.html || '',
         severity: toSeverityEs(violation.impact),
-        suggestedFix: fix,
+        suggestedFix: axeRuleInfo.suggestedFix || fix,
       });
     }
   }
@@ -529,6 +534,12 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
     const score = typeof audit?.score === 'number' ? audit.score : 1;
     if (score >= 1) continue;
 
+    const lhRuleKey = normalizeRuleId(String(auditId), audit?.title || audit?.description || '');
+    const lhRuleInfo = getRuleDetails(lhRuleKey);
+    const lhIsMapped = !lhRuleInfo.nameEs.startsWith('Regla Automática');
+    const lhDescription = (lhIsMapped ? lhRuleInfo.nameEs : null) || audit?.title || 'Hallazgo de Lighthouse';
+    const lhSuggestedFix = lhRuleInfo.suggestedFix || defaultSuggestedFix(String(auditId));
+
     const details = audit?.details;
     const items = Array.isArray(details?.items) ? details.items : [{}];
 
@@ -538,13 +549,13 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
       findings.push({
         tool: 'lighthouse',
         ruleId: String(auditId),
-        normalizedRuleId: normalizeRuleId(String(auditId), audit?.title || audit?.description || ''),
+        normalizedRuleId: lhRuleKey,
         category: toCategoryFromLighthouse(audit),
-        description: audit?.title || audit?.description || 'Hallazgo de Lighthouse',
+        description: lhDescription,
         selector,
         elementHtml: html,
         severity: score <= 0.3 ? 'alto' : score <= 0.6 ? 'medio' : 'bajo',
-        suggestedFix: getRuleDetails(normalizeRuleId(String(auditId), audit?.title || '')).suggestedFix || defaultSuggestedFix(String(auditId)),
+        suggestedFix: lhSuggestedFix,
       });
     }
   }
@@ -578,16 +589,20 @@ async function runPa11y(url: string, _port: number): Promise<RawFinding[]> {
 
   const findings: RawFinding[] = [];
   for (const issue of result?.issues || []) {
+    const pa11yRuleKey = normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || '');
+    const pa11yRuleInfo = getRuleDetails(pa11yRuleKey);
+    const pa11yRawDesc = (issue.message || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const pa11yIsMapped = !pa11yRuleInfo.nameEs.startsWith('Regla Automática');
     findings.push({
       tool: 'pa11y',
       ruleId: issue.code || 'pa11y-unknown',
-      normalizedRuleId: normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || ''),
+      normalizedRuleId: pa11yRuleKey,
       category: issue.typeCode === 1 ? 'violation' : 'alert',
-      description: issue.message || 'Hallazgo de Pa11y',
+      description: (pa11yIsMapped ? pa11yRuleInfo.nameEs : null) || pa11yRawDesc || 'Hallazgo de Pa11y',
       selector: normalizeSelector(issue.selector || 'document'),
       elementHtml: issue.context || '',
       severity: toSeverityEs(issue.type || issue.typeCode),
-      suggestedFix: getRuleDetails(normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || '')).suggestedFix || defaultSuggestedFix(issue.code || 'pa11y-unknown'),
+      suggestedFix: pa11yRuleInfo.suggestedFix || defaultSuggestedFix(issue.code || 'pa11y-unknown'),
     });
   }
 
@@ -621,32 +636,40 @@ async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
   for (const v of violations) {
     const path = Array.isArray(v?.path) ? v.path[0] : undefined;
     const selector = normalizeSelector(path?.dom || path?.target || 'document');
+    const ibmViolKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '');
+    const ibmViolInfo = getRuleDetails(ibmViolKey);
+    const ibmViolRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const ibmViolMapped = !ibmViolInfo.nameEs.startsWith('Regla Automática');
     findings.push({
       tool: 'ibm-equal-access',
       ruleId: v?.ruleId || v?.id || 'ibm-unknown',
-      normalizedRuleId: normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || ''),
+      normalizedRuleId: ibmViolKey,
       category: 'violation',
-      description: v?.message || v?.reasonId || 'Hallazgo de IBM Equal Access',
+      description: (ibmViolMapped ? ibmViolInfo.nameEs : null) || ibmViolRaw || 'Hallazgo de IBM Equal Access',
       selector,
       elementHtml: path?.snippet || '',
       severity: toSeverityEs(v?.level || v?.impact),
-      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
+      suggestedFix: ibmViolInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
     });
   }
 
   for (const v of needsReview) {
     const path = Array.isArray(v?.path) ? v.path[0] : undefined;
     const selector = normalizeSelector(path?.dom || path?.target || 'document');
+    const ibmRevKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '');
+    const ibmRevInfo = getRuleDetails(ibmRevKey);
+    const ibmRevRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const ibmRevMapped = !ibmRevInfo.nameEs.startsWith('Regla Automática');
     findings.push({
       tool: 'ibm-equal-access',
       ruleId: v?.ruleId || v?.id || 'ibm-needs-review',
-      normalizedRuleId: normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || ''),
+      normalizedRuleId: ibmRevKey,
       category: 'manual_check',
-      description: v?.message || v?.reasonId || 'Revision manual recomendada por IBM Equal Access',
+      description: (ibmRevMapped ? ibmRevInfo.nameEs : null) || ibmRevRaw || 'Revision manual recomendada por IBM Equal Access',
       selector,
       elementHtml: path?.snippet || '',
       severity: 'medio',
-      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
+      suggestedFix: ibmRevInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
     });
   }
 
@@ -665,31 +688,39 @@ async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
 
   for (const v of violations) {
     const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+    const ibmViolKey2 = normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '');
+    const ibmViolInfo2 = getRuleDetails(ibmViolKey2);
+    const ibmViolRaw2 = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const ibmViolMapped2 = !ibmViolInfo2.nameEs.startsWith('Regla Automática');
     findings.push({
       tool: 'ibm-equal-access',
       ruleId: v?.ruleId || v?.id || 'ibm-unknown',
-      normalizedRuleId: normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || ''),
+      normalizedRuleId: ibmViolKey2,
       category: 'violation',
-      description: v?.message || v?.reasonId || 'Hallazgo de IBM Equal Access',
+      description: (ibmViolMapped2 ? ibmViolInfo2.nameEs : null) || ibmViolRaw2 || 'Hallazgo de IBM Equal Access',
       selector: normalizeSelector(path?.dom || path?.target || 'document'),
       elementHtml: path?.snippet || '',
       severity: toSeverityEs(v?.level || v?.impact),
-      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
+      suggestedFix: ibmViolInfo2.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
     });
   }
 
   for (const v of needsReview) {
     const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+    const ibmRevKey2 = normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '');
+    const ibmRevInfo2 = getRuleDetails(ibmRevKey2);
+    const ibmRevRaw2 = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const ibmRevMapped2 = !ibmRevInfo2.nameEs.startsWith('Regla Automática');
     findings.push({
       tool: 'ibm-equal-access',
       ruleId: v?.ruleId || v?.id || 'ibm-needs-review',
-      normalizedRuleId: normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || ''),
+      normalizedRuleId: ibmRevKey2,
       category: 'manual_check',
-      description: v?.message || v?.reasonId || 'Revision manual recomendada por IBM Equal Access',
+      description: (ibmRevMapped2 ? ibmRevInfo2.nameEs : null) || ibmRevRaw2 || 'Revision manual recomendada por IBM Equal Access',
       selector: normalizeSelector(path?.dom || path?.target || 'document'),
       elementHtml: path?.snippet || '',
       severity: 'medio',
-      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
+      suggestedFix: ibmRevInfo2.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
     });
   }
 
