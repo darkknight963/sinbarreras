@@ -144,7 +144,9 @@ export async function scanUrl(url: string, options: {
 
     console.log(`Navigating to: ${url}`);
     await validateScanTargetUrl(url);
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'load', timeout: 60000 });
+    // Try to wait for network to settle; if the site has persistent trackers this will timeout — that's fine.
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     await reportProgress(15);
 
     let applicability = conservativeApplicability();

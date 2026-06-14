@@ -528,19 +528,32 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
 export async function runLighthouse(url: string): Promise<RawFinding[]> {
   const lighthouseModule: any = await import('lighthouse');
   const lighthouse = lighthouseModule.default || lighthouseModule;
+  const chromeLauncherModule: any = await import('chrome-launcher');
+  const chromeLauncher = chromeLauncherModule.default || chromeLauncherModule;
+
   const executablePath =
     process.env.PUPPETEER_EXECUTABLE_PATH ||
     process.env.CHROME_PATH ||
     process.env.PLAYWRIGHT_CHROME_PATH ||
     chromium.executablePath();
-  const report = await lighthouse(url, {
-    output: 'json',
-    logLevel: 'error',
-    onlyCategories: ['accessibility'],
-    disableStorageReset: true,
+
+  const chrome = await chromeLauncher.launch({
     chromePath: executablePath,
-    chromeFlags: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--headless=new'],
+    chromeFlags: ['--headless=new', '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
+
+  let report: any;
+  try {
+    report = await lighthouse(url, {
+      output: 'json',
+      logLevel: 'error',
+      onlyCategories: ['accessibility'],
+      disableStorageReset: true,
+      port: chrome.port,
+    });
+  } finally {
+    await chrome.kill().catch(() => {});
+  }
 
   const lhr = report?.lhr;
   const audits = lhr?.audits || {};
@@ -648,12 +661,27 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
   try {
     const report = await aChecker.getCompliance(url, `scan-url-${Date.now()}-${++ibmScanSequence}`);
 
-    const violations = report?.results?.violations || [];
-    const needsReview = report?.results?.needsReview || [];
+    // URL-based scans return a flat array at report.report.results; page-based scans return
+    // pre-split arrays at report.results.violations / report.results.needsReview.
+    const flatResults: any[] = report?.report?.results || report?.results || [];
+    const violations = Array.isArray(flatResults)
+      ? flatResults.filter((r: any) =>
+          r?.level === 'violation' ||
+          (Array.isArray(r?.value) && r.value[0] === 'VIOLATION' && r.value[1] === 'FAIL'),
+        )
+      : (report?.results?.violations || []);
+    const needsReview = Array.isArray(flatResults)
+      ? flatResults.filter((r: any) =>
+          r?.level === 'recommendation' ||
+          (Array.isArray(r?.value) && (r.value[0] === 'RECOMMENDATION' || r.value[1] === 'POTENTIAL')),
+        )
+      : (report?.results?.needsReview || []);
+
     const findings: RawFinding[] = [];
 
     for (const v of violations) {
-      const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+      const domPath = v?.path?.dom || v?.path?.target || (Array.isArray(v?.path) ? v.path[0]?.dom : undefined);
+      const snippet = v?.snippet || (Array.isArray(v?.path) ? v.path[0]?.snippet : undefined) || '';
       const ibmViolKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '');
       const ibmViolInfo = getRuleDetails(ibmViolKey);
       const ibmViolRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
@@ -664,15 +692,16 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
         normalizedRuleId: ibmViolKey,
         category: 'violation',
         description: (ibmViolMapped ? ibmViolInfo.nameEs : null) || ibmViolRaw || 'Hallazgo de IBM Equal Access',
-        selector: normalizeSelector(path?.dom || path?.target || 'document'),
-        elementHtml: path?.snippet || '',
+        selector: normalizeSelector(domPath || 'document'),
+        elementHtml: snippet,
         severity: toSeverityEs(v?.level || v?.impact),
         suggestedFix: ibmViolInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
       });
     }
 
     for (const v of needsReview) {
-      const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+      const domPath = v?.path?.dom || v?.path?.target || (Array.isArray(v?.path) ? v.path[0]?.dom : undefined);
+      const snippet = v?.snippet || (Array.isArray(v?.path) ? v.path[0]?.snippet : undefined) || '';
       const ibmRevKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '');
       const ibmRevInfo = getRuleDetails(ibmRevKey);
       const ibmRevRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
@@ -683,13 +712,14 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
         normalizedRuleId: ibmRevKey,
         category: 'manual_check',
         description: (ibmRevMapped ? ibmRevInfo.nameEs : null) || ibmRevRaw || 'Revision manual recomendada por IBM Equal Access',
-        selector: normalizeSelector(path?.dom || path?.target || 'document'),
-        elementHtml: path?.snippet || '',
+        selector: normalizeSelector(domPath || 'document'),
+        elementHtml: snippet,
         severity: 'medio',
         suggestedFix: ibmRevInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
       });
     }
 
+    console.log(`IBM Equal Access: ${violations.length} violation(s), ${needsReview.length} needs-review.`);
     return findings;
   } finally {
     try { await aChecker.close(); } catch { }
