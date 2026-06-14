@@ -171,7 +171,7 @@ export class ExcelService {
         pageStateLabel: v.pageStateLabel || (v.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales'),
         role: v.role,
         disability: Array.isArray(v.disability) ? v.disability.join(', ') : v.disability,
-        description: v.description,
+        description: this.cleanDescription(v.description),
         elementHtml: v.elementHtml,
         selector: v.selector,
         suggestedFix: v.suggestedFix,
@@ -253,15 +253,17 @@ export class ExcelService {
           const manualVerifications = manualByCriterion.get(criterion.id) || [];
           const confirmedFindings = findings.filter((finding) => this.findingStatus(finding) === 'confirmed');
           const reviewFindings = findings.filter((finding) => this.isReviewFinding(finding));
+          const hasManualFailed = manualVerifications.some(
+            (v: any) => v.status === 'failed' && !v.ruleId && !v.selector,
+          );
           const primaryFinding = confirmedFindings[0] || findings[0];
-          const result = criterion.estado === 'no_aplica'
-            ? 'N/A'
-            : confirmedFindings.length > 0
-              ? 'Falla'
-              : reviewFindings.length > 0
-                ? 'Requiere revision'
-                : 'Cumple';
+          const result = this.computeCriterionResult(
+            criterion.estado, confirmedFindings, reviewFindings, manualVerifications, hasManualFailed,
+          );
           const findingCount = this.countAffectedFindings(findings);
+          const descriptionText = criterion.estado !== 'no_aplica'
+            ? (this.summarizeFindingText(findings, 'description') || this.resolveDescription(primaryFinding) || '')
+            : '';
           const wcagRow = sheet.addRow({
             url: ur.url,
             type: 'Criterio',
@@ -278,7 +280,7 @@ export class ExcelService {
             severity: primaryFinding?.severity || '',
             findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
             pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales') : '',
-            description: criterion.estado !== 'no_aplica' ? (this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '') : '',
+            description: descriptionText,
             selector: primaryFinding?.selector || '',
             role: primaryFinding?.role || '',
             suggestedFix: criterion.estado !== 'no_aplica' ? (primaryFinding?.suggestedFix || '') : '',
@@ -314,30 +316,35 @@ export class ExcelService {
     for (const ur of scan.urlResults ?? []) {
       const applicability = (ur.applicability as any) || {};
       const criteria = Array.isArray(applicability.criteria) ? applicability.criteria : [];
-      const failed = new Set(
-        (((ur.violations as any[]) ?? [])
-          .filter((v) => this.findingStatus(v) === 'confirmed')
-          .map((v) => v.criterion))
-      );
       const findingsByCriterion = new Map<string, any[]>();
       for (const violation of ((ur.violations as any[]) ?? [])) {
         const current = findingsByCriterion.get(violation.criterion) || [];
         current.push(violation);
         findingsByCriterion.set(violation.criterion, current);
       }
+      const manualByCriterion2 = new Map<string, any[]>();
+      for (const verification of ((ur.manualVerifications as any[]) ?? [])) {
+        const current = manualByCriterion2.get(verification.criterion) || [];
+        current.push(verification);
+        manualByCriterion2.set(verification.criterion, current);
+      }
 
       for (const criterion of criteria) {
         const findings = findingsByCriterion.get(criterion.id) || [];
-        const primaryFinding = findings.find((v) => this.findingStatus(v) === 'confirmed') || findings[0];
-        const hasReviewFinding = findings.some((v) => this.isReviewFinding(v));
-        const result = criterion.estado === 'no_aplica'
-          ? 'N/A'
-          : failed.has(criterion.id)
-            ? 'Falla'
-            : hasReviewFinding
-              ? 'Requiere revision'
-              : 'Cumple';
+        const manualVerifications2 = manualByCriterion2.get(criterion.id) || [];
+        const confirmedFindings2 = findings.filter((v) => this.findingStatus(v) === 'confirmed');
+        const reviewFindings2 = findings.filter((v) => this.isReviewFinding(v));
+        const hasManualFailed2 = manualVerifications2.some(
+          (v: any) => v.status === 'failed' && !v.ruleId && !v.selector,
+        );
+        const primaryFinding = confirmedFindings2[0] || findings[0];
+        const result = this.computeCriterionResult(
+          criterion.estado, confirmedFindings2, reviewFindings2, manualVerifications2, hasManualFailed2,
+        );
         const findingCount = this.countAffectedFindings(findings);
+        const descriptionText2 = criterion.estado !== 'no_aplica'
+          ? (this.summarizeFindingText(findings, 'description') || this.resolveDescription(primaryFinding) || '')
+          : '';
 
         const row = sheet.addRow({
           url: ur.url,
@@ -351,7 +358,7 @@ export class ExcelService {
           severity: primaryFinding?.severity || '',
           findingStatus: primaryFinding ? primaryFinding.statusLabel || this.findingStatusLabel(primaryFinding) : '',
           pageStateLabel: primaryFinding ? primaryFinding.pageStateLabel || (primaryFinding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales') : '',
-          description: criterion.estado !== 'no_aplica' ? (this.summarizeFindingText(findings, 'description') || primaryFinding?.description || '') : '',
+          description: descriptionText2,
           selector: primaryFinding?.selector || '',
           role: primaryFinding?.role || '',
           suggestedFix: criterion.estado !== 'no_aplica' ? (primaryFinding?.suggestedFix || '') : '',
@@ -414,11 +421,43 @@ export class ExcelService {
       .filter(Boolean);
   }
 
+  private cleanDescription(text?: string | null): string {
+    if (!text) return '';
+    return String(text)
+      .replace(/^\[.*?\]\s*/, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  private resolveDescription(finding: any): string {
+    return finding?.nameEs || this.cleanDescription(finding?.description) || '';
+  }
+
+  private computeCriterionResult(
+    criterionEstado: string,
+    confirmedFindings: any[],
+    reviewFindings: any[],
+    manualVerifications: any[],
+    hasManualFailed: boolean,
+  ): string {
+    const hasManualNotApplicable = manualVerifications.some(
+      (v: any) => v.status === 'not_applicable' || v.findingStatus === 'not_applicable',
+    );
+    if (criterionEstado === 'no_aplica' || hasManualNotApplicable) return 'N/A';
+    if (confirmedFindings.length > 0 || hasManualFailed) return 'Falla';
+    if (reviewFindings.length > 0) return 'Requiere revision';
+    return 'Cumple';
+  }
+
   private summarizeFindingText(findings: any[], field: string): string {
     const counts = new Map<string, number>();
 
     for (const finding of findings || []) {
-      const parts = this.splitReportText(finding?.[field]);
+      const rawValue = field === 'description'
+        ? (finding?.nameEs || this.cleanDescription(finding?.[field]))
+        : finding?.[field];
+      const parts = this.splitReportText(rawValue);
       if (parts.length === 0) continue;
 
       const partCounts = new Map<string, number>();

@@ -349,7 +349,8 @@ export class PdfService {
     const urlText = `URL: ${finding.url ?? '-'}`;
     const metaText = `Nivel: ${finding.level ?? 'N/A'} | Severidad: ${finding.severity ?? 'N/A'} | Estado: ${finding.statusLabel ?? this.findingStatusLabel(finding)} | Rol: ${finding.role ?? '-'}`;
     const stateText = `Vista: ${finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales')}`;
-    const descText = finding.description ? `Descripción: ${String(finding.description).slice(0, 400)}` : null;
+    const rawDesc = finding.nameEs || this.cleanDescription(finding.description);
+    const descText = rawDesc ? `Descripción: ${rawDesc.slice(0, 400)}` : null;
     const selectorText = `Selector: ${finding.selector ?? '-'}`;
     const fixText = `Solución: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`;
     const refText = `Referencia: ${finding.resolutionArticle ?? '-'}`;
@@ -700,6 +701,15 @@ export class PdfService {
       timeStyle: 'short',
       timeZone: 'America/Lima',
     }).format(date);
+  }
+
+  private cleanDescription(text?: string | null): string {
+    if (!text) return '';
+    return String(text)
+      .replace(/^\[.*?\]\s*/, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   }
 
   private findingStatus(v: PdfFinding): string {
