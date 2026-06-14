@@ -18,6 +18,7 @@ import {
   runSupportingEngines,
   runPa11y,
   runLighthouse,
+  runIbmEqualAccessUrl,
 } from './scanner-engines.js';
 import {
   dedupeByRuleAndSelector,
@@ -93,6 +94,19 @@ export async function scanUrl(url: string, options: {
   } catch (err) {
     console.warn('Lighthouse pre-scan failed; continuing without Lighthouse.', err);
     lighthouseReportEntry = { engine: 'lighthouse', pageState: 'initial', status: 'failed', durationMs: Date.now() - lighthouseStart, findingsCount: 0, errorMessage: String(err) };
+  }
+
+  const ibmStart = Date.now();
+  let ibmFindings: any[] = [];
+  let ibmReportEntry: any = null;
+  try {
+    console.log(`Running IBM Equal Access pre-scan: ${url}`);
+    ibmFindings = await runIbmEqualAccessUrl(url);
+    ibmReportEntry = { engine: 'ibm-equal-access', pageState: 'initial', status: 'ok', durationMs: Date.now() - ibmStart, findingsCount: ibmFindings.length };
+    console.log(`IBM Equal Access pre-scan complete: ${ibmFindings.length} finding(s).`);
+  } catch (err) {
+    console.warn('IBM Equal Access pre-scan failed; continuing without IBM.', err);
+    ibmReportEntry = { engine: 'ibm-equal-access', pageState: 'initial', status: 'failed', durationMs: Date.now() - ibmStart, findingsCount: 0, errorMessage: String(err) };
   }
 
   const debugPort = await getFreePort();
@@ -203,6 +217,7 @@ export async function scanUrl(url: string, options: {
       ...supportingEngineRun.findings,
       ...pa11yFindings,
       ...lighthouseFindings,
+      ...ibmFindings,
     ];
     const coverageReport = buildCoverageReport(mergedRaw);
     const dedupedRaw = dedupeByRuleAndSelector(mergedRaw);
@@ -305,6 +320,7 @@ export async function scanUrl(url: string, options: {
         ...supportingEngineRun.report,
         ...(pa11yReportEntry ? [pa11yReportEntry] : []),
         ...(lighthouseReportEntry ? [lighthouseReportEntry] : []),
+        ...(ibmReportEntry ? [ibmReportEntry] : []),
       ],
       device: options.viewport?.width === 375 ? 'Movil' : options.viewport?.width === 768 ? 'Tablet' : 'Desktop',
       htmlDumpUrl: '',

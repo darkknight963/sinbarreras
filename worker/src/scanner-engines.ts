@@ -639,55 +639,61 @@ async function configureIbmEqualAccess(aChecker: any): Promise<void> {
   });
 }
 
-async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
+// IBM Equal Access runs as a URL-based pre-scan in scanner.ts (before the Playwright browser
+// opens) to avoid its Puppeteer instance interfering with the Playwright page.
+export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
   const checkerModule: any = await import('accessibility-checker');
   const aChecker = checkerModule.default || checkerModule;
   await configureIbmEqualAccess(aChecker);
-  const report = await aChecker.getCompliance(page, `scan-page-${Date.now()}-${++ibmScanSequence}`);
+  try {
+    const report = await aChecker.getCompliance(url, `scan-url-${Date.now()}-${++ibmScanSequence}`);
 
-  const violations = report?.results?.violations || [];
-  const needsReview = report?.results?.needsReview || [];
-  const findings: RawFinding[] = [];
+    const violations = report?.results?.violations || [];
+    const needsReview = report?.results?.needsReview || [];
+    const findings: RawFinding[] = [];
 
-  for (const v of violations) {
-    const path = Array.isArray(v?.path) ? v.path[0] : undefined;
-    const ibmViolKey2 = normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '');
-    const ibmViolInfo2 = getRuleDetails(ibmViolKey2);
-    const ibmViolRaw2 = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
-    const ibmViolMapped2 = !ibmViolInfo2.nameEs.startsWith('Regla Automática');
-    findings.push({
-      tool: 'ibm-equal-access',
-      ruleId: v?.ruleId || v?.id || 'ibm-unknown',
-      normalizedRuleId: ibmViolKey2,
-      category: 'violation',
-      description: (ibmViolMapped2 ? ibmViolInfo2.nameEs : null) || ibmViolRaw2 || 'Hallazgo de IBM Equal Access',
-      selector: normalizeSelector(path?.dom || path?.target || 'document'),
-      elementHtml: path?.snippet || '',
-      severity: toSeverityEs(v?.level || v?.impact),
-      suggestedFix: ibmViolInfo2.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
-    });
+    for (const v of violations) {
+      const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+      const ibmViolKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '');
+      const ibmViolInfo = getRuleDetails(ibmViolKey);
+      const ibmViolRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+      const ibmViolMapped = !ibmViolInfo.nameEs.startsWith('Regla Automática');
+      findings.push({
+        tool: 'ibm-equal-access',
+        ruleId: v?.ruleId || v?.id || 'ibm-unknown',
+        normalizedRuleId: ibmViolKey,
+        category: 'violation',
+        description: (ibmViolMapped ? ibmViolInfo.nameEs : null) || ibmViolRaw || 'Hallazgo de IBM Equal Access',
+        selector: normalizeSelector(path?.dom || path?.target || 'document'),
+        elementHtml: path?.snippet || '',
+        severity: toSeverityEs(v?.level || v?.impact),
+        suggestedFix: ibmViolInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
+      });
+    }
+
+    for (const v of needsReview) {
+      const path = Array.isArray(v?.path) ? v.path[0] : undefined;
+      const ibmRevKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '');
+      const ibmRevInfo = getRuleDetails(ibmRevKey);
+      const ibmRevRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+      const ibmRevMapped = !ibmRevInfo.nameEs.startsWith('Regla Automática');
+      findings.push({
+        tool: 'ibm-equal-access',
+        ruleId: v?.ruleId || v?.id || 'ibm-needs-review',
+        normalizedRuleId: ibmRevKey,
+        category: 'manual_check',
+        description: (ibmRevMapped ? ibmRevInfo.nameEs : null) || ibmRevRaw || 'Revision manual recomendada por IBM Equal Access',
+        selector: normalizeSelector(path?.dom || path?.target || 'document'),
+        elementHtml: path?.snippet || '',
+        severity: 'medio',
+        suggestedFix: ibmRevInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
+      });
+    }
+
+    return findings;
+  } finally {
+    try { await aChecker.close(); } catch { }
   }
-
-  for (const v of needsReview) {
-    const path = Array.isArray(v?.path) ? v.path[0] : undefined;
-    const ibmRevKey2 = normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '');
-    const ibmRevInfo2 = getRuleDetails(ibmRevKey2);
-    const ibmRevRaw2 = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
-    const ibmRevMapped2 = !ibmRevInfo2.nameEs.startsWith('Regla Automática');
-    findings.push({
-      tool: 'ibm-equal-access',
-      ruleId: v?.ruleId || v?.id || 'ibm-needs-review',
-      normalizedRuleId: ibmRevKey2,
-      category: 'manual_check',
-      description: (ibmRevMapped2 ? ibmRevInfo2.nameEs : null) || ibmRevRaw2 || 'Revision manual recomendada por IBM Equal Access',
-      selector: normalizeSelector(path?.dom || path?.target || 'document'),
-      elementHtml: path?.snippet || '',
-      severity: 'medio',
-      suggestedFix: ibmRevInfo2.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
-    });
-  }
-
-  return findings;
 }
 
 async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
@@ -1177,12 +1183,6 @@ export async function runStatefulPageEngines(page: Page, pageState: PageState): 
       run: async () => runAxe(page),
     },
     {
-      engine: 'ibm-equal-access',
-      pageState,
-      onFailureMessage: 'IBM Equal Access execution failed; continuing with other engines.',
-      run: async () => runIbmEqualAccess(page),
-    },
-    {
       engine: 'heuristic-dom',
       pageState,
       onFailureMessage: 'Heuristic DOM checks failed; continuing with other engines.',
@@ -1242,35 +1242,42 @@ export async function runSupportingEngines(_url: string, _port: number, _pageSta
   return { findings: [], report: [] };
 }
 
+const MAX_ELEMENT_SCREENSHOTS = 20;
+
 export async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
   const formattedViolations: any[] = [];
   let violationIndex = 0;
+  let screenshotsTaken = 0;
 
   for (const finding of grouped) {
     violationIndex++;
     const selector = finding.selectors[0] || 'document';
     let screenshotUrl = '';
 
-    try {
-      const locator = page.locator(selector).first();
-      await locator.evaluate((el) => {
-        el.style.outline = '3px solid #D3141A';
-        el.style.outlineOffset = '2px';
-        el.scrollIntoView({ behavior: 'auto', block: 'center' });
-      });
-
-      const buffer = await locator.screenshot({ timeout: 2000 });
-      screenshotUrl = await uploadEvidence(`scan-${Date.now()}-${violationIndex}.png`, buffer, 'image/png');
-
-      await locator.evaluate((el) => {
-        el.style.outline = '';
-        el.style.outlineOffset = '';
-      });
-    } catch {
+    if (screenshotsTaken < MAX_ELEMENT_SCREENSHOTS) {
       try {
-        const buffer = await page.screenshot({ fullPage: false });
+        const locator = page.locator(selector).first();
+        await locator.evaluate((el) => {
+          el.style.outline = '3px solid #D3141A';
+          el.style.outlineOffset = '2px';
+          el.scrollIntoView({ behavior: 'auto', block: 'center' });
+        });
+
+        const buffer = await locator.screenshot({ timeout: 2000 });
         screenshotUrl = await uploadEvidence(`scan-${Date.now()}-${violationIndex}.png`, buffer, 'image/png');
+        screenshotsTaken++;
+
+        await locator.evaluate((el) => {
+          el.style.outline = '';
+          el.style.outlineOffset = '';
+        });
       } catch {
+        try {
+          const buffer = await page.screenshot({ fullPage: false });
+          screenshotUrl = await uploadEvidence(`scan-${Date.now()}-${violationIndex}.png`, buffer, 'image/png');
+          screenshotsTaken++;
+        } catch {
+        }
       }
     }
 
