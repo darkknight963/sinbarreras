@@ -877,7 +877,7 @@
     };
 
     document.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach((element) => {
-      push('heading', element, { level: Number(element.tagName.slice(1)), label: textOf(element) || element.tagName });
+      push('heading', element, { level: Number(element.tagName.slice(1)), label: element.tagName });
     });
     document.querySelectorAll('main,nav,header,footer,aside,section[aria-label],section[aria-labelledby],[role="main"],[role="navigation"],[role="banner"],[role="contentinfo"],[role="complementary"]').forEach((element) => push('landmark', element));
     document.querySelectorAll('form').forEach((element) => push('form', element));
