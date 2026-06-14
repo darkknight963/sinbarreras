@@ -3,6 +3,7 @@ import { Scan } from '../../scans/entities/scan.entity';
 import { User } from '../../auth/entities/user.entity';
 
 @Index('IDX_projects_created_at', ['createdAt'])
+@Index('IDX_projects_owner_id', ['owner'])
 @Entity('projects')
 export class Project {
   @PrimaryGeneratedColumn('uuid')

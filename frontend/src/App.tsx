@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { io } from 'socket.io-client';
 import {
   CheckCircle,
@@ -13,10 +13,10 @@ import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, CULQI_PUB
 import { BillingView } from './BillingView';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
-import { AdminView } from './views/AdminView';
 import { ProjectsView } from './views/ProjectsView';
 import { ProjectDetailView } from './views/ProjectDetailView';
-import { ScanReportView } from './views/ScanReportView';
+const ScanReportView = lazy(() => import('./views/ScanReportView').then(m => ({ default: m.ScanReportView })));
+const AdminView = lazy(() => import('./views/AdminView').then(m => ({ default: m.AdminView })));
 
 let runtimeApiBaseUrl = API_BASE_URL;
 const BRAND_NAME = 'Sin Barreras';
@@ -665,7 +665,7 @@ export default function App() {
     };
 
     refreshPublicScan();
-    const intervalId = window.setInterval(refreshPublicScan, 2000);
+    const intervalId = window.setInterval(refreshPublicScan, 5000);
 
     return () => window.clearInterval(intervalId);
   }, [
@@ -1193,26 +1193,27 @@ export default function App() {
   const loadBillingData = async () => {
     try {
       setBillingLoading(true);
-      const plansResponse = await fetchWithFallback('/billing/plans');
-
-      if (!plansResponse.ok) {
-        throw new Error(`HTTP ${plansResponse.status}`);
-      }
-
-      const plans = await plansResponse.json();
-      setBillingPlans(plans);
       if (authMode === 'session') {
-        const stateResponse = await fetchWithFallback('/billing/me');
-        if (!stateResponse.ok) {
-          throw new Error(`HTTP ${stateResponse.status}`);
-        }
-        setBillingState(await stateResponse.json());
-        const userResponse = await fetchWithFallback('/auth/me');
-        if (!userResponse.ok) {
-          throw new Error(`HTTP ${userResponse.status}`);
-        }
-        setCurrentUser(await userResponse.json());
+        const [plansResponse, stateResponse, userResponse] = await Promise.all([
+          fetchWithFallback('/billing/plans'),
+          fetchWithFallback('/billing/me'),
+          fetchWithFallback('/auth/me'),
+        ]);
+        if (!plansResponse.ok) throw new Error(`HTTP ${plansResponse.status}`);
+        if (!stateResponse.ok) throw new Error(`HTTP ${stateResponse.status}`);
+        if (!userResponse.ok) throw new Error(`HTTP ${userResponse.status}`);
+        const [plans, state, user] = await Promise.all([
+          plansResponse.json(),
+          stateResponse.json(),
+          userResponse.json(),
+        ]);
+        setBillingPlans(plans);
+        setBillingState(state);
+        setCurrentUser(user);
       } else {
+        const plansResponse = await fetchWithFallback('/billing/plans');
+        if (!plansResponse.ok) throw new Error(`HTTP ${plansResponse.status}`);
+        setBillingPlans(await plansResponse.json());
         setBillingState(null);
       }
     } catch (err) {
@@ -1499,10 +1500,10 @@ export default function App() {
     return 'report-status-pending';
   };
 
-  const checklist86 = Array.from({ length: 86 }, (_, i) => {
+  const checklist86 = useMemo(() => Array.from({ length: 86 }, (_, i) => {
     const n = i + 1;
     return `Criterio ${n.toString().padStart(2, '0')} — WCAG 2.2`;
-  });
+  }), []);
 
   useEffect(() => {
     const section = view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle del Proyecto' : 'Informe de Escaneo';
@@ -1521,8 +1522,11 @@ export default function App() {
   const projectsAtRisk = latestScans.filter((scan) => (scan.globalScore ?? 0) < 50).length;
   const runningAnalyses = latestScans.filter(isScanInProgress).length;
   const parsedNewScanUrls = parseScanUrls(newScanUrls);
-  const applicabilityRows = selectedUrlResult ? getApplicabilityRows(selectedUrlResult) : [];
-  const filteredApplicabilityRows = applicabilityRows.filter((row) => {
+  const applicabilityRows = useMemo(
+    () => selectedUrlResult ? getApplicabilityRows(selectedUrlResult) : [],
+    [selectedUrlResult],
+  );
+  const filteredApplicabilityRows = useMemo(() => applicabilityRows.filter((row) => {
     if (criterionApplicabilityFilter !== 'todos' && row.estado !== criterionApplicabilityFilter) return false;
     if (criterionResultFilter !== 'todos' && row.uiStatus !== criterionResultFilter) return false;
     if (criterionLevelFilter !== 'todos' && row.nivel !== criterionLevelFilter) return false;
@@ -1532,8 +1536,8 @@ export default function App() {
       !row.findings.some((finding) => finding.severity?.normalize('NFD').replace(/[\u0300-\u036f]/g, '') === criterionSeverityFilter)
     ) return false;
     return true;
-  });
-  const groupedApplicabilityRows = filteredApplicabilityRows.reduce<Array<
+  }), [applicabilityRows, criterionApplicabilityFilter, criterionResultFilter, criterionLevelFilter, criterionRoleFilter, criterionSeverityFilter]);
+  const groupedApplicabilityRows = useMemo(() => filteredApplicabilityRows.reduce<Array<
     | { kind: 'principle'; key: string; title: string; description: string; count: number }
     | { kind: 'guideline'; key: string; title: string; description: string; count: number }
     | { kind: 'row'; key: string; row: (typeof filteredApplicabilityRows)[number] }
@@ -1583,7 +1587,7 @@ export default function App() {
     }
     items.push({ kind: 'row', key: row.id, row });
     return items;
-  }, []);
+  }, []), [filteredApplicabilityRows, criterionViewMode]);
   const applicabilitySummary = selectedUrlResult?.applicability?.summary;
 
   if (authLoading) {
@@ -1836,6 +1840,7 @@ export default function App() {
         )}
 
         {view === 'scan' && currentScan && (
+          <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando informe...</div>}>
           <ScanReportView
             currentScan={currentScan}
             currentProject={currentProject}
@@ -1881,6 +1886,7 @@ export default function App() {
               }
             }}
           />
+          </Suspense>
         )}
 
         {view === 'billing' && (
@@ -1900,10 +1906,12 @@ export default function App() {
         )}
 
         {view === 'admin' && currentUser && isMasterAccount && (
-          <AdminView
-            onBack={() => setView('projects')}
-            fetchWithAuth={(path, init) => fetchWithFallback(path, init)}
-          />
+          <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando panel...</div>}>
+            <AdminView
+              onBack={() => setView('projects')}
+              fetchWithAuth={(path, init) => fetchWithFallback(path, init)}
+            />
+          </Suspense>
         )}
       </main>
       {showPasswordModal && currentUser && (

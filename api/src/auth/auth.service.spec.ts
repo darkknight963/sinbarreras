@@ -24,7 +24,7 @@ describe('AuthService', () => {
 
     const service = new AuthService(userRepository, { findOne: jest.fn(), save: jest.fn(), delete: jest.fn() } as any, {
       get: jest.fn().mockImplementation((key: string, fallback?: number) => (key === 'SESSION_TTL_DAYS' ? 30 : fallback)),
-    } as any);
+    } as any, { isBlocked: jest.fn().mockResolvedValue(false), recordFailedAttempt: jest.fn(), resetAttempts: jest.fn(), getBlockRemaining: jest.fn() } as any);
 
     await expect(service.me('user-1')).resolves.toMatchObject({
       id: 'user-1',
@@ -53,7 +53,7 @@ describe('AuthService', () => {
         };
         return values[key] ?? fallback;
       }),
-    } as any);
+    } as any, { isBlocked: jest.fn(), recordFailedAttempt: jest.fn(), resetAttempts: jest.fn(), getBlockRemaining: jest.fn() } as any);
 
     expect(service.getOAuthProviders()).toEqual({
       google: {
@@ -92,7 +92,7 @@ describe('AuthService', () => {
 
     const service = new AuthService(userRepository, { findOne: jest.fn(), save: jest.fn(), delete: jest.fn() } as any, {
       get: jest.fn().mockImplementation((key: string, fallback?: number) => (key === 'SESSION_TTL_DAYS' ? 30 : fallback)),
-    } as any);
+    } as any, { isBlocked: jest.fn().mockResolvedValue(false), recordFailedAttempt: jest.fn(), resetAttempts: jest.fn(), getBlockRemaining: jest.fn() } as any);
 
     const verifySpy = jest.spyOn(service as any, 'verifyPassword').mockReturnValue(true);
     const hashSpy = jest.spyOn(service as any, 'hashPassword').mockReturnValue('new-salt:new-hash');
