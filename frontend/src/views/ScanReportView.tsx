@@ -959,6 +959,8 @@ export function ScanReportView({
           )}
         </section>
 
+        {selectedUrlResult && <SemanticStructureViewer structure={selectedUrlResult.semanticStructure} />}
+
         <section id="paginas" className="report-panel report-panel-spacious">
           <div className="flex items-center justify-between mb-3">
             <h3 className="report-section-title">Página auditada</h3>
@@ -1404,7 +1406,6 @@ export function ScanReportView({
               </div>
             </section>
 
-            <SemanticStructureViewer structure={selectedUrlResult.semanticStructure} />
           </>
         )}
       </div>
