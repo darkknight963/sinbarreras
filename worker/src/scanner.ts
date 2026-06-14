@@ -16,6 +16,7 @@ import {
   runOverlayAccessibilityEngines,
   runStatefulPageEngines,
   runSupportingEngines,
+  runPa11y,
 } from './scanner-engines.js';
 import {
   dedupeByRuleAndSelector,
@@ -64,6 +65,21 @@ export async function scanUrl(url: string, options: {
     if (!options.onProgress) return;
     await options.onProgress(Math.max(0, Math.min(100, Math.round(progress))));
   };
+
+  // Pa11y spawns its own Puppeteer/Chrome. Running it before Playwright avoids two
+  // concurrent Chrome processes competing for memory and crashing each other.
+  const pa11yStart = Date.now();
+  let pa11yFindings: any[] = [];
+  let pa11yReportEntry: any = null;
+  try {
+    console.log(`Running Pa11y pre-scan: ${url}`);
+    pa11yFindings = await runPa11y(url, 0);
+    pa11yReportEntry = { engine: 'pa11y', pageState: 'initial', status: 'ok', durationMs: Date.now() - pa11yStart, findingsCount: pa11yFindings.length };
+    console.log(`Pa11y pre-scan complete: ${pa11yFindings.length} finding(s).`);
+  } catch (err) {
+    console.warn('Pa11y pre-scan failed; continuing without Pa11y.', err);
+    pa11yReportEntry = { engine: 'pa11y', pageState: 'initial', status: 'failed', durationMs: Date.now() - pa11yStart, findingsCount: 0, errorMessage: String(err) };
+  }
 
   const debugPort = await getFreePort();
   const browser = await chromium.launch({
@@ -171,6 +187,7 @@ export async function scanUrl(url: string, options: {
       ...postOverlayEngineRun.findings,
       ...interactiveStateEngineRun.findings,
       ...supportingEngineRun.findings,
+      ...pa11yFindings,
     ];
     const coverageReport = buildCoverageReport(mergedRaw);
     const dedupedRaw = dedupeByRuleAndSelector(mergedRaw);
@@ -271,6 +288,7 @@ export async function scanUrl(url: string, options: {
         ...postOverlayEngineRun.report,
         ...interactiveStateEngineRun.report,
         ...supportingEngineRun.report,
+        ...(pa11yReportEntry ? [pa11yReportEntry] : []),
       ],
       device: options.viewport?.width === 375 ? 'Movil' : options.viewport?.width === 768 ? 'Tablet' : 'Desktop',
       htmlDumpUrl: '',

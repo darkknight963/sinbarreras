@@ -573,7 +573,7 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
   return findings;
 }
 
-async function runPa11y(url: string, _port: number): Promise<RawFinding[]> {
+export async function runPa11y(url: string, _port: number): Promise<RawFinding[]> {
   const pa11yModule: any = await import('pa11y' as any);
   const pa11y = pa11yModule.default || pa11yModule;
   const executablePath =
@@ -1231,18 +1231,14 @@ export async function runOverlayAccessibilityEngines(
 }
 
 export async function runSupportingEngines(url: string, port: number, pageState: PageState = 'post_overlay'): Promise<EngineRunResult<RawFinding[]>> {
+  // Pa11y is run before the Playwright browser opens in scanner.ts to prevent concurrent
+  // Chrome processes from crashing each other under memory pressure.
   const result = await runEngineSeries([
     {
       engine: 'lighthouse',
       pageState,
       onFailureMessage: 'Lighthouse execution failed; continuing with other engines.',
       run: async () => runLighthouse(url, port),
-    },
-    {
-      engine: 'pa11y',
-      pageState,
-      onFailureMessage: 'Pa11y execution failed; continuing with other engines.',
-      run: async () => runPa11y(url, port),
     },
   ]);
 
