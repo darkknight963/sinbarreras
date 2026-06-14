@@ -18,7 +18,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Compartido', // Redactor UX y Desarrollador
     resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
+    suggestedFix: 'Si la imagen transmite informacion, agregar alt descriptivo y breve (maximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.'
   },
   'color-contrast': {
     criterion: '1.4.3',
@@ -27,7 +28,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual (Baja visión)'],
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 1.4.3',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html',
+    suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relacion de contraste de al menos 4.5:1 en texto normal (menos de 18pt) o 3:1 en texto grande (18pt o 14pt negrita). Usar herramientas como WebAIM Contrast Checker para verificar.'
   },
   'color-contrast-enhanced': {
     criterion: '1.4.6',
@@ -36,7 +38,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual (Baja visión)'],
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 1.4.6',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-enhanced.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-enhanced.html',
+    suggestedFix: 'Para nivel AAA ajustar contraste a minimo 7:1 en texto normal y 4.5:1 en texto grande. Especialmente critico para usuarios con baja vision severa.'
   },
   'document-title': {
     criterion: '2.4.2',
@@ -45,7 +48,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/page-titled.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/page-titled.html',
+    suggestedFix: 'Definir un title unico y descriptivo con formato "Nombre pagina | Sistema" (maximo 60-70 caracteres). Actualizar en cada vista de SPA.'
   },
   'html-has-lang': {
     criterion: '3.1.1',
@@ -54,7 +58,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.1.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html',
+    suggestedFix: 'Agregar lang="es" o el BCP 47 correspondiente en el elemento html. Para contenido peruano usar lang="es-PE". Marcar fragmentos en otro idioma con lang propio.'
   },
   'html-lang-valid': {
     criterion: '3.1.1',
@@ -63,7 +68,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.1.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html',
+    suggestedFix: 'Verificar que el codigo de idioma sea un BCP 47 valido, por ejemplo es, es-PE, en, en-US. Codigos invalidos pueden confundir al lector de pantalla.'
   },
   'html-lang-missing': {
     criterion: '3.1.1',
@@ -91,7 +97,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
-    findingStatus: 'needs_review'
+    findingStatus: 'needs_review',
+    suggestedFix: 'Agregar antes del primer elemento interactivo un enlace "Saltar al contenido" visible al foco que apunte a id="main-content". Confirmar que el destino existe y recibe foco.'
   },
   'focus-visible': {
     criterion: '2.4.7',
@@ -100,7 +107,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Física', 'Sensorial visual'],
     role: 'Compartido', // Desarrollador y Diseñador UX/UI
     resolutionArticle: 'Anexo 1 - Criterio 2.4.7',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html',
+    suggestedFix: 'Definir :focus-visible con outline minimo de 2px de contraste 3:1, sin eliminar el outline del navegador sin reemplazo. Evitar outline:none sin definir estilo alternativo.'
   },
   'label': {
     criterion: '3.3.2',
@@ -109,7 +117,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Intelectual', 'Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.3.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html',
+    suggestedFix: 'Asociar cada control con label[for="id"] visible. Priorizar texto visible sobre aria-label. Usar aria-describedby para instrucciones adicionales, no como etiqueta principal.'
   },
   'aria-allowed-attr': {
     criterion: '4.1.2',
@@ -118,7 +127,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Física'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    suggestedFix: 'Eliminar atributos ARIA no permitidos para el rol del elemento. Consultar la especificacion ARIA para ver que atributos acepta cada rol y preferir HTML nativo.'
   },
   'aria-roles': {
     criterion: '4.1.2',
@@ -127,7 +137,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Física'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    suggestedFix: 'Usar solo roles ARIA validos de la especificacion WAI-ARIA 1.2. Preferir elementos HTML nativos con semantica equivalente cuando existan (button, nav, main, etc.).'
   },
   'link-name': {
     criterion: '2.4.4',
@@ -136,7 +147,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.4',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html',
+    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el proposito real, por ejemplo "Ver perfil de usuario". Evitar textos genericos como "click aqui" o "leer mas".'
   },
   'input-image-alt': {
     criterion: '1.1.1',
@@ -145,7 +157,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
+    suggestedFix: 'Agregar alt al input[type=image] con el texto que describe la accion del boton (no la imagen), por ejemplo alt="Buscar". Si es decorativo, usar input[type=submit] con value descriptivo.'
   },
   'button-name': {
     criterion: '4.1.2',
@@ -154,7 +167,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Física'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    suggestedFix: 'Agregar nombre accesible al boton: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente. El nombre debe describir la accion, no el elemento.'
   },
   'button-name-missing': {
     criterion: '4.1.2',
@@ -203,7 +217,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Física'],
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 2.5.8',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html',
+    suggestedFix: 'Asegurar que areas de interaccion tengan minimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil. Usar padding en lugar de aumentar el elemento si es necesario.'
   },
   'duplicate-id': {
     criterion: '4.1.2',
@@ -212,7 +227,8 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    suggestedFix: 'Asignar ids unicos en toda la pagina incluyendo componentes reutilizables. Actualizar todos los for, aria-labelledby, aria-controls, aria-describedby que referencian el id duplicado.'
   },
   'landmark-main-missing': {
     criterion: '2.4.1',
@@ -543,6 +559,7 @@ function normalizeRuleLookupKey(ruleId: string): string {
   const dequeMatch = id.match(/dequeuniversity\.com\/rules\/axe\/[0-9.]+\/([^?)\s]+)/);
   if (dequeMatch?.[1]) return dequeMatch[1];
   if (id.startsWith('axe:')) return id.slice(4);
+  // heuristic-dom custom rules
   if (id.includes('html-lang-missing')) return 'html-lang-missing';
   if (id.includes('aria-dialog-name')) return 'aria-dialog-name';
   if (id.includes('aria-required-owned-element')) return 'aria-required-owned-element';
@@ -563,8 +580,8 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id.includes('required-html5-attribute')) return 'required-html5-indicator';
   if (id.includes('frame-tested')) return 'frame-tested';
   if (id.includes('color-contrast-enhanced')) return 'color-contrast-enhanced';
-  if (id.includes('color-contrast') || id.includes('g18.fail')) return 'color-contrast';
-  if (id.includes('landmark-one-main') || id.includes('no-main-landmark')) return 'landmark-main-missing';
+  if (id.includes('color-contrast') || id.includes('g18.fail') || id.includes('g145.fail') || id.includes('g18.4') || id.includes('g145.4')) return 'color-contrast';
+  if (id.includes('landmark-one-main') || id.includes('no-main-landmark') || id.includes('landmark-main')) return 'landmark-main-missing';
   if (id.includes('region')) return 'region';
   if (id.includes('h91.select.value')) return 'select-value';
   if (id.includes('h85.2')) return 'select-optgroup';
@@ -573,11 +590,36 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id.includes('f77')) return 'duplicate-id';
   if (id.includes('h67.2')) return 'image-ignored-review';
   if (id.includes('bgimage') || id.includes('f24.fgcolour')) return 'contrast-image-background-undetermined';
-  if (id.includes('1_4_10')) return 'reflow-fixed-position';
+  if (id.includes('1_4_10') || id.includes('reflow')) return 'reflow-fixed-position';
   if (id.includes('h42')) return 'heading-markup-review';
   if (id.includes('h91.textarea.name')) return 'textarea-name';
-  if (id.includes('f68')) return 'form-field-label-missing';
-  if (id.includes('h64.1')) return 'iframe-title';
+  if (id.includes('f68') || id.includes('h71.3') || id.includes('h44.2')) return 'form-field-label-missing';
+  if (id.includes('h64.1') || id.includes('iframe-title') || id.includes('h64')) return 'iframe-title';
+  // Expanded htmlcs / pa11y codes
+  if (id.includes('h30') || id.includes('e501') || id.includes('link_in_text_block')) return 'link-name';
+  if (id.includes('h37') || id.includes('h36.1') || id.includes('img.alt') || id.includes('image-alt')) return 'image-alt';
+  if (id.includes('h36.2') || id.includes('input.image')) return 'input-image-alt';
+  if (id.includes('h45')) return 'image-alt';
+  if (id.includes('h63') || id.includes('h51') || id.includes('table_headers')) return 'table-purpose-review';
+  if (id.includes('h65') || id.includes('h91.input') || id.includes('input_label')) return 'input-name-missing';
+  if (id.includes('h71') || id.includes('h32') || id.includes('fieldset')) return 'form-field-label-missing';
+  if (id.includes('h48') || id.includes('list_markup')) return 'empty-list-item';
+  if (id.includes('g1.1') || id.includes('skip_link') || id.includes('bypass')) return 'bypass-missing';
+  if (id.includes('h69') || id.includes('heading_markup') || id.includes('heading-order')) return 'heading-markup-review';
+  if (id.includes('aria.documentlanguage') || id.includes('rpt_elem_lang_empty') || id.includes('html_lang')) return 'html-lang-missing';
+  if (id.includes('f55') || id.includes('keyboard') || id.includes('rpt_elem_href')) return 'link-href-missing';
+  if (id.includes('duplicate-id') || id.includes('f77') || id.includes('duplicate_id')) return 'duplicate-id';
+  if (id.includes('aria.banner') || id.includes('landmark_banner')) return 'landmark-main-missing';
+  if (id.includes('landmark') && id.includes('nav')) return 'landmark-nav-missing';
+  if (id.includes('target-size') || id.includes('target_size')) return 'target-size';
+  if (id.includes('focus-visible') || id.includes('focus_visible')) return 'focus-visible';
+  if (id.includes('document-title') || id.includes('doc_title')) return 'document-title';
+  if (id.includes('select-name') || id.includes('h91.select.name')) return 'input-name-missing';
+  if (id.includes('button-name') || id.includes('h91.button')) return 'button-name';
+  if (id.includes('label-content-name') || id.includes('label_in_name')) return 'button-name';
+  if (id.includes('autocomplete-valid') || id.includes('autocomplete')) return 'autocomplete-missing';
+  if (id.includes('aria-allowed-attr') || id.includes('aria-prohibited-attr')) return 'aria-allowed-attr';
+  if (id.includes('aria-roles') || id.includes('aria-required-attr') || id.includes('aria-conditional-attr')) return 'aria-roles';
   return id;
 }
 
@@ -606,7 +648,7 @@ export function getRuleDetails(axeRuleId: string): WcagRuleInfo {
   };
 }
 
-function defaultSuggestedFix(ruleKey: string): string {
+export function defaultSuggestedFix(ruleKey: string): string {
   if (ruleKey === 'image-alt') return 'Si la imagen transmite informacion, agregar alt descriptivo y breve. Si es decorativa, dejar alt="" y evitar aria-hidden en imagenes informativas.';
   if (ruleKey === 'color-contrast') return 'Ajustar los colores de texto y fondo para cumplir contraste WCAG AA: 4.5:1 en texto normal o 3:1 en texto grande.';
   if (ruleKey === 'color-contrast-enhanced') return 'Ajustar los colores de texto y fondo para cumplir contraste WCAG AAA: 7:1 en texto normal o 4.5:1 en texto grande.';

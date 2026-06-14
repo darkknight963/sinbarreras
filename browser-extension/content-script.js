@@ -577,6 +577,36 @@
       });
     });
 
+    document.querySelectorAll('iframe').forEach((element) => {
+      if (!isVisible(element)) return;
+      const title = (element.getAttribute('title') || '').trim();
+      if (!title) {
+        push({
+          ruleId: 'iframe-title',
+          category: 'violation',
+          criterion: '2.4.1',
+          level: 'A',
+          nameEs: 'Iframe sin titulo',
+          description: 'El iframe no tiene atributo title que describa su contenido o proposito a lectores de pantalla.',
+          element,
+          severity: 'alto',
+          suggestedFix: 'Agregar title descriptivo al iframe, por ejemplo title="Mapa de ubicacion de la oficina" o title="Video tutorial de registro".',
+        });
+      } else {
+        push({
+          ruleId: 'frame-tested',
+          category: 'manual_check',
+          criterion: 'Revision manual',
+          level: 'A',
+          nameEs: 'Contenido de iframe sin evaluar',
+          description: 'El iframe "' + title + '" tiene titulo pero su contenido interno no puede ser auditado automaticamente desde la extension.',
+          element,
+          severity: 'medio',
+          suggestedFix: 'Abrir la URL del iframe directamente y ejecutar el escaner sobre ella, o revisar manualmente contraste, teclado y texto alternativo dentro del iframe.',
+        });
+      }
+    });
+
     return findings.slice(0, 220);
   };
 
@@ -749,10 +779,40 @@
     };
   };
 
-  const scoreFromFindings = (violations, reviews) => {
-    const confirmedCriteria = new Set(violations.map((finding) => finding.wcagCriterion || finding.criterion));
-    const reviewCriteria = new Set(reviews.map((finding) => finding.wcagCriterion || finding.criterion));
-    return Math.max(0, Math.min(100, Math.round(100 - confirmedCriteria.size * 5 - reviewCriteria.size * 1.5)));
+  const countApplicableCriteria = (d) => {
+    let inapplicable = 0;
+    if (!d.tiene_video && !d.tiene_audio) inapplicable += 9;
+    if (!d.tiene_audio) inapplicable += 1;
+    if (!d.tiene_formularios) inapplicable += 7;
+    if (!d.tiene_audio_autoplay) inapplicable += 1;
+    if (!d.tiene_imagenes_de_texto) inapplicable += 2;
+    if (!d.tiene_contenido_hover) inapplicable += 1;
+    inapplicable += 1;
+    if (!d.tiene_timeout_sesion) inapplicable += 3;
+    if (!d.tiene_movimiento_automatico) inapplicable += 1;
+    if (!d.tiene_mensajes_estado) inapplicable += 2;
+    if (!d.tiene_autenticacion) inapplicable += 1;
+    if (!d.tiene_animaciones_css) inapplicable += 3;
+    if (!d.tiene_drag_and_drop) inapplicable += 2;
+    if (!d.tiene_contenido_multipagina) inapplicable += 4;
+    inapplicable += 6;
+    if (!d.tiene_ayuda) inapplicable += 1;
+    if (!d.tiene_transacciones) inapplicable += 1;
+    if (!d.tiene_proceso_multipaso) inapplicable += 1;
+    if (!d.tiene_autenticacion && !d.tiene_captcha) inapplicable += 2;
+    return Math.max(10, 86 - inapplicable);
+  };
+
+  const scoreFromFindings = (violations, reviews, contentDetection) => {
+    const applicableCount = contentDetection ? countApplicableCriteria(contentDetection) : 86;
+    const failedCriteria = new Set(violations.map((f) => f.wcagCriterion || f.criterion).filter(Boolean));
+    const reviewCriteria = new Set(
+      reviews.map((r) => r.wcagCriterion || r.criterion).filter((id) => id && !failedCriteria.has(id))
+    );
+    const failedCount = Math.min(failedCriteria.size, applicableCount);
+    const reviewCount = Math.min(reviewCriteria.size, Math.max(0, applicableCount - failedCount));
+    const passedCount = Math.max(0, applicableCount - failedCount - reviewCount);
+    return Math.max(0, Math.min(100, Math.round((passedCount / applicableCount) * 100)));
   };
 
   window.__sinBarrerasAuditCurrentPage = async () => {
@@ -779,8 +839,8 @@
     const violations = allFindings.filter((finding) => finding.findingStatus === 'confirmed');
     const manualVerifications = allFindings.filter((finding) => finding.findingStatus !== 'confirmed');
 
-    const score = scoreFromFindings(violations, manualVerifications);
     const contentDetection = collectContentDetection();
+    const score = scoreFromFindings(violations, manualVerifications, contentDetection);
     const visualMarkers = [...violations, ...manualVerifications]
       .filter((finding) => finding.visualRect && finding.visualRect.width > 0 && finding.visualRect.height > 0)
       .slice(0, 80)
@@ -812,11 +872,11 @@
       applicability: {
         summary: {
           totalCriteria: 86,
-          applicableCount: 86,
-          notApplicableCount: 0,
-          failedCount: new Set(violations.map((item) => item.wcagCriterion)).size,
-          reviewCount: new Set(manualVerifications.map((item) => item.wcagCriterion)).size,
-          passedCount: Math.max(0, 86 - new Set(violations.map((item) => item.wcagCriterion)).size),
+          applicableCount: countApplicableCriteria(contentDetection),
+          notApplicableCount: 86 - countApplicableCriteria(contentDetection),
+          failedCount: new Set(violations.map((item) => item.wcagCriterion || item.criterion).filter(Boolean)).size,
+          reviewCount: new Set(manualVerifications.map((item) => item.wcagCriterion || item.criterion).filter(Boolean)).size,
+          passedCount: Math.max(0, countApplicableCriteria(contentDetection) - new Set(violations.map((item) => item.wcagCriterion || item.criterion).filter(Boolean)).size),
           score,
         },
       },

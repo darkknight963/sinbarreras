@@ -2,7 +2,7 @@ import axeCore from 'axe-core';
 import { chromium, Page } from 'playwright';
 import { buildManualGuidance } from './manualGuidanceBuilder.js';
 import { enforceClassification } from './classificationPolicy.js';
-import { getRuleDetails } from './wcagRules.js';
+import { getRuleDetails, defaultSuggestedFix } from './wcagRules.js';
 import { uploadEvidence } from './storage.js';
 import type {
   EngineRunResult,
@@ -544,7 +544,7 @@ async function runLighthouse(url: string, port: number): Promise<RawFinding[]> {
         selector,
         elementHtml: html,
         severity: score <= 0.3 ? 'alto' : score <= 0.6 ? 'medio' : 'bajo',
-        suggestedFix: audit?.description || 'Revisar recomendacion de Lighthouse.',
+        suggestedFix: getRuleDetails(normalizeRuleId(String(auditId), audit?.title || '')).suggestedFix || defaultSuggestedFix(String(auditId)),
       });
     }
   }
@@ -587,7 +587,7 @@ async function runPa11y(url: string, _port: number): Promise<RawFinding[]> {
       selector: normalizeSelector(issue.selector || 'document'),
       elementHtml: issue.context || '',
       severity: toSeverityEs(issue.type || issue.typeCode),
-      suggestedFix: issue.runner ? `Revisar regla ${issue.runner}:${issue.code}` : 'Revisar hallazgo de Pa11y.',
+      suggestedFix: getRuleDetails(normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || '')).suggestedFix || defaultSuggestedFix(issue.code || 'pa11y-unknown'),
     });
   }
 
@@ -630,7 +630,7 @@ async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
       selector,
       elementHtml: path?.snippet || '',
       severity: toSeverityEs(v?.level || v?.impact),
-      suggestedFix: v?.help || 'Revisar recomendacion de IBM Equal Access.',
+      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
     });
   }
 
@@ -646,7 +646,7 @@ async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
       selector,
       elementHtml: path?.snippet || '',
       severity: 'medio',
-      suggestedFix: v?.help || 'Validar manualmente el criterio en el contexto funcional.',
+      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
     });
   }
 
@@ -674,7 +674,7 @@ async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
       selector: normalizeSelector(path?.dom || path?.target || 'document'),
       elementHtml: path?.snippet || '',
       severity: toSeverityEs(v?.level || v?.impact),
-      suggestedFix: v?.help || 'Revisar recomendacion de IBM Equal Access.',
+      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
     });
   }
 
@@ -689,7 +689,7 @@ async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
       selector: normalizeSelector(path?.dom || path?.target || 'document'),
       elementHtml: path?.snippet || '',
       severity: 'medio',
-      suggestedFix: v?.help || 'Validar manualmente el criterio en el contexto funcional.',
+      suggestedFix: getRuleDetails(normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '')).suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
     });
   }
 
@@ -1122,6 +1122,32 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       }
     }
 
+    for (const iframe of Array.from(document.querySelectorAll('iframe'))) {
+      if (!isVisible(iframe)) continue;
+      const title = (iframe.getAttribute('title') || '').trim();
+      if (!title) {
+        findings.push({
+          ruleId: 'iframe-title',
+          description: 'El iframe no tiene atributo title que describa su contenido o proposito.',
+          selector: getSelector(iframe),
+          html: iframe.outerHTML.slice(0, 300),
+          wcagCriterion: '2.4.1',
+          wcagLevel: 'A',
+          category: 'violation',
+        });
+      } else {
+        findings.push({
+          ruleId: 'frame-tested',
+          description: 'El contenido del iframe "' + title + '" no puede ser evaluado automaticamente. Requiere revision manual o escaneo directo de su URL.',
+          selector: getSelector(iframe),
+          html: iframe.outerHTML.slice(0, 300),
+          wcagCriterion: 'Revision manual',
+          wcagLevel: 'A' as any,
+          category: 'manual_check',
+        });
+      }
+    }
+
     return findings;
   })()`) as Array<{
     ruleId: string;
@@ -1144,7 +1170,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
     selector: normalizeSelector(c.selector),
     elementHtml: c.html || '',
     severity: c.category === 'violation' ? 'alto' : c.category === 'alert' ? 'medio' : 'bajo',
-    suggestedFix: 'Validar y corregir estructura semantica y etiquetado accesible segun WCAG.',
+    suggestedFix: getRuleDetails(c.ruleId).suggestedFix || defaultSuggestedFix(c.ruleId),
   }));
 }
 
