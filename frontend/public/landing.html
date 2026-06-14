@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sin barreras — Auditoría de Accesibilidad Web WCAG 2.2 en Perú</title>
+  <meta name="description" content="Audita tu sitio web con 5 motores de accesibilidad (axe-core, Lighthouse, Pa11y, IBM Equal Access). Cumple la Resolución N° 001-2025-PCM/SGTD y WCAG 2.2. Reportes PDF y Excel." />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <link rel="canonical" href="https://accesibilidad.gob.pe/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_PE" />
+  <meta property="og:title" content="sin barreras — Accesibilidad Web WCAG 2.2 para Perú" />
+  <meta property="og:description" content="Plataforma de auditoría de accesibilidad digital. 5 motores de análisis, 86 criterios WCAG 2.2, reportes PDF/Excel y cumplimiento normativo peruano." />
+  <meta property="og:url" content="https://accesibilidad.gob.pe/" />
+  <meta property="og:image" content="https://accesibilidad.gob.pe/og-cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="sin barreras — Accesibilidad Web WCAG 2.2" />
+  <meta name="twitter:description" content="Audita tu web, cumple la normativa peruana y genera reportes técnicos de accesibilidad en PDF y Excel." />
+  <meta name="twitter:image" content="https://accesibilidad.gob.pe/og-cover.png" />
+  <link rel="icon" type="image/png" href="/sin-barreras-icon.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "sin barreras",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "inLanguage": "es-PE",
+    "description": "Plataforma de auditoría de accesibilidad web con 5 motores de análisis. Cumple WCAG 2.2 y Resolución N° 001-2025-PCM/SGTD del gobierno peruano.",
+    "url": "https://accesibilidad.gob.pe/",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Plan Gratis",
+        "price": "0",
+        "priceCurrency": "PEN",
+        "description": "3 análisis por mes, 1 página por análisis"
+      },
+      {
+        "@type": "Offer",
+        "name": "Plan Pro",
+        "price": "79",
+        "priceCurrency": "PEN",
+        "description": "Análisis ilimitados, exportación PDF y Excel, remediación guiada"
+      }
+    ],
+    "featureList": [
+      "5 motores de accesibilidad: axe-core, Pa11y, Lighthouse, IBM Equal Access, heurística DOM",
+      "86 criterios WCAG 2.2 evaluados automáticamente",
+      "Reportes PDF ejecutivo y técnico",
+      "Matriz Excel con colores por resultado",
+      "Cumplimiento Resolución N° 001-2025-PCM/SGTD",
+      "Mapa de encabezados HeadingsMap",
+      "Puntuación de accesibilidad por página"
+    ],
+    "provider": {
+      "@type": "Organization",
+      "name": "sin barreras",
+      "url": "https://accesibilidad.gob.pe/"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #002C76;
+      --blue-dark: #001F54;
+      --blue-light: #EAF2FF;
+      --blue-mid: #1d4ed8;
+      --green: #047857;
+      --green-light: #D1FAE5;
+      --slate-900: #0F172A;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-400: #94A3B8;
+      --slate-200: #E2E8F0;
+      --slate-100: #F1F5F9;
+      --slate-50: #F8FAFC;
+      --red: #B91C1C;
+      --amber: #B45309;
+      --amber-light: #FEF3C7;
+      --white: #FFFFFF;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--slate-900);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--white);
+      border-bottom: 1px solid var(--slate-200);
+      padding: 0 1.5rem;
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-brand img { width: 32px; height: 32px; }
+    .nav-brand span {
+      font-size: 1.2rem; font-weight: 700; color: var(--blue);
+      letter-spacing: -0.02em;
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 1.5rem;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 0.875rem; color: var(--slate-700);
+      transition: color .15s;
+    }
+    .nav-links a:hover { color: var(--blue); }
+    .nav-cta {
+      display: flex; gap: 0.75rem; align-items: center;
+    }
+    .btn-ghost {
+      font-size: 0.875rem; font-weight: 500;
+      color: var(--blue); padding: 0.4rem 1rem;
+      border-radius: 6px; border: 1.5px solid var(--blue);
+      transition: background .15s;
+    }
+    .btn-ghost:hover { background: var(--blue-light); }
+    .btn-primary {
+      font-size: 0.875rem; font-weight: 600;
+      background: var(--blue); color: var(--white);
+      padding: 0.5rem 1.25rem; border-radius: 6px;
+      transition: background .15s, transform .1s;
+    }
+    .btn-primary:hover { background: var(--blue-dark); transform: translateY(-1px); }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--blue-mid) 100%);
+      color: var(--white);
+      padding: 6rem 1.5rem 5rem;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+      border-radius: 99px; padding: 0.3rem 0.9rem;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: .04em;
+      text-transform: uppercase; color: rgba(255,255,255,.9);
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1.15; margin-bottom: 1.25rem;
+      max-width: 800px; margin-left: auto; margin-right: auto;
+    }
+    .hero h1 em { font-style: normal; color: #7DD3FC; }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: rgba(255,255,255,.85); max-width: 640px;
+      margin: 0 auto 2.5rem;
+    }
+    .hero-actions {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+    }
+    .hero-actions .btn-white {
+      background: var(--white); color: var(--blue);
+      font-weight: 700; font-size: 1rem;
+      padding: 0.75rem 2rem; border-radius: 8px;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
+    }
+    .hero-actions .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+    .hero-actions .btn-outline-white {
+      color: var(--white); font-weight: 600; font-size: 1rem;
+      padding: 0.75rem 2rem; border-radius: 8px;
+      border: 2px solid rgba(255,255,255,.5);
+      transition: border-color .15s, background .15s;
+    }
+    .hero-actions .btn-outline-white:hover { border-color: var(--white); background: rgba(255,255,255,.1); }
+    .hero-stat-row {
+      display: flex; justify-content: center; gap: 2.5rem; flex-wrap: wrap;
+      margin-top: 3.5rem; padding-top: 2.5rem;
+      border-top: 1px solid rgba(255,255,255,.15);
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat strong { display: block; font-size: 1.75rem; font-weight: 800; }
+    .hero-stat span { font-size: 0.8rem; color: rgba(255,255,255,.7); }
+
+    /* SECTIONS */
+    section { padding: 5rem 1.5rem; }
+    .section-inner { max-width: 1200px; margin: 0 auto; }
+    .section-kicker {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--blue-mid);
+      margin-bottom: 0.5rem;
+    }
+    .section-title {
+      font-size: clamp(1.5rem, 3vw, 2.25rem);
+      font-weight: 800; letter-spacing: -0.025em;
+      color: var(--slate-900); margin-bottom: 0.75rem;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--slate-600);
+      max-width: 600px; margin-bottom: 3rem;
+    }
+
+    /* LOGOS NORMA */
+    .norma-banner {
+      background: var(--blue-light);
+      border-top: 3px solid var(--blue);
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .norma-banner p {
+      font-size: 0.875rem; font-weight: 600; color: var(--blue);
+    }
+    .norma-banner span { font-weight: 400; color: var(--slate-700); }
+
+    /* FEATURES GRID */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .feature-card:hover { box-shadow: 0 8px 24px rgba(0,44,118,.1); transform: translateY(-3px); }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--blue-light);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem; font-size: 1.25rem;
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--slate-900); }
+    .feature-card p { font-size: 0.875rem; color: var(--slate-600); line-height: 1.6; }
+
+    /* ENGINES */
+    .engines-section { background: var(--slate-50); }
+    .engines-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem; margin-top: 2rem;
+    }
+    .engine-card {
+      background: var(--white); border-radius: 10px;
+      border: 1px solid var(--slate-200);
+      padding: 1.25rem 1rem; text-align: center;
+    }
+    .engine-card .engine-name {
+      font-size: 0.9rem; font-weight: 700; color: var(--slate-900); margin-bottom: 0.25rem;
+    }
+    .engine-card .engine-desc {
+      font-size: 0.78rem; color: var(--slate-600);
+    }
+    .engine-num {
+      display: inline-block;
+      background: var(--blue); color: var(--white);
+      width: 28px; height: 28px; border-radius: 50%;
+      font-size: 0.8rem; font-weight: 800;
+      line-height: 28px; margin: 0 auto 0.75rem;
+    }
+
+    /* HOW */
+    .how-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0; counter-reset: step;
+      position: relative;
+    }
+    .how-steps::before {
+      content: '';
+      position: absolute; top: 24px; left: 0; right: 0; height: 2px;
+      background: var(--slate-200);
+      z-index: 0;
+    }
+    .how-step { text-align: center; padding: 0 1rem; position: relative; z-index: 1; }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--blue); color: var(--white);
+      font-size: 1.1rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+      box-shadow: 0 0 0 4px var(--white), 0 0 0 6px var(--blue-light);
+    }
+    .how-step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .how-step p { font-size: 0.825rem; color: var(--slate-600); }
+
+    /* PRICING */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem; margin-top: 2rem;
+    }
+    .plan-card {
+      border: 1px solid var(--slate-200); border-radius: 14px;
+      padding: 2rem; position: relative;
+      background: var(--white);
+      transition: box-shadow .2s;
+    }
+    .plan-card:hover { box-shadow: 0 8px 30px rgba(0,44,118,.12); }
+    .plan-card.plan-pro {
+      border: 2px solid var(--blue);
+      box-shadow: 0 4px 24px rgba(0,44,118,.15);
+    }
+    .plan-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: var(--white);
+      font-size: 0.7rem; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; padding: 0.25rem 0.75rem; border-radius: 99px;
+    }
+    .plan-name { font-size: 0.8rem; font-weight: 600; color: var(--slate-600); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 0.5rem; }
+    .plan-price { font-size: 2.25rem; font-weight: 800; color: var(--slate-900); line-height: 1; }
+    .plan-price span { font-size: 1rem; font-weight: 600; color: var(--slate-600); }
+    .plan-price-note { font-size: 0.78rem; color: var(--slate-400); margin: 0.25rem 0 1.25rem; }
+    .plan-price-old { font-size: 0.85rem; color: var(--slate-400); text-decoration: line-through; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; margin: 1.25rem 0 1.75rem; }
+    .plan-features li { font-size: 0.875rem; display: flex; gap: 0.5rem; align-items: flex-start; }
+    .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+    .plan-features li.no::before { content: '✗'; color: var(--slate-400); }
+    .plan-features li.no { color: var(--slate-400); }
+    .btn-plan {
+      display: block; width: 100%; padding: 0.75rem;
+      border-radius: 8px; text-align: center;
+      font-size: 0.9rem; font-weight: 700;
+      transition: background .15s, transform .1s;
+    }
+    .btn-plan-free {
+      background: var(--slate-100); color: var(--slate-700);
+    }
+    .btn-plan-free:hover { background: var(--slate-200); }
+    .btn-plan-pro {
+      background: var(--blue); color: var(--white);
+    }
+    .btn-plan-pro:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .plan-promo {
+      background: var(--amber-light); border-radius: 6px;
+      padding: 0.4rem 0.75rem; margin-bottom: 0.5rem;
+      font-size: 0.78rem; font-weight: 600; color: var(--amber);
+    }
+
+    /* WCAG */
+    .wcag-section { background: var(--blue); color: var(--white); }
+    .wcag-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem; margin-top: 2.5rem;
+    }
+    .wcag-stat { text-align: center; }
+    .wcag-stat strong { display: block; font-size: 2rem; font-weight: 800; color: #7DD3FC; }
+    .wcag-stat p { font-size: 0.825rem; color: rgba(255,255,255,.75); margin-top: 0.25rem; }
+
+    /* TESTIMONIAL / NORMA */
+    .norma-section { background: var(--slate-50); }
+    .norma-card {
+      background: var(--white); border: 1px solid var(--slate-200);
+      border-left: 4px solid var(--blue);
+      border-radius: 0 12px 12px 0;
+      padding: 2rem;
+    }
+    .norma-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--blue); margin-bottom: 0.75rem; }
+    .norma-card p { font-size: 0.9rem; color: var(--slate-700); line-height: 1.7; }
+    .norma-list { list-style: none; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .norma-list li { font-size: 0.875rem; color: var(--slate-700); padding-left: 1.25rem; position: relative; }
+    .norma-list li::before { content: '›'; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
+
+    /* FAQ */
+    details { border-bottom: 1px solid var(--slate-200); }
+    details summary {
+      cursor: pointer; padding: 1.25rem 0;
+      font-size: 0.95rem; font-weight: 600;
+      color: var(--slate-900); list-style: none;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::after { content: '+'; font-size: 1.25rem; color: var(--blue); }
+    details[open] summary::after { content: '−'; }
+    details p { font-size: 0.875rem; color: var(--slate-600); padding-bottom: 1.25rem; line-height: 1.7; }
+
+    /* CTA BOTTOM */
+    .cta-bottom {
+      background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+      color: var(--white); text-align: center; padding: 5rem 1.5rem;
+    }
+    .cta-bottom h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 800; margin-bottom: 1rem; }
+    .cta-bottom p { font-size: 1.05rem; color: rgba(255,255,255,.8); margin-bottom: 2rem; }
+
+    /* FOOTER */
+    footer {
+      background: var(--slate-900); color: rgba(255,255,255,.6);
+      padding: 3rem 1.5rem 2rem;
+    }
+    .footer-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem;
+    }
+    .footer-brand strong { display: block; color: var(--white); font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .footer-brand p { font-size: 0.825rem; line-height: 1.6; }
+    .footer-col h4 { color: var(--white); font-size: 0.8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 0.75rem; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+    .footer-col ul li a { font-size: 0.825rem; color: rgba(255,255,255,.5); transition: color .15s; }
+    .footer-col ul li a:hover { color: var(--white); }
+    .footer-bottom {
+      max-width: 1200px; margin: 2rem auto 0;
+      padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .how-steps::before { display: none; }
+      .how-steps { gap: 1.5rem; }
+      .footer-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav aria-label="Navegación principal">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand" aria-label="sin barreras — inicio">
+      <img src="/sin-barreras-icon.png" alt="sin barreras" width="32" height="32" />
+      <span>sin barreras</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#funcionalidades">Funcionalidades</a></li>
+      <li><a href="#motores">Motores</a></li>
+      <li><a href="#precios">Precios</a></li>
+      <li><a href="#normativa">Normativa</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="/acceso" class="btn-ghost">Iniciar sesión</a>
+      <a href="/acceso" class="btn-primary">Empezar gratis</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-badge">⚡ Resolución N° 001-2025-PCM/SGTD — Cumplimiento legal</div>
+  <h1 id="hero-title">
+    Convierte tu web en un lugar<br /><em>para todos</em>
+  </h1>
+  <p>
+    La plataforma de auditoría de accesibilidad web más completa del Perú.
+    5 motores de análisis, 86 criterios WCAG 2.2 y reportes listos para presentar.
+  </p>
+  <div class="hero-actions">
+    <a href="/acceso" class="btn-white">Comenzar gratis — sin tarjeta</a>
+    <a href="#funcionalidades" class="btn-outline-white">Ver funcionalidades</a>
+  </div>
+  <div class="hero-stat-row">
+    <div class="hero-stat"><strong>86</strong><span>Criterios WCAG 2.2</span></div>
+    <div class="hero-stat"><strong>5</strong><span>Motores de análisis</span></div>
+    <div class="hero-stat"><strong>PDF + Excel</strong><span>Exportación de reportes</span></div>
+    <div class="hero-stat"><strong>WCAG 2.2</strong><span>AA y AAA</span></div>
+  </div>
+</section>
+
+<!-- NORMA BANNER -->
+<div class="norma-banner">
+  <p>Alineado con la normativa peruana: <span>Resolución de Secretaría de Gobierno y Transformación Digital N° 001-2025-PCM/SGTD</span></p>
+</div>
+
+<!-- FUNCIONALIDADES -->
+<section id="funcionalidades" aria-labelledby="feat-title">
+  <div class="section-inner">
+    <p class="section-kicker">Funcionalidades</p>
+    <h2 class="section-title" id="feat-title">Todo lo que necesitas para cumplir accesibilidad</h2>
+    <p class="section-sub">Desde la auditoría automática hasta el reporte ejecutivo, en un solo lugar.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🔍</div>
+        <h3>Auditoría automática</h3>
+        <p>Escanea cualquier URL con 5 motores simultáneos y obtén resultados en minutos. Detecta errores, alertas y puntos de revisión manual.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📊</div>
+        <h3>Matriz de 86 criterios WCAG</h3>
+        <p>Evalúa los 86 criterios WCAG 2.2 (A, AA y AAA) con aplicabilidad inteligente según el tipo de contenido de tu sitio.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📄</div>
+        <h3>Reportes PDF ejecutivo y técnico</h3>
+        <p>Genera informes en PDF listos para presentar: uno para la gerencia y otro con detalles técnicos y selectores CSS afectados.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📋</div>
+        <h3>Exportación a Excel</h3>
+        <p>Descarga la matriz de cumplimiento en Excel con colores por resultado, filtros automáticos y hojas separadas por rol técnico.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🗺️</div>
+        <h3>Mapa de encabezados</h3>
+        <p>Visualiza la jerarquía H1–H6 de tu página con conectores tipo árbol y detección de errores de estructura semántica.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🎯</div>
+        <h3>Puntuación de accesibilidad</h3>
+        <p>Score del 0 al 100 basado en criterios fallidos, en revisión y cumplidos respecto al total aplicable al sitio auditado.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🔐</div>
+        <h3>Evaluación de estados</h3>
+        <p>Audita el estado inicial de la página y el estado con modales activos para detectar problemas en flujos interactivos.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">👥</div>
+        <h3>Gestión de proyectos</h3>
+        <p>Organiza tus auditorías por cliente o proyecto, compara resultados históricos y prioriza por rol responsable.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MOTORES -->
+<section id="motores" class="engines-section" aria-labelledby="engines-title">
+  <div class="section-inner">
+    <p class="section-kicker">Tecnología</p>
+    <h2 class="section-title" id="engines-title">5 motores de accesibilidad trabajando juntos</h2>
+    <p class="section-sub">Ninguna herramienta detecta el 100% sola. Por eso combinamos los líderes del sector.</p>
+    <div class="engines-grid">
+      <div class="engine-card">
+        <div class="engine-num">1</div>
+        <p class="engine-name">axe-core</p>
+        <p class="engine-desc">El estándar de la industria, de Deque Systems. WCAG 2.2 A y AA.</p>
+      </div>
+      <div class="engine-card">
+        <div class="engine-num">2</div>
+        <p class="engine-name">Lighthouse</p>
+        <p class="engine-desc">El motor de Google Chrome para rendimiento y accesibilidad.</p>
+      </div>
+      <div class="engine-card">
+        <div class="engine-num">3</div>
+        <p class="engine-name">Pa11y</p>
+        <p class="engine-desc">Runner HTML_CodeSniffer con reglas WCAG2AA complementarias.</p>
+      </div>
+      <div class="engine-card">
+        <div class="engine-num">4</div>
+        <p class="engine-name">IBM Equal Access</p>
+        <p class="engine-desc">Motor de IBM con énfasis en ARIA, semántica y roles.</p>
+      </div>
+      <div class="engine-card">
+        <div class="engine-num">5</div>
+        <p class="engine-name">Heurística DOM</p>
+        <p class="engine-desc">Verificación propia: iframes, tamaños táctiles, skip links y más.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section id="como" aria-labelledby="how-title">
+  <div class="section-inner">
+    <p class="section-kicker">¿Cómo funciona?</p>
+    <h2 class="section-title" id="how-title">Audita tu sitio en 4 pasos</h2>
+    <p class="section-sub">Sin instalaciones. Desde el navegador.</p>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="step-num">1</div>
+        <h3>Crea un proyecto</h3>
+        <p>Registra el dominio o entidad que deseas auditar.</p>
+      </div>
+      <div class="how-step">
+        <div class="step-num">2</div>
+        <h3>Ingresa la URL</h3>
+        <p>Pega la dirección de la página a analizar.</p>
+      </div>
+      <div class="how-step">
+        <div class="step-num">3</div>
+        <h3>Lanza el análisis</h3>
+        <p>Los 5 motores evalúan la página en paralelo.</p>
+      </div>
+      <div class="how-step">
+        <div class="step-num">4</div>
+        <h3>Descarga el reporte</h3>
+        <p>PDF ejecutivo, PDF técnico o matriz Excel lista.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WCAG STATS -->
+<section class="wcag-section" aria-labelledby="wcag-title">
+  <div class="section-inner">
+    <p class="section-kicker" style="color:#7DD3FC">Cobertura WCAG 2.2</p>
+    <h2 class="section-title" id="wcag-title" style="color:#fff">La matriz de cumplimiento más completa</h2>
+    <p class="section-sub" style="color:rgba(255,255,255,.75)">Evaluamos todos los principios WCAG con aplicabilidad inteligente por tipo de contenido.</p>
+    <div class="wcag-grid">
+      <div class="wcag-stat"><strong>86</strong><p>Criterios evaluados</p></div>
+      <div class="wcag-stat"><strong>4</strong><p>Principios WCAG (POUR)</p></div>
+      <div class="wcag-stat"><strong>A / AA / AAA</strong><p>Niveles de conformidad</p></div>
+      <div class="wcag-stat"><strong>Automático + Manual</strong><p>Tipo de verificación</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRECIOS -->
+<section id="precios" aria-labelledby="pricing-title">
+  <div class="section-inner">
+    <p class="section-kicker">Precios</p>
+    <h2 class="section-title" id="pricing-title">Planes para cada necesidad</h2>
+    <p class="section-sub">Comienza gratis. Escala cuando lo necesites.</p>
+    <div class="pricing-grid">
+      <div class="plan-card">
+        <p class="plan-name">Gratis</p>
+        <p class="plan-price">S/ 0 <span>/mes</span></p>
+        <p class="plan-price-note">para siempre</p>
+        <ul class="plan-features">
+          <li>3 análisis por mes</li>
+          <li>1 página por análisis</li>
+          <li>Vista de resultados en pantalla</li>
+          <li>Mapa de encabezados</li>
+          <li class="no">Sin exportar PDF ni Excel</li>
+          <li class="no">Sin pasos de remediación</li>
+        </ul>
+        <a href="/acceso" class="btn-plan btn-plan-free">Empezar gratis</a>
+      </div>
+      <div class="plan-card plan-pro">
+        <span class="plan-badge">Más popular</span>
+        <p class="plan-name">Pro</p>
+        <div class="plan-promo">⏰ Precio de lanzamiento por tiempo limitado</div>
+        <p class="plan-price">S/ 79 <span>/mes</span></p>
+        <p class="plan-price-note plan-price-old">Antes S/ 199/mes</p>
+        <ul class="plan-features">
+          <li>Análisis ilimitados</li>
+          <li>Exportar PDF ejecutivo y técnico</li>
+          <li>Exportar matriz Excel</li>
+          <li>Pasos de remediación WCAG</li>
+          <li>Creación de múltiples proyectos</li>
+          <li>Historial de auditorías</li>
+        </ul>
+        <a href="/acceso" class="btn-plan btn-plan-pro">Obtener Plan Pro</a>
+      </div>
+      <div class="plan-card" style="opacity:.7; pointer-events:none;">
+        <span class="plan-badge" style="background:var(--slate-400)">Próximamente</span>
+        <p class="plan-name">Empresa</p>
+        <p class="plan-price" style="font-size:1.4rem;color:var(--slate-400)">A consultar</p>
+        <p class="plan-price-note">para equipos</p>
+        <ul class="plan-features">
+          <li>Todo lo del plan Pro</li>
+          <li>Múltiples usuarios</li>
+          <li>API de integración</li>
+          <li>SLA y soporte dedicado</li>
+        </ul>
+        <span class="btn-plan btn-plan-free" style="display:block;text-align:center">Próximamente</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NORMATIVA -->
+<section id="normativa" class="norma-section" aria-labelledby="norma-title">
+  <div class="section-inner">
+    <p class="section-kicker">Marco legal Perú</p>
+    <h2 class="section-title" id="norma-title">Cumple la normativa peruana de accesibilidad digital</h2>
+    <p class="section-sub">sin barreras está diseñado para cumplir con los requisitos legales vigentes en Perú.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+      <div class="norma-card">
+        <h3>Resolución N° 001-2025-PCM/SGTD</h3>
+        <p>La principal norma peruana de accesibilidad digital aprobada por la Secretaría de Gobierno y Transformación Digital. Establece los criterios de accesibilidad que deben cumplir los sitios web y aplicaciones del Estado.</p>
+        <ul class="norma-list">
+          <li>Aplicable a entidades del sector público peruano</li>
+          <li>Basada en WCAG 2.2 niveles A y AA</li>
+          <li>Incluye requisitos de auditoría y reporte</li>
+        </ul>
+      </div>
+      <div class="norma-card">
+        <h3>WCAG 2.2 — Web Content Accessibility Guidelines</h3>
+        <p>El estándar internacional del W3C para accesibilidad web. sin barreras cubre los 86 criterios de éxito organizados en 4 principios: Perceptible, Operable, Comprensible y Robusto.</p>
+        <ul class="norma-list">
+          <li>Niveles A, AA y AAA</li>
+          <li>Última versión del estándar (2023)</li>
+          <li>Compatible con tecnologías asistivas</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" aria-labelledby="faq-title">
+  <div class="section-inner" style="max-width:760px;">
+    <p class="section-kicker">FAQ</p>
+    <h2 class="section-title" id="faq-title">Preguntas frecuentes</h2>
+    <div style="margin-top:1.5rem;">
+      <details>
+        <summary>¿Qué es la accesibilidad web y por qué es obligatoria en Perú?</summary>
+        <p>La accesibilidad web garantiza que personas con discapacidad visual, auditiva, motriz o cognitiva puedan usar tu sitio. En Perú, la Resolución N° 001-2025-PCM/SGTD la hace obligatoria para entidades del Estado y recomendada para el sector privado.</p>
+      </details>
+      <details>
+        <summary>¿Cuánto tiempo tarda un análisis?</summary>
+        <p>Entre 1 y 3 minutos dependiendo del peso de la página y la cantidad de elementos. Los 5 motores trabajan en paralelo para reducir el tiempo al mínimo.</p>
+      </details>
+      <details>
+        <summary>¿Puedo auditar cualquier sitio web?</summary>
+        <p>Puedes auditar cualquier URL pública. Para sitios con autenticación o contenido detrás de login, la extensión de Chrome de sin barreras permite auditar páginas privadas directamente desde el navegador.</p>
+      </details>
+      <details>
+        <summary>¿Los reportes PDF son suficientes para presentar a una auditoría oficial?</summary>
+        <p>Los reportes incluyen criterio WCAG, nivel de conformidad, descripción del problema, selector CSS del elemento afectado y solución sugerida. Son adecuados para sustentar un proceso de cumplimiento normativo, aunque la validación final siempre debe incluir pruebas con usuarios reales.</p>
+      </details>
+      <details>
+        <summary>¿Qué diferencia al plan Pro del plan Gratis?</summary>
+        <p>El plan Gratis permite 3 análisis mensuales de 1 página cada uno, con visualización en pantalla. El plan Pro añade análisis ilimitados, exportación en PDF y Excel, pasos de remediación detallados y gestión de múltiples proyectos.</p>
+      </details>
+      <details>
+        <summary>¿Ofrecen soporte técnico?</summary>
+        <p>El plan Pro incluye soporte por correo electrónico. Para proyectos institucionales o de mayor envergadura, el plan Empresa (próximamente) incluirá SLA y atención dedicada.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-bottom" aria-labelledby="cta-title">
+  <h2 id="cta-title">¿Listo para hacer tu web accesible?</h2>
+  <p>Empieza gratis hoy. Sin tarjeta de crédito. Sin instalaciones.</p>
+  <a href="/acceso" class="btn-white" style="display:inline-block;background:#fff;color:#002C76;font-weight:700;font-size:1.05rem;padding:.875rem 2.5rem;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.2);">Crear cuenta gratuita</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <strong>sin barreras</strong>
+      <p>Plataforma de auditoría de accesibilidad web para el cumplimiento de WCAG 2.2 y normativa peruana de accesibilidad digital.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="#funcionalidades">Funcionalidades</a></li>
+        <li><a href="#motores">Motores de análisis</a></li>
+        <li><a href="#precios">Precios</a></li>
+        <li><a href="#normativa">Normativa</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="/privacy.html">Política de privacidad</a></li>
+        <li><a href="/acceso">Iniciar sesión</a></li>
+        <li><a href="/acceso">Registrarse</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 sin barreras. Hecho en Perú 🇵🇪</span>
+    <span>Cumplimiento WCAG 2.2 · Resolución N° 001-2025-PCM/SGTD</span>
+  </div>
+</footer>
+
+</body>
+</html>
