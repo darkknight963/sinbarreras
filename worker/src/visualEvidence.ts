@@ -163,13 +163,14 @@ export async function captureVisualEvidence(
 
   const buffer = await page.screenshot({
     fullPage: true,
+    timeout: 15000,
     mask: [
       page.locator('input'),
       page.locator('textarea'),
       page.locator('[contenteditable="true"]'),
     ],
     maskColor: '#E2E8F0',
-  });
+  }).catch(() => page.screenshot({ fullPage: false, timeout: 10000 }));
   const screenshotUrl = await uploadEvidence(`visual-map-${pageState}-${Date.now()}.png`, buffer, 'image/png');
 
   return {
