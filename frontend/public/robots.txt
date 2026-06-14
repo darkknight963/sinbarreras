@@ -3,5 +3,5 @@ Allow: /
 
 Disallow: /api/
 
-Sitemap: https://accesibilidad.gob.pe/sitemap.xml
+Sitemap: https://sinbarreras.gzakgroup.com/sitemap.xml
 

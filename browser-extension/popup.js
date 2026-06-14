@@ -39,6 +39,10 @@ const clearScanSession = async () => {
 
 const injectAuditScripts = async (tabId) => {
   await chrome.scripting.executeScript({ target: { tabId }, files: ['axe.min.js'] });
+  // IBM Equal Access engine — injected best-effort; content-script guards with window.ace check
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['ace.js'] });
+  } catch (_) { /* graceful skip if injection fails */ }
   await chrome.scripting.executeScript({ target: { tabId }, files: ['content-script.js'] });
 };
 
