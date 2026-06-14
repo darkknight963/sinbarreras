@@ -420,6 +420,16 @@ function sameDocumentLocation(beforeUrl: string, afterUrl: string) {
 export async function runInteractiveStateAccessibilityEngines(page: Page): Promise<EngineRunResult<RawFinding[]>> {
   const findings: RawFinding[] = [];
   const report: EngineRunSummary[] = [];
+
+  // Try Escape in case a modal is still open, then bail if overlays remain
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.waitForTimeout(300).catch(() => {});
+  const persistentOverlays = await detectOverlayCandidates(page).catch(() => []);
+  if (persistentOverlays.length > 0) {
+    console.log(`Skipping interactive exploration: ${persistentOverlays.length} blocking overlay(s) still intercept pointer events.`);
+    return { findings, report };
+  }
+
   const triggers = await discoverInteractiveTriggers(page);
 
   for (const trigger of triggers) {
@@ -1120,7 +1130,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
           selector: getSelector(iframe),
           html: iframe.outerHTML.slice(0, 300),
           wcagCriterion: 'Revision manual',
-          wcagLevel: 'A' as any,
+          wcagLevel: 'A',
           category: 'manual_check',
         });
       }
