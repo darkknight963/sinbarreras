@@ -86,6 +86,8 @@ const buildRedisConnection = (
             }),
         entities: [Project, Scan, UrlResult, User, Session, BillingSubscription, Complaint, AdminAuditLog],
         synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
+        extra: { max: 5 },
+        ssl: config.get<string>('DATABASE_URL')?.includes('neon.tech') ? { rejectUnauthorized: false } : false,
       }),
     }),
     TypeOrmModule.forFeature([User, Session, BillingSubscription]),

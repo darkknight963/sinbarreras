@@ -15,42 +15,52 @@ export class ScansEventsListener extends QueueEventsHost {
   }
 
   @OnQueueEvent('progress')
-  async onProgress({ jobId, data }: { jobId: string; data: number | string }) {
-    const progress = typeof data === 'string' ? parseInt(data, 10) : data;
-    const job = await this.scansQueue.getJob(jobId);
-    if (job) {
-      const scanId = job.data.scanId;
-      this.eventsGateway.emitProgress(scanId, progress);
+  onProgress({ data }: { jobId: string; data: { scanId: string; value: number } | number | string }) {
+    // Worker sends { scanId, value } — no extra Redis getJob() needed
+    if (typeof data === 'object' && data !== null && 'scanId' in data) {
+      this.eventsGateway.emitProgress(data.scanId, data.value);
     }
   }
 
   @OnQueueEvent('completed')
-  async onCompleted({ jobId }: { jobId: string }) {
+  async onCompleted({ jobId, returnvalue }: { jobId: string; returnvalue: string }) {
+    // Worker returns { scanId, publicScan } — parse without extra getJob()
+    try {
+      const result = returnvalue ? (JSON.parse(returnvalue) as { scanId?: string; publicScan?: boolean }) : null;
+      if (result?.scanId) {
+        this.eventsGateway.emitScanCompleted(jobId, result.scanId);
+        if (result.publicScan) {
+          await this.schedulePublicScanCleanup(result.scanId);
+        }
+        return;
+      }
+    } catch {
+      // fallback to getJob if returnvalue is missing/malformed
+    }
     const job = await this.scansQueue.getJob(jobId);
     if (job) {
-      const scanId = job.data.scanId;
-      this.eventsGateway.emitScanCompleted(jobId, scanId);
-      await this.schedulePublicScanCleanup(job);
+      this.eventsGateway.emitScanCompleted(jobId, job.data.scanId);
+      await this.schedulePublicScanCleanup(job.data.scanId, job.data.publicScan);
     }
   }
 
   @OnQueueEvent('failed')
   async onFailed({ jobId }: { jobId: string }) {
     const job = await this.scansQueue.getJob(jobId);
-    if (job) {
-      await this.schedulePublicScanCleanup(job);
+    if (job?.data?.publicScan && job.data.scanId) {
+      await this.schedulePublicScanCleanup(job.data.scanId, true);
     }
   }
 
-  private async schedulePublicScanCleanup(job: Awaited<ReturnType<Queue['getJob']>>) {
-    if (!job?.data?.publicScan || !job.data.scanId) return;
+  private async schedulePublicScanCleanup(scanId: string, isPublic = true) {
+    if (!isPublic || !scanId) return;
 
     await this.scansQueue.add(
       'cleanup-public-scan',
-      { scanId: job.data.scanId },
+      { scanId },
       {
         delay: PUBLIC_SCAN_TTL_MS,
-        jobId: `cleanup-public-scan-${job.data.scanId}`,
+        jobId: `cleanup-public-scan-${scanId}`,
         removeOnComplete: true,
         removeOnFail: 20,
       },

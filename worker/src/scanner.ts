@@ -99,7 +99,6 @@ export async function scanUrl(url: string, options: {
     });
 
     console.log(`Navigating to: ${url}`);
-    await reportProgress(5);
     await validateScanTargetUrl(url);
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     await reportProgress(15);
@@ -139,7 +138,6 @@ export async function scanUrl(url: string, options: {
 
     if (options.preNavigationScript && process.env.ALLOW_PRE_NAVIGATION_SCRIPT === 'true') {
       console.log('Running pre-navigation script...');
-      await reportProgress(40);
       await page.evaluate(async (scriptText) => {
         const fn = new Function('window', 'document', `"use strict"; return (async () => { ${scriptText} })();`);
         await fn(window, document);
@@ -155,7 +153,6 @@ export async function scanUrl(url: string, options: {
       }
     }
 
-    await reportProgress(50);
     const postOverlayEngineRun = hasOverlayWorkflow
       ? await runStatefulPageEngines(page, 'post_overlay')
       : { findings: [], report: [] };
@@ -178,7 +175,6 @@ export async function scanUrl(url: string, options: {
     const coverageReport = buildCoverageReport(mergedRaw);
     const dedupedRaw = dedupeByRuleAndSelector(mergedRaw);
     const grouped = groupFindings(dedupedRaw);
-    await reportProgress(75);
     const formattedViolations = await enrichAndCapture(page, grouped);
     const currentVisualEvidenceState = hasOverlayWorkflow ? 'post_overlay' : 'initial';
     const currentVisualEvidence = await captureVisualEvidence(page, formattedViolations as any, currentVisualEvidenceState).catch((err) => {
@@ -235,8 +231,6 @@ export async function scanUrl(url: string, options: {
         }
       }
     }
-    await reportProgress(85);
-
     const focusTraversal = await captureFocusTraversal(page);
     const semanticStructure = await captureSemanticStructure(page);
 

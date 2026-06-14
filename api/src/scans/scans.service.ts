@@ -570,7 +570,7 @@ export class ScansService {
           loginMode,
           publicScan: options.publicScan === true,
         },
-        { jobId: savedScan.id },
+        { jobId: savedScan.id, removeOnComplete: { count: 10 }, removeOnFail: { count: 10 } },
       );
     }
 

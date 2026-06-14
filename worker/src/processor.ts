@@ -6,10 +6,14 @@ import { deleteEvidenceUrls } from './storage.js';
 
 const { Pool } = pg;
 
+const isNeon = (process.env.DATABASE_URL || '').includes('neon.tech');
+
 const pool = new Pool(
   process.env.DATABASE_URL
     ? {
         connectionString: process.env.DATABASE_URL,
+        max: 3,
+        ...(isNeon ? { ssl: { rejectUnauthorized: false } } : {}),
       }
     : {
         host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
@@ -17,6 +21,7 @@ const pool = new Pool(
         user: process.env.DB_USER || process.env.PGUSER || 'postgres',
         password: process.env.DB_PASSWORD || process.env.PGPASSWORD || 'postgres',
         database: process.env.DB_NAME || process.env.PGDATABASE || 'accessibility_db',
+        max: 3,
       }
 );
 
@@ -86,8 +91,8 @@ export async function cleanupPublicScan(scanId: string): Promise<void> {
   console.log(`Deleted public scan ${scanId} and ${deletedEvidence} evidence object(s).`);
 }
 
-export async function processScan(job: Job): Promise<void> {
-  const { scanId, urls, scanMode, preNavigationScript } = job.data;
+export async function processScan(job: Job): Promise<{ scanId: string; publicScan?: boolean }> {
+  const { scanId, urls, scanMode, preNavigationScript, publicScan } = job.data;
   console.log(`Starting execution of Scan ID: ${scanId}`);
   await ensureUrlResultSchema(); // no-op after first run in this process
 
@@ -144,7 +149,7 @@ export async function processScan(job: Job): Promise<void> {
         const unitSpan = 100 / totalUnits;
         const updateViewportProgress = async (viewportProgress: number) => {
           const overallProgress = unitStart + ((Math.max(0, Math.min(100, viewportProgress)) / 100) * unitSpan);
-          await job.updateProgress(Math.min(99, Math.round(overallProgress)));
+          await job.updateProgress({ scanId, value: Math.min(99, Math.round(overallProgress)) });
         };
 
         await updateViewportProgress(0);
@@ -248,5 +253,6 @@ export async function processScan(job: Job): Promise<void> {
     [finalScore, vp, scanId]
   );
 
-  await job.updateProgress(100);
+  await job.updateProgress({ scanId, value: 100 });
+  return { scanId, publicScan };
 }
