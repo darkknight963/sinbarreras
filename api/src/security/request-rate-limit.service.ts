@@ -147,11 +147,10 @@ export class RequestRateLimitService implements OnModuleDestroy {
     };
   }
 
-  async isBlocked(identifier: string): Promise<boolean> {
+  async isBlocked(identifier: string, maxAttempts = 5): Promise<boolean> {
     const key = `${this.bruteForcePrefix}${identifier}`;
     const count = parseInt((await this.redis.get(key)) || '0', 10);
-    const limit = parseInt((await this.redis.get(`${key}:limit`)) || '5', 10);
-    return count > limit;
+    return count > maxAttempts;
   }
 
   async getBlockRemaining(identifier: string): Promise<number> {
@@ -162,7 +161,7 @@ export class RequestRateLimitService implements OnModuleDestroy {
 
   async resetAttempts(identifier: string): Promise<void> {
     const key = `${this.bruteForcePrefix}${identifier}`;
-    await this.redis.del(key, `${key}:limit`);
+    await this.redis.del(key);
   }
 
   async onModuleDestroy(): Promise<void> {

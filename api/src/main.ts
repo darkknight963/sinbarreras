@@ -7,7 +7,15 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+      },
+    },
   }));
   app.use(json({ limit: process.env.REQUEST_BODY_LIMIT || '10mb' }));
   app.use(urlencoded({ extended: true, limit: process.env.REQUEST_BODY_LIMIT || '10mb' }));
@@ -27,6 +35,14 @@ async function bootstrap() {
     .filter(Boolean)
     .flatMap((value) => value!.split(',').map((origin) => origin.trim()).filter(Boolean));
 
+  // Only whitelist explicitly configured extension origins (e.g. chrome-extension://EXTENSION_ID)
+  const allowedExtensionOrigins = new Set(
+    (process.env.ALLOWED_EXTENSION_ORIGINS || '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter((o) => o.startsWith('chrome-extension://') || o.startsWith('moz-extension://')),
+  );
+
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       const allowedOrigins = [
@@ -43,7 +59,7 @@ async function bootstrap() {
         ...configuredOrigins,
       ];
 
-      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+      if (!origin || allowedOrigins.includes(origin) || allowedExtensionOrigins.has(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

@@ -464,8 +464,7 @@ export class ScansService {
   private async repairExtensionApplicability(scan: Scan | null): Promise<Scan | null> {
     if (!scan?.urlResults?.length) return scan;
 
-    let repaired = false;
-    let hasScoreChange = false;
+    const toRepair: UrlResult[] = [];
 
     for (const result of scan.urlResults) {
       const hasCriteria = Array.isArray(result.applicability?.criteria) && result.applicability.criteria.length > 0;
@@ -483,22 +482,22 @@ export class ScansService {
         null,
         result.applicability?.summary || null,
       );
-      await this.urlResultRepository.save(result);
-      repaired = true;
-      hasScoreChange = true;
+      toRepair.push(result);
     }
 
-    if (hasScoreChange) {
-      const scores = scan.urlResults
-        .map((result) => result.score)
-        .filter((resultScore): resultScore is number => typeof resultScore === 'number');
-      scan.globalScore = scores.length > 0
-        ? Math.round(scores.reduce((sum, resultScore) => sum + resultScore, 0) / scores.length)
-        : scan.globalScore;
-      await this.scanRepository.save(scan);
-    }
+    if (toRepair.length === 0) return scan;
 
-    return repaired ? scan : scan;
+    await this.urlResultRepository.save(toRepair);
+
+    const scores = scan.urlResults
+      .map((result) => result.score)
+      .filter((resultScore): resultScore is number => typeof resultScore === 'number');
+    scan.globalScore = scores.length > 0
+      ? Math.round(scores.reduce((sum, resultScore) => sum + resultScore, 0) / scores.length)
+      : scan.globalScore;
+    await this.scanRepository.save(scan);
+
+    return scan;
   }
 
   private async attachQueueProgress(scan: Scan | null): Promise<ScanWithProgress | null> {
@@ -602,7 +601,8 @@ export class ScansService {
       .createQueryBuilder('scan')
       .leftJoinAndSelect('scan.project', 'project')
       .leftJoinAndSelect('project.owner', 'owner')
-      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .leftJoin('scan.urlResults', 'urlResult')
+      .addSelect(['urlResult.id', 'urlResult.url', 'urlResult.score', 'urlResult.status'])
       .orderBy('scan.createdAt', 'DESC');
 
     if (ownerId) {

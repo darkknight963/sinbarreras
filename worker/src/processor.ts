@@ -20,12 +20,16 @@ const pool = new Pool(
       }
 );
 
+let schemaEnsured = false;
+
 async function ensureUrlResultSchema(): Promise<void> {
+  if (schemaEnsured) return;
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS applicability jsonb`);
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "engineReport" jsonb`);
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "focusTraversal" jsonb`);
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "semanticStructure" jsonb`);
   await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "visualMap" jsonb`);
+  schemaEnsured = true;
 }
 
 function collectEvidenceUrls(value: unknown, urls = new Set<string>()): Set<string> {
@@ -85,7 +89,7 @@ export async function cleanupPublicScan(scanId: string): Promise<void> {
 export async function processScan(job: Job): Promise<void> {
   const { scanId, urls, scanMode, preNavigationScript } = job.data;
   console.log(`Starting execution of Scan ID: ${scanId}`);
-  await ensureUrlResultSchema();
+  await ensureUrlResultSchema(); // no-op after first run in this process
 
   // Update scan status to running
   await pool.query(

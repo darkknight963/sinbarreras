@@ -1,3 +1,4 @@
+const API_BASE = 'https://sinbarreras-production.up.railway.app';
 
 const apiTokenInput = document.getElementById('api-token');
 const scanIdInput = document.getElementById('scan-id');
@@ -81,7 +82,7 @@ const removeScreenshot = (audit) => ({
 });
 
 const postAudit = async (audit) => {
-  const apiBase = normalizeApiBase('https://sinbarreras-production.up.railway.app');
+  const apiBase = normalizeApiBase(API_BASE);
   const token = apiTokenInput.value.trim();
   const scanId = scanIdInput.value.trim();
 

@@ -254,7 +254,7 @@ export class AuthService {
 
   async login(dto: LoginDto, request?: { ip?: string }) {
     const identifier = this.buildBruteForceIdentifier(dto.email.toLowerCase(), request);
-    const lockout = await this.rateLimitService.isBlocked(identifier);
+    const lockout = await this.rateLimitService.isBlocked(identifier, 5);
     if (lockout) {
       const remaining = await this.rateLimitService.getBlockRemaining(identifier);
       throw new UnauthorizedException({
@@ -560,13 +560,20 @@ export class AuthService {
   }
 
   private getOAuthStateSecret() {
-    return (
+    const secret =
       this.configService.get<string>('OAUTH_STATE_SECRET')?.trim() ||
       this.configService.get<string>('API_AUTH_TOKEN')?.trim() ||
       process.env.OAUTH_STATE_SECRET?.trim() ||
-      process.env.API_AUTH_TOKEN?.trim() ||
-      'sin-barreras-oauth-state-dev'
-    );
+      process.env.API_AUTH_TOKEN?.trim();
+
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('OAUTH_STATE_SECRET or API_AUTH_TOKEN must be set in production');
+      }
+      return 'sin-barreras-oauth-state-dev';
+    }
+
+    return secret;
   }
 
   private getFrontendUrl() {

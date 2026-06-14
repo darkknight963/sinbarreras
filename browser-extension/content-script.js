@@ -536,7 +536,7 @@
       });
     });
 
-    document.querySelectorAll('*').forEach((element) => {
+    Array.from(document.querySelectorAll('*')).slice(0, 800).forEach((element) => {
       if (!isVisible(element) || !textOf(element)) return;
       const style = window.getComputedStyle(element);
       if (!style.backgroundImage || style.backgroundImage === 'none') return;
