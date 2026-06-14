@@ -623,59 +623,6 @@ async function configureIbmEqualAccess(aChecker: any): Promise<void> {
   });
 }
 
-async function runIbmEqualAccessHtml(html: string): Promise<RawFinding[]> {
-  const checkerModule: any = await import('accessibility-checker');
-  const aChecker = checkerModule.default || checkerModule;
-  await configureIbmEqualAccess(aChecker);
-  const report = await aChecker.getCompliance(html, `scan-html-${Date.now()}-${++ibmScanSequence}`);
-
-  const violations = report?.results?.violations || [];
-  const needsReview = report?.results?.needsReview || [];
-  const findings: RawFinding[] = [];
-
-  for (const v of violations) {
-    const path = Array.isArray(v?.path) ? v.path[0] : undefined;
-    const selector = normalizeSelector(path?.dom || path?.target || 'document');
-    const ibmViolKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-unknown', v?.message || v?.reasonId || '');
-    const ibmViolInfo = getRuleDetails(ibmViolKey);
-    const ibmViolRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
-    const ibmViolMapped = !ibmViolInfo.nameEs.startsWith('Regla Automática');
-    findings.push({
-      tool: 'ibm-equal-access',
-      ruleId: v?.ruleId || v?.id || 'ibm-unknown',
-      normalizedRuleId: ibmViolKey,
-      category: 'violation',
-      description: (ibmViolMapped ? ibmViolInfo.nameEs : null) || ibmViolRaw || 'Hallazgo de IBM Equal Access',
-      selector,
-      elementHtml: path?.snippet || '',
-      severity: toSeverityEs(v?.level || v?.impact),
-      suggestedFix: ibmViolInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
-    });
-  }
-
-  for (const v of needsReview) {
-    const path = Array.isArray(v?.path) ? v.path[0] : undefined;
-    const selector = normalizeSelector(path?.dom || path?.target || 'document');
-    const ibmRevKey = normalizeRuleId(v?.ruleId || v?.id || 'ibm-needs-review', v?.message || v?.reasonId || '');
-    const ibmRevInfo = getRuleDetails(ibmRevKey);
-    const ibmRevRaw = (v?.message || v?.reasonId || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
-    const ibmRevMapped = !ibmRevInfo.nameEs.startsWith('Regla Automática');
-    findings.push({
-      tool: 'ibm-equal-access',
-      ruleId: v?.ruleId || v?.id || 'ibm-needs-review',
-      normalizedRuleId: ibmRevKey,
-      category: 'manual_check',
-      description: (ibmRevMapped ? ibmRevInfo.nameEs : null) || ibmRevRaw || 'Revision manual recomendada por IBM Equal Access',
-      selector,
-      elementHtml: path?.snippet || '',
-      severity: 'medio',
-      suggestedFix: ibmRevInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
-    });
-  }
-
-  return findings;
-}
-
 async function runIbmEqualAccess(page: Page): Promise<RawFinding[]> {
   const checkerModule: any = await import('accessibility-checker');
   const aChecker = checkerModule.default || checkerModule;
@@ -1206,7 +1153,6 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
 }
 
 export async function runStatefulPageEngines(page: Page, pageState: PageState): Promise<EngineRunResult<RawFinding[]>> {
-  const startedAt = Date.now();
   const result = await runEngineSeries([
     {
       engine: 'axe',
@@ -1259,12 +1205,6 @@ export async function runOverlayAccessibilityEngines(
         pageState,
         onFailureMessage: 'Overlay axe execution failed; continuing with other engines.',
         run: async () => runAxe(page, overlay.selector),
-      },
-      {
-        engine: 'ibm-equal-access',
-        pageState,
-        onFailureMessage: 'Overlay IBM Equal Access execution failed; continuing with other engines.',
-        run: async () => runIbmEqualAccessHtml(overlay.html),
       },
     ]);
     findings.push(...result.findings);
