@@ -552,7 +552,7 @@ export async function runLighthouse(url: string): Promise<RawFinding[]> {
       port: chrome.port,
     });
   } finally {
-    await chrome.kill().catch(() => {});
+    try { await chrome.kill(); } catch { }
   }
 
   const lhr = report?.lhr;
