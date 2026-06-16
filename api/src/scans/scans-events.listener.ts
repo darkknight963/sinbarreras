@@ -5,7 +5,10 @@ import { EventsGateway } from '../events/events.gateway';
 
 const PUBLIC_SCAN_TTL_MS = 5 * 60 * 1000;
 
-@QueueEventsListener('scans')
+// blockingTimeout 30s: the XREAD on the events stream returns immediately when a new event
+// is produced, so real-time progress is unaffected — this only reduces idle Redis polling
+// (default 10s) that runs 24/7 even with zero scans, cutting Upstash command usage.
+@QueueEventsListener('scans', { blockingTimeout: 30000 })
 export class ScansEventsListener extends QueueEventsHost {
   constructor(
     private readonly eventsGateway: EventsGateway,

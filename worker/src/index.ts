@@ -64,6 +64,9 @@ async function bootstrap() {
       concurrency: 1,
       stalledInterval: 5 * 60 * 1000,
       lockDuration: 10 * 60 * 1000, // 10 min lock — renewed every 5 min instead of every 15s
+      // Idle worker blocks 30s per poll instead of 5s. New jobs still return immediately
+      // (blocking pop unblocks on push), so this only cuts wasted Redis commands when idle.
+      drainDelay: 30,
     }
   );
 
