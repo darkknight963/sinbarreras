@@ -509,7 +509,13 @@ export class ScansService {
       return scanWithProgress;
     }
 
-    if (scan.status === 'failed') {
+    if (scan.status === 'failed' || scan.status === 'cancelled') {
+      scanWithProgress.progress = 0;
+      return scanWithProgress;
+    }
+
+    // pending and awaiting_login have no meaningful queue progress yet — skip Redis getJob()
+    if (scan.status === 'pending' || scan.status === 'awaiting_login') {
       scanWithProgress.progress = 0;
       return scanWithProgress;
     }

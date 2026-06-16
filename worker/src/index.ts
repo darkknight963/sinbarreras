@@ -62,7 +62,8 @@ async function bootstrap() {
     {
       connection: buildRedisConnection(),
       concurrency: 1,
-      stalledInterval: 5 * 60 * 1000, // check for stalled jobs every 5 min instead of every 30s
+      stalledInterval: 5 * 60 * 1000,
+      lockDuration: 10 * 60 * 1000, // 10 min lock — renewed every 5 min instead of every 15s
     }
   );
 
