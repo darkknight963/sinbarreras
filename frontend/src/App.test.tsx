@@ -7,13 +7,6 @@ import './index.css'
 import App from './App'
 import { API_FALLBACK_BASE_URL, isLocalRuntimeHost, resolveApiBaseUrl } from './config'
 
-vi.mock('socket.io-client', () => ({
-  io: vi.fn(() => ({
-    on: vi.fn(),
-    disconnect: vi.fn(),
-  })),
-}))
-
 const projectsResponse = [
   {
     id: 'project-1',

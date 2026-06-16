@@ -166,7 +166,10 @@ export function ProjectDetailView({
     }
   }, [isManualLoginLocked, newScanLoginMode, onNewScanLoginModeChange]);
   const getScanProgressValue = (scan: any, progress: number | undefined) => {
-    const rawProgress = progress ?? scan.progress ?? scan.scanProgress ?? (scan.status === 'completed' ? 100 : 0);
+    // Completed/failed/cancelled are terminal — ignore any lingering animated value.
+    if (scan.status === 'completed') return 100;
+    if (scan.status === 'failed' || scan.status === 'cancelled') return 0;
+    const rawProgress = progress ?? scan.progress ?? scan.scanProgress ?? 0;
     const numericProgress = Number(rawProgress);
     if (!Number.isFinite(numericProgress)) return 0;
     return Math.max(0, Math.min(100, Math.round(numericProgress)));
@@ -174,13 +177,21 @@ export function ProjectDetailView({
 
   const getScanStatusLabel = (status: string, progress: number) => {
     if (status === 'awaiting_login') return 'Login manual pendiente';
-    if (status === 'pending') return 'En cola';
-    if (status === 'running') return 'Corriendo';
     if (status === 'completed') return 'Completado';
     if (status === 'failed') return 'Falló';
     if (status === 'cancelled') return 'Cancelado';
-    if (progress >= 95) return 'Finalizando';
-    return 'Corriendo';
+    // pending / running: reassuring messages that mirror the real scan stages so the
+    // user trusts the analysis is moving forward (the % is animated client-side).
+    if (status === 'pending' && progress < 6) return 'Preparando el análisis...';
+    if (progress < 15) return 'Conectando con la página...';
+    if (progress < 28) return 'Cargando contenido y recursos...';
+    if (progress < 40) return 'Analizando estructura y encabezados...';
+    if (progress < 52) return 'Evaluando contraste y color...';
+    if (progress < 64) return 'Revisando criterios WCAG 2.2...';
+    if (progress < 74) return 'Verificando teclado y navegación...';
+    if (progress < 84) return 'Capturando evidencia visual...';
+    if (progress < 92) return 'Aplicando normativa peruana...';
+    return 'Ya casi está, generando informe...';
   };
 
   return (

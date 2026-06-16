@@ -1,7 +1,9 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
 import { cleanupPublicScan, processScan } from './processor.js';
 import { initializeStorage } from './storage.js';
+
+const PUBLIC_SCAN_TTL_MS = 5 * 60 * 1000;
 
 dotenv.config();
 
@@ -44,6 +46,29 @@ const buildRedisConnection = () => {
 async function bootstrap() {
   await initializeStorage();
 
+  // Queue used only to schedule the one-off delayed cleanup of public scans.
+  // It does not poll Redis (only issues a command when we add a job), so it has
+  // no 24/7 cost — unlike the QueueEvents listener it replaces in the API.
+  const scansQueue = new Queue('scans', { connection: buildRedisConnection() });
+
+  const schedulePublicScanCleanup = async (scanId: string) => {
+    if (!scanId) return;
+    try {
+      await scansQueue.add(
+        'cleanup-public-scan',
+        { scanId },
+        {
+          delay: PUBLIC_SCAN_TTL_MS,
+          jobId: `cleanup-public-scan-${scanId}`,
+          removeOnComplete: true,
+          removeOnFail: 20,
+        },
+      );
+    } catch (err) {
+      console.warn(`Failed to schedule public scan cleanup for ${scanId}:`, err);
+    }
+  };
+
   const worker = new Worker(
     'scans',
     async (job: Job) => {
@@ -72,10 +97,16 @@ async function bootstrap() {
 
   worker.on('completed', (job) => {
     console.log(`Job ${job.id} has completed!`);
+    if (job.name === 'process-scan' && job.data?.publicScan && job.data?.scanId) {
+      void schedulePublicScanCleanup(String(job.data.scanId));
+    }
   });
 
   worker.on('failed', (job, err) => {
     console.log(`Job ${job?.id} has failed with ${err.message}`);
+    if (job?.name === 'process-scan' && job.data?.publicScan && job.data?.scanId) {
+      void schedulePublicScanCleanup(String(job.data.scanId));
+    }
   });
 }
 

@@ -6,8 +6,6 @@ import { Project } from '../projects/entities/project.entity';
 import { UrlResult } from '../url-results/entities/url-result.entity';
 import { ScansService } from './scans.service';
 import { ScansController } from './scans.controller';
-import { ScansEventsListener } from './scans-events.listener';
-import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
@@ -15,9 +13,8 @@ import { EventsModule } from '../events/events.module';
     BullModule.registerQueue({
       name: 'scans',
     }),
-    EventsModule,
   ],
-  providers: [ScansService, ScansEventsListener],
+  providers: [ScansService],
   controllers: [ScansController],
   exports: [ScansService],
 })

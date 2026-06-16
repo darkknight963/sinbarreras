@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { io } from 'socket.io-client';
 import {
   CheckCircle,
   X,
@@ -9,7 +8,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, SOCKET_PATH, SOCKET_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost } from './config';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost } from './config';
 import { BillingView } from './BillingView';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
@@ -226,6 +225,7 @@ export default function App() {
   const [updatingFindingKey, setUpdatingFindingKey] = useState<string | null>(null);
 
   const [scanProgress, setScanProgress] = useState<Record<string, number>>({});
+  const scanStartRef = useRef<Record<string, number>>({});
   const [appError, setAppError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -571,35 +571,65 @@ export default function App() {
 
   useEffect(() => {
     if (authLoading || authMode !== 'session') return;
-
     fetchProjects();
+  }, [authLoading, authMode]);
 
-    const socket = io(SOCKET_URL, {
-      path: SOCKET_PATH,
-      transports: ['websocket', 'polling'],
-      auth: getStoredAuthToken() ? { token: getStoredAuthToken() } : undefined,
+  // Client-side animated progress — replaces the realtime WebSocket feed so the backend
+  // runs no 24/7 Redis poller. The percentage is simulated locally (no network calls)
+  // using a time-based ease-out curve: it moves quickly at first then decelerates,
+  // always creeping forward so the bar never looks frozen, capped at ~96%. It only
+  // jumps to 100 when the status poll reports the scan as completed.
+  useEffect(() => {
+    if (authLoading) return;
+
+    const animatedIds = new Set<string>();
+    (currentProject?.scans || []).forEach((scan) => {
+      if (scan.status === 'running' || scan.status === 'pending') animatedIds.add(scan.id);
     });
+    if (currentScan && (currentScan.status === 'running' || currentScan.status === 'pending')) {
+      animatedIds.add(currentScan.id);
+    }
 
-    socket.on('scan-progress', ({ scanId, progress }) => {
-      console.log(`Scan ${scanId} progress: ${progress}%`);
-      setScanProgress(prev => ({ ...prev, [scanId]: progress }));
-    });
+    // Drop start timestamps for scans that are no longer in progress.
+    for (const id of Object.keys(scanStartRef.current)) {
+      if (!animatedIds.has(id)) delete scanStartRef.current[id];
+    }
 
-    socket.on('scan-completed', ({ scanId }) => {
-      console.log(`Scan ${scanId} completed!`);
-      setScanProgress(prev => {
-        const next = { ...prev };
-        delete next[scanId];
+    if (animatedIds.size === 0) {
+      setScanProgress((prev) => (Object.keys(prev).length ? {} : prev));
+      return;
+    }
+
+    const now = Date.now();
+    for (const id of animatedIds) {
+      if (!scanStartRef.current[id]) scanStartRef.current[id] = now;
+    }
+
+    const tick = () => {
+      const t = Date.now();
+      setScanProgress((prev) => {
+        const next: Record<string, number> = {};
+        for (const id of animatedIds) {
+          const start = scanStartRef.current[id] ?? t;
+          const elapsedSeconds = (t - start) / 1000;
+          // Ease-out toward 96%; ~60% at 60s, ~85% at 140s, ~93% at 220s. Never reverses.
+          const target = 96 * (1 - Math.exp(-elapsedSeconds / 70));
+          next[id] = Math.max(prev[id] ?? 0, Math.min(96, target));
+        }
         return next;
       });
-      if (currentProjectRef.current) fetchProjectDetails(currentProjectRef.current.id);
-      fetchProjects();
-    });
-
-    return () => {
-      socket.disconnect();
     };
-  }, [authLoading, authMode]);
+
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [
+    authLoading,
+    currentScan?.id,
+    currentScan?.status,
+    currentProject?.id,
+    currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
+  ]);
 
   useEffect(() => {
     if (authLoading || authMode !== 'session' || view !== 'project') return;

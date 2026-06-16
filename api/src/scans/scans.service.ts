@@ -187,21 +187,6 @@ export class ScansService {
     }
   }
 
-  private normalizeQueueProgress(progress: unknown): number | undefined {
-    if (typeof progress === 'number' && Number.isFinite(progress)) {
-      return Math.max(0, Math.min(100, Math.round(progress)));
-    }
-
-    if (progress && typeof progress === 'object' && 'percent' in progress) {
-      const percent = Number((progress as { percent?: unknown }).percent);
-      if (Number.isFinite(percent)) {
-        return Math.max(0, Math.min(100, Math.round(percent)));
-      }
-    }
-
-    return undefined;
-  }
-
   private getSpecificCriterion(value: unknown): string | null {
     if (typeof value !== 'string') return null;
     const trimmed = value.trim();
@@ -503,25 +488,12 @@ export class ScansService {
   private async attachQueueProgress(scan: Scan | null): Promise<ScanWithProgress | null> {
     if (!scan) return null;
 
+    // Progress is animated client-side; we never query Redis (getJob) here anymore.
+    // Only completed scans report a real 100; everything else is 0 and the frontend
+    // shows a simulated progress bar based on elapsed time. This keeps Upstash usage
+    // near zero during status polling.
     const scanWithProgress = scan as ScanWithProgress;
-    if (scan.status === 'completed') {
-      scanWithProgress.progress = 100;
-      return scanWithProgress;
-    }
-
-    if (scan.status === 'failed' || scan.status === 'cancelled') {
-      scanWithProgress.progress = 0;
-      return scanWithProgress;
-    }
-
-    // pending and awaiting_login have no meaningful queue progress yet — skip Redis getJob()
-    if (scan.status === 'pending' || scan.status === 'awaiting_login') {
-      scanWithProgress.progress = 0;
-      return scanWithProgress;
-    }
-
-    const job = await this.scansQueue.getJob(scan.id);
-    scanWithProgress.progress = this.normalizeQueueProgress(job?.progress) ?? 0;
+    scanWithProgress.progress = scan.status === 'completed' ? 100 : 0;
     return scanWithProgress;
   }
 

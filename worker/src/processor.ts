@@ -140,25 +140,15 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
       }
 
       const viewportResults = [];
-      const totalUnits = Math.max(1, totalUrls * viewports.length);
 
       for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
         const vp = viewports[viewportIndex];
-        const unitIndex = (i * viewports.length) + viewportIndex;
-        const unitStart = (unitIndex / totalUnits) * 100;
-        const unitSpan = 100 / totalUnits;
-        const updateViewportProgress = async (viewportProgress: number) => {
-          const overallProgress = unitStart + ((Math.max(0, Math.min(100, viewportProgress)) / 100) * unitSpan);
-          await job.updateProgress({ scanId, value: Math.min(99, Math.round(overallProgress)) });
-        };
-
-        await updateViewportProgress(0);
+        // Progress is animated client-side now; we no longer write progress to Redis
+        // (job.updateProgress emits to the events stream, costing Upstash commands per scan).
         const res = await scanUrl(url, {
           viewport: vp,
-          onProgress: updateViewportProgress,
         });
         viewportResults.push(res);
-        await updateViewportProgress(100);
       }
 
       // Aggregate scores
