@@ -510,21 +510,21 @@ export function ProjectDetailView({
                         {scan.status === 'awaiting_login' && (
                           <div className="w-full bg-slate-50 p-4 rounded-md border border-slate-200 mt-4 text-sm" onClick={(e) => e.stopPropagation()}>
                             <p className="font-semibold text-slate-800 mb-1">Instrucciones para la extensión:</p>
-                            <p className="text-slate-600 mb-4">Abre la pestaña que quieres escanear y abre la extensión. Los datos del escaneo se envían automáticamente. Finalmente, haz clic en <strong>Analizar</strong>.</p>
-                            <div className="grid gap-4 md:grid-cols-2 mt-2 pt-2 border-t border-slate-200">
-                            <div>
-                            <div>
+                            <p className="text-slate-600 mb-4">
+                              Abre la pestaña que quieres escanear y abre la extensión. Los datos del escaneo se envían
+                              automáticamente. Finalmente, haz clic en <strong>Analizar</strong>.
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-slate-200">
                               <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
                               <div
                                 className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors mt-1"
                                 onClick={() => handleCopy(scan.id, 'id')}
                                 title="Copiar ID"
                               >
-                                <code className="text-slate-800 select-all text-xs">
-                                  {scan.id}
-                                </code>
-                                {copiedId ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" /> : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
-                              </div>
+                                <code className="text-slate-800 select-all text-xs">{scan.id}</code>
+                                {copiedId
+                                  ? <Check className="h-4 w-4 text-green-600 flex-shrink-0 ml-2" />
+                                  : <Copy className="h-4 w-4 text-slate-400 flex-shrink-0 ml-2" />}
                               </div>
                             </div>
                           </div>
