@@ -1,5 +1,5 @@
-import { chromium } from 'playwright';
 import { createServer } from 'net';
+import { browserPool } from './browser-pool.js';
 import { buildCoverageReport } from './coverageReport.js';
 import { detectPageContent } from './content-detector.js';
 import { captureFocusTraversal } from './focusTraversal.js';
@@ -92,15 +92,12 @@ export async function scanUrl(url: string, options: {
   }
 
   const debugPort = await getFreePort();
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', `--remote-debugging-port=${debugPort}`],
-  });
-
-  const context = await browser.newContext({
-    viewport: options.viewport || { width: 1280, height: 800 },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 PeruAccessibilityAnalyzer/1.0',
-  });
+  // Usa el pool: contexto incógnito aislado sobre el browser compartido.
+  // Costo: kilobytes en lugar de ~150MB por lanzar un browser nuevo.
+  const context = await browserPool.acquireContext(
+    options.viewport || { width: 1280, height: 800 },
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 PeruAccessibilityAnalyzer/1.0',
+  );
 
   const page = await context.newPage();
 
@@ -344,7 +341,8 @@ export async function scanUrl(url: string, options: {
       htmlDumpUrl: '',
     };
   } finally {
-    await context.close();
-    await browser.close();
+    // Solo cerramos el contexto incógnito — el browser del pool sigue vivo
+    // para el siguiente scan, eliminando el overhead de relanzar Chromium (~150MB, ~2s).
+    await context.close().catch((err) => console.warn('[BrowserPool] Error cerrando contexto', err));
   }
 }

@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import { cleanupPublicScan, processScan } from './processor.js';
 import { initializeStorage } from './storage.js';
 import { createLogger } from './logger.js';
+import { browserPool } from './browser-pool.js';
 
 const log = createLogger('worker');
 
@@ -145,6 +146,15 @@ async function bootstrap() {
   cleanupWorker.on('failed', (job, err) => {
     log.warn('Cleanup job fallido', { jobId: job?.id, error: err.message });
   });
+
+  // Cierre limpio del browser pool cuando Railway detiene el contenedor (SIGTERM/SIGINT)
+  const shutdown = async (signal: string) => {
+    log.info(`${signal} recibido — cerrando browser pool y workers`);
+    await Promise.allSettled([worker.close(), cleanupWorker.close(), browserPool.shutdown()]);
+    process.exit(0);
+  };
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
 }
 
 bootstrap().catch((err) => {
