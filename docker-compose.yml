@@ -16,6 +16,10 @@ services:
     image: redis:7-alpine
     container_name: peru-accessibility-redis
     restart: always
+    # appendonly: los jobs de BullMQ sobreviven a un reinicio de Redis.
+    # appendfsync everysec: escribe al disco cada segundo — balance entre
+    # durabilidad y rendimiento (vs 'always' que es más seguro pero más lento).
+    command: redis-server --appendonly yes --appendfsync everysec
     ports:
       - "127.0.0.1:6379:6379"
     volumes:

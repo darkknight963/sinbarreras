@@ -46,15 +46,15 @@ const buildRedisConnection = () => {
 async function bootstrap() {
   await initializeStorage();
 
-  // Queue used only to schedule the one-off delayed cleanup of public scans.
-  // It does not poll Redis (only issues a command when we add a job), so it has
-  // no 24/7 cost — unlike the QueueEvents listener it replaces in the API.
-  const scansQueue = new Queue('scans', { connection: buildRedisConnection() });
+  // Cola dedicada al cleanup de scans públicos, separada de la cola principal.
+  // Esto evita que un job de limpieza compita en prioridad con scans de usuario
+  // y permite tener políticas de retención distintas por tipo de job.
+  const cleanupQueue = new Queue('scans-cleanup', { connection: buildRedisConnection() });
 
   const schedulePublicScanCleanup = async (scanId: string) => {
     if (!scanId) return;
     try {
-      await scansQueue.add(
+      await cleanupQueue.add(
         'cleanup-public-scan',
         { scanId },
         {
@@ -74,10 +74,6 @@ async function bootstrap() {
     async (job: Job) => {
       console.log(`Processing job ${job.id} (${job.name})`);
       try {
-        if (job.name === 'cleanup-public-scan') {
-          await cleanupPublicScan(String(job.data?.scanId || ''));
-          return;
-        }
         await processScan(job);
       } catch (err) {
         console.error(`Failed to process job ${job.id}:`, err);
@@ -87,26 +83,51 @@ async function bootstrap() {
     {
       connection: buildRedisConnection(),
       concurrency: 1,
-      stalledInterval: 5 * 60 * 1000,
-      lockDuration: 10 * 60 * 1000, // 10 min lock — renewed every 5 min instead of every 15s
-      // Idle worker blocks 30s per poll instead of 5s. New jobs still return immediately
-      // (blocking pop unblocks on push), so this only cuts wasted Redis commands when idle.
+      // 60s: detecta un worker caído 5× más rápido que el default de 5 min,
+      // sin añadir carga perceptible a Redis (un comando LMOVE por minuto en idle).
+      stalledInterval: 60 * 1000,
+      lockDuration: 10 * 60 * 1000,
+      drainDelay: 30,
+    }
+  );
+
+  // Worker dedicado a la cola de cleanup, con concurrencia independiente.
+  // Al estar separado, un backlog de limpiezas no retrasa scans de usuarios.
+  const cleanupWorker = new Worker(
+    'scans-cleanup',
+    async (job: Job) => {
+      console.log(`Processing cleanup job ${job.id}`);
+      try {
+        await cleanupPublicScan(String(job.data?.scanId || ''));
+      } catch (err) {
+        console.error(`Failed to process cleanup job ${job.id}:`, err);
+        throw err;
+      }
+    },
+    {
+      connection: buildRedisConnection(),
+      concurrency: 2,
+      stalledInterval: 60 * 1000,
       drainDelay: 30,
     }
   );
 
   worker.on('completed', (job) => {
     console.log(`Job ${job.id} has completed!`);
-    if (job.name === 'process-scan' && job.data?.publicScan && job.data?.scanId) {
+    if (job.data?.publicScan && job.data?.scanId) {
       void schedulePublicScanCleanup(String(job.data.scanId));
     }
   });
 
   worker.on('failed', (job, err) => {
     console.log(`Job ${job?.id} has failed with ${err.message}`);
-    if (job?.name === 'process-scan' && job.data?.publicScan && job.data?.scanId) {
+    if (job?.data?.publicScan && job.data?.scanId) {
       void schedulePublicScanCleanup(String(job.data.scanId));
     }
+  });
+
+  cleanupWorker.on('failed', (job, err) => {
+    console.warn(`Cleanup job ${job?.id} failed: ${err.message}`);
   });
 }
 

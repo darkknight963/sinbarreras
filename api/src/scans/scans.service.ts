@@ -548,7 +548,14 @@ export class ScansService {
           loginMode,
           publicScan: options.publicScan === true,
         },
-        { jobId: savedScan.id, removeOnComplete: { count: 10 }, removeOnFail: { count: 10 } },
+        {
+          jobId: savedScan.id,
+          // Borrar inmediatamente al completar: el estado de verdad está en Postgres,
+          // no en Redis. Mantener jobs en Redis solo infla el consumo de memoria.
+          // En fallo conservamos los últimos 20 para poder diagnosticar sin sobrecargar.
+          removeOnComplete: true,
+          removeOnFail: { count: 20 },
+        },
       );
     }
 
