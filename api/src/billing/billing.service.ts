@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { BillingSubscription } from './entities/billing-subscription.entity';
 import {
@@ -27,6 +27,7 @@ export class BillingService {
     private readonly subscriptionRepository: Repository<BillingSubscription>,
     private readonly configService: ConfigService,
     private readonly culqiClient: CulqiClient,
+    private readonly dataSource: DataSource,
   ) {}
 
   async listPlans(): Promise<BillingPlan[]> {
@@ -189,14 +190,17 @@ export class BillingService {
 
     billingRecord.status = this.mapStatusFromEvent(eventName, billingRecord.status);
     billingRecord.currentPeriodEnd = this.mapPeriodEnd(this.extractPeriodEnd(payload));
-    await this.subscriptionRepository.save(billingRecord);
-    await this.updateUserBilling(billingRecord.user, {
-      status: billingRecord.status,
-      plan: billingRecord.plan,
-      currency: billingRecord.currency,
-      currentPeriodEnd: billingRecord.currentPeriodEnd,
-      customerId: billingRecord.providerCustomerId,
-      subscriptionId: billingRecord.providerSubscriptionId,
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.save(BillingSubscription, billingRecord);
+      await manager.update(User, billingRecord.user.id, {
+        billingStatus: billingRecord.status,
+        billingPlan: billingRecord.plan,
+        billingCurrency: billingRecord.currency,
+        billingPeriodEnd: billingRecord.currentPeriodEnd,
+        billingCustomerId: billingRecord.providerCustomerId,
+        billingSubscriptionId: billingRecord.providerSubscriptionId,
+      });
     });
 
     return { ok: true, matched: true };

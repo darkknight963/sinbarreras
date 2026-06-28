@@ -48,8 +48,19 @@ export class ProjectsController {
 
   @Put(':id')
   @RateLimit({ scope: 'project', limit: 60, windowMs: 60 * 60 * 1000 })
-  update(@Param('id') id: string, @Body() updateData: any, @CurrentUser() user: { id: string } | null, @Req() request: { authMode?: string }) {
+  update(
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+    @CurrentUser() user: { id: string } | null,
+    @Req() request: { authMode?: string },
+  ) {
     const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
+    // Whitelist allowed fields to prevent mass-assignment of sensitive columns (owner, vo, etc.).
+    const allowed = ['name', 'domain', 'entityType'] as const;
+    const updateData: Record<string, unknown> = {};
+    for (const field of allowed) {
+      if (field in body) updateData[field] = body[field];
+    }
     return this.projectsService.update(id, updateData, ownerId);
   }
 

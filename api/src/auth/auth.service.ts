@@ -72,10 +72,17 @@ export class AuthService {
       return;
     }
 
+    // Sin ADMIN_PASSWORD en entornos de producción el servidor no levanta.
+    // En desarrollo se usa la password hardcodeada solo si NODE_ENV no es 'production'.
     if (process.env.NODE_ENV === 'production') {
-      return;
+      throw new Error(
+        'ADMIN_PASSWORD env variable is required in production. Set it before starting the server.',
+      );
     }
 
+    console.warn(
+      '[SECURITY] Using hardcoded admin password for development. Set ADMIN_PASSWORD in production.',
+    );
     await this.ensureAdminUser('administrador@gzakgroup.com', '12345678', ['administrador@sinbarreras.com', 'demo@sinbarreras.local']);
   }
 
@@ -140,7 +147,7 @@ export class AuthService {
   }
 
   async completeOAuthLogin(provider: OAuthProvider, code: string, state: string) {
-    this.verifyOAuthState(provider, state);
+    await this.verifyAndConsumeOAuthState(provider, state);
     const config = this.getOAuthConfig(provider);
     if (!config.enabled) {
       throw new BadRequestException(`${config.name} no esta configurado`);
@@ -480,7 +487,7 @@ export class AuthService {
     return `${encodedPayload}.${signature}`;
   }
 
-  private verifyOAuthState(provider: OAuthProvider, state: string) {
+  private verifyOAuthState(provider: OAuthProvider, state: string): OAuthStatePayload {
     const [encodedPayload, signature] = state.split('.');
     if (!encodedPayload || !signature) {
       throw new UnauthorizedException('Estado OAuth invalido');
@@ -501,6 +508,19 @@ export class AuthService {
 
     if (Date.now() - payload.issuedAt > OAUTH_STATE_TTL_MS) {
       throw new UnauthorizedException('La autorizacion expiro');
+    }
+
+    return payload;
+  }
+
+  private async verifyAndConsumeOAuthState(provider: OAuthProvider, state: string): Promise<void> {
+    const payload = this.verifyOAuthState(provider, state);
+    // Consume the nonce atomically — SET NX returns false if already used.
+    const nonceKey = `oauth:nonce:${payload.nonce}`;
+    const remainingTtlMs = OAUTH_STATE_TTL_MS - (Date.now() - payload.issuedAt);
+    const consumed = await this.rateLimitService.setOnce(nonceKey, Math.max(remainingTtlMs, 1000));
+    if (!consumed) {
+      throw new UnauthorizedException('Este enlace de autenticacion ya fue utilizado');
     }
   }
 

@@ -111,7 +111,16 @@ export class AuthController {
       const session = await this.authService.completeOAuthLogin(provider, code, state);
       return res.redirect(302, this.authService.buildFrontendSessionRedirect(session.token, provider));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error inesperado al iniciar sesión';
+      // Never leak internal error messages to the client via redirect URL.
+      const isExpected = error instanceof Error && (
+        error.message.includes('expiro') ||
+        error.message.includes('invalido') ||
+        error.message.includes('utilizado') ||
+        error.message.includes('configurado')
+      );
+      const message = isExpected && error instanceof Error
+        ? error.message
+        : 'Error al iniciar sesión. Por favor inténtalo de nuevo.';
       return res.redirect(302, this.authService.buildFrontendOAuthErrorRedirect(provider, message));
     }
   }

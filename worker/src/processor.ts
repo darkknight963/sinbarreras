@@ -162,7 +162,7 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
       const seen = new Set();
       for (const vr of viewportResults) {
         for (const v of vr.violations) {
-          const key = `${v.normalizedRuleId || v.ruleId}-${v.selector}`;
+          const key = `${v.pageState || ''}::${v.normalizedRuleId || v.ruleId}-${v.selector}`;
           if (!seen.has(key)) {
             seen.add(key);
             allViolations.push(v);
@@ -215,8 +215,8 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
     } catch (urlErr) {
       console.error(`Error scanning URL ${url}:`, urlErr);
       await pool.query(
-        `INSERT INTO url_results (url, score, status, "engineReport", "semanticStructure", "visualMap", "scanId") VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [url, 0, 'failed', JSON.stringify([]), JSON.stringify(null), JSON.stringify(null), scanId]
+        `INSERT INTO url_results (url, score, violations, applicability, "focusTraversal", "engineReport", "semanticStructure", "visualMap", status, "scanId") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [url, 0, '[]', 'null', 'null', JSON.stringify([]), JSON.stringify(null), JSON.stringify(null), 'failed', scanId]
       );
     }
   }

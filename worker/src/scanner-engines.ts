@@ -553,7 +553,14 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
   const aChecker = checkerModule.default || checkerModule;
   await configureIbmEqualAccess(aChecker);
   try {
-    const report = await aChecker.getCompliance(url, `scan-url-${Date.now()}-${++ibmScanSequence}`);
+    const IBM_TIMEOUT_MS = 30_000;
+    const reportPromise = aChecker.getCompliance(url, `scan-url-${Date.now()}-${++ibmScanSequence}`);
+    const report = await Promise.race([
+      reportPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`IBM Equal Access timed out after ${IBM_TIMEOUT_MS}ms`)), IBM_TIMEOUT_MS),
+      ),
+    ]);
 
     // URL-based scans return a flat array at report.report.results; page-based scans return
     // pre-split arrays at report.results.violations / report.results.needsReview.

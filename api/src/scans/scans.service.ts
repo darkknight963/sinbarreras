@@ -10,6 +10,7 @@ import { UrlResult } from '../url-results/entities/url-result.entity';
 import { validateScanTargetUrls } from '../security/scan-url-policy';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { flattenWcagChecklist } from '../compliance/wcag-checklist.data';
+import { RequestRateLimitService } from '../security/request-rate-limit.service';
 
 type TriggerScanOptions = {
   enforceSingleFreeUrl?: boolean;
@@ -90,6 +91,7 @@ export class ScansService {
     @InjectQueue('scans')
     private readonly scansQueue: Queue,
     private readonly configService: ConfigService,
+    private readonly rateLimitService: RequestRateLimitService,
   ) {}
 
   private canonicalizePlanUrl(value: string): string {
@@ -172,18 +174,31 @@ export class ScansService {
     }
 
     const requestedUrl = this.canonicalizePlanUrl(urls[0]);
-    const reservedUrls = await this.getFreeReservedUrls(ownerId);
-    const existingDifferentUrl = [...reservedUrls].find((url) => url !== requestedUrl);
 
-    if (existingDifferentUrl) {
-      throw new ForbiddenException(
-        'Tu plan Free incluye una URL guardada. Puedes reescanear esa misma URL; sube a Pro para auditar más sitios o páginas.',
-      );
+    // Distributed lock prevents two concurrent Free-plan scans from both passing
+    // the "no reserved URL yet" check and then writing different domains.
+    const lockKey = `free-url-lock:${ownerId}`;
+    const acquired = await this.rateLimitService.setOnce(lockKey, 10_000);
+    if (!acquired) {
+      throw new ForbiddenException('Otro escaneo está en proceso. Por favor espera un momento.');
     }
 
-    if (!project.domain) {
-      await this.projectRepository.update(project.id, { domain: requestedUrl });
-      project.domain = requestedUrl;
+    try {
+      const reservedUrls = await this.getFreeReservedUrls(ownerId);
+      const existingDifferentUrl = [...reservedUrls].find((url) => url !== requestedUrl);
+
+      if (existingDifferentUrl) {
+        throw new ForbiddenException(
+          'Tu plan Free incluye una URL guardada. Puedes reescanear esa misma URL; sube a Pro para auditar más sitios o páginas.',
+        );
+      }
+
+      if (!project.domain) {
+        await this.projectRepository.update(project.id, { domain: requestedUrl });
+        project.domain = requestedUrl;
+      }
+    } finally {
+      await this.rateLimitService.deleteKey(lockKey);
     }
   }
 
@@ -573,11 +588,19 @@ export class ScansService {
       owner: null,
     }));
 
+    const ALLOWED_PUBLIC_SCAN_MODES = ['estándar', 'standard', 'rapido', 'rápido'];
+    const scanMode = ALLOWED_PUBLIC_SCAN_MODES.includes(String(scanRequest.scanMode || ''))
+      ? scanRequest.scanMode!
+      : 'estándar';
+    const ux = Number.isInteger(scanRequest.ux) && (scanRequest.ux as number) >= 1 && (scanRequest.ux as number) <= 5
+      ? scanRequest.ux as number
+      : 4;
+
     return this.triggerScan({
       projectId: project.id,
       urls,
-      scanMode: scanRequest.scanMode || 'estándar',
-      ux: scanRequest.ux || 4,
+      scanMode,
+      ux,
     }, null, { publicScan: true });
   }
 
@@ -637,6 +660,19 @@ export class ScansService {
 
     const [url] = await validateScanTargetUrls([payload.url], { maxUrls: 1 });
     if (scan.status !== 'awaiting_login') {
+      throw new BadRequestException('Este escaneo ya fue procesado o no está esperando resultados de la extensión.');
+    }
+
+    // Atomic status transition prevents two concurrent extension submissions from
+    // both passing the awaiting_login check and writing duplicate urlResults.
+    const transitioned = await this.scanRepository
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'running' })
+      .where('id = :id AND status = :expected', { id: scan.id, expected: 'awaiting_login' })
+      .execute();
+
+    if (!transitioned.affected || transitioned.affected === 0) {
       throw new BadRequestException('Este escaneo ya fue procesado o no está esperando resultados de la extensión.');
     }
 

@@ -22,18 +22,18 @@ export class ProjectsService {
   }
 
   async findAll(ownerId: string | null): Promise<Project[]> {
-    const query = this.projectRepository
+    // Sin ownerId no hay contexto de usuario autenticado: devolver vacío en lugar
+    // de exponer todos los proyectos de todos los clientes.
+    if (!ownerId) return [];
+
+    return this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.scans', 'scan')
       .leftJoinAndSelect('scan.urlResults', 'urlResult')
       .leftJoinAndSelect('project.owner', 'owner')
-      .orderBy('project.createdAt', 'DESC');
-
-    if (ownerId) {
-      query.where('owner.id = :ownerId', { ownerId });
-    }
-
-    return query.getMany();
+      .where('owner.id = :ownerId', { ownerId })
+      .orderBy('project.createdAt', 'DESC')
+      .getMany();
   }
 
   async findOne(id: string, ownerId: string | null): Promise<Project | null> {

@@ -164,6 +164,16 @@ export class RequestRateLimitService implements OnModuleDestroy {
     await this.redis.del(key);
   }
 
+  async setOnce(key: string, ttlMs: number): Promise<boolean> {
+    // NX: only set if not exists. Returns 'OK' on success, null if key existed.
+    const result = await this.redis.set(key, '1', 'PX', ttlMs, 'NX');
+    return result === 'OK';
+  }
+
+  async deleteKey(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.redis.quit();
   }

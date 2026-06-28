@@ -141,7 +141,12 @@ export async function captureFocusTraversal(page: Page): Promise<FocusTraversalR
 
     await page.evaluate(() => window.scrollTo(0, 0));
     const screenshot = await page.screenshot({ fullPage: true });
-    const screenshotUrl = await uploadEvidence(`focus-map-${Date.now()}.png`, screenshot, 'image/png');
+    let screenshotUrl: string | undefined;
+    try {
+      screenshotUrl = await uploadEvidence(`focus-map-${Date.now()}.png`, screenshot, 'image/png');
+    } catch (uploadErr) {
+      console.warn('Focus map screenshot upload failed; continuing without it.', uploadErr);
+    }
     const first = steps[0] as any;
 
     return {

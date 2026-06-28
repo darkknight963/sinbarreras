@@ -6,6 +6,7 @@ import { Project } from '../projects/entities/project.entity';
 import { UrlResult } from '../url-results/entities/url-result.entity';
 import { ScansService } from './scans.service';
 import { ScansController } from './scans.controller';
+import { RequestRateLimitService } from '../security/request-rate-limit.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { ScansController } from './scans.controller';
       name: 'scans',
     }),
   ],
-  providers: [ScansService],
+  providers: [ScansService, RequestRateLimitService],
   controllers: [ScansController],
   exports: [ScansService],
 })
