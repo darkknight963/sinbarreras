@@ -44,7 +44,7 @@ assert.equal(resolveStatusLabel('needs_review'), 'Requiere revisión');
 
 const tagged = tagFindingsWithPageState([baseFinding], 'initial');
 assert.equal(tagged[0].pageState, 'initial');
-assert.match(tagged[0].description, /^\[Estado inicial\]/);
+assert.equal(tagged[0].description, baseFinding.description);
 
 const deduped = dedupeByRuleAndSelector([
   { ...baseFinding, severity: 'bajo', selector: '#main' },

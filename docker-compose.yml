@@ -69,6 +69,13 @@ services:
       dockerfile: Dockerfile
     container_name: peru-accessibility-worker
     restart: always
+    # Chrome necesita /dev/shm generoso; el default de Docker (64 MB) lo hace crashear.
+    shm_size: '1gb'
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
     environment:
       NODE_ENV: ${NODE_ENV}
       DB_HOST: postgres

@@ -16,8 +16,6 @@ import {
   runOverlayAccessibilityEngines,
   runStatefulPageEngines,
   runSupportingEngines,
-  runPa11y,
-  runLighthouse,
   runIbmEqualAccessUrl,
 } from './scanner-engines.js';
 import {
@@ -62,51 +60,35 @@ export async function scanUrl(url: string, options: {
   viewport?: { width: number; height: number };
   preNavigationScript?: string;
   onProgress?: (progress: number) => Promise<void> | void;
+  // En viewports secundarios (tablet/móvil) solo corre axe vía Playwright.
+  // IBM Equal Access y estados interactivos se omiten: las violaciones WCAG
+  // estructurales son idénticas entre viewports; solo reflow (1.4.10) y
+  // target-size (2.5.8) dependen del ancho, y axe los cubre.
+  lightScan?: boolean;
 } = {}) {
   const reportProgress = async (progress: number) => {
     if (!options.onProgress) return;
     await options.onProgress(Math.max(0, Math.min(100, Math.round(progress))));
   };
 
-  // Lighthouse and Pa11y each spawn their own Chrome. Running them sequentially before
-  // Playwright avoids concurrent Chrome processes competing for memory and crashing each other.
-  const pa11yStart = Date.now();
-  let pa11yFindings: any[] = [];
-  let pa11yReportEntry: any = null;
-  try {
-    console.log(`Running Pa11y pre-scan: ${url}`);
-    pa11yFindings = await runPa11y(url, 0);
-    pa11yReportEntry = { engine: 'pa11y', pageState: 'initial', status: 'ok', durationMs: Date.now() - pa11yStart, findingsCount: pa11yFindings.length };
-    console.log(`Pa11y pre-scan complete: ${pa11yFindings.length} finding(s).`);
-  } catch (err) {
-    console.warn('Pa11y pre-scan failed; continuing without Pa11y.', err);
-    pa11yReportEntry = { engine: 'pa11y', pageState: 'initial', status: 'failed', durationMs: Date.now() - pa11yStart, findingsCount: 0, errorMessage: String(err) };
-  }
-
-  const lighthouseStart = Date.now();
-  let lighthouseFindings: any[] = [];
-  let lighthouseReportEntry: any = null;
-  try {
-    console.log(`Running Lighthouse pre-scan: ${url}`);
-    lighthouseFindings = await runLighthouse(url);
-    lighthouseReportEntry = { engine: 'lighthouse', pageState: 'initial', status: 'ok', durationMs: Date.now() - lighthouseStart, findingsCount: lighthouseFindings.length };
-    console.log(`Lighthouse pre-scan complete: ${lighthouseFindings.length} finding(s).`);
-  } catch (err) {
-    console.warn('Lighthouse pre-scan failed; continuing without Lighthouse.', err);
-    lighthouseReportEntry = { engine: 'lighthouse', pageState: 'initial', status: 'failed', durationMs: Date.now() - lighthouseStart, findingsCount: 0, errorMessage: String(err) };
-  }
-
+  // IBM Equal Access corre antes de Playwright para evitar procesos Chrome concurrentes.
+  // Pa11y y Lighthouse fueron eliminados: Pa11y corría runners: ['axe', 'htmlcs']
+  // (axe duplicado + HTML_CodeSniffer obsoleto) y Lighthouse usaba axe internamente.
+  // En lightScan (viewports secundarios) IBM se omite: no tiene lógica dependiente
+  // del ancho de pantalla y sus findings son idénticos al scan de desktop.
   const ibmStart = Date.now();
   let ibmFindings: any[] = [];
   let ibmReportEntry: any = null;
-  try {
-    console.log(`Running IBM Equal Access pre-scan: ${url}`);
-    ibmFindings = await runIbmEqualAccessUrl(url);
-    ibmReportEntry = { engine: 'ibm-equal-access', pageState: 'initial', status: 'ok', durationMs: Date.now() - ibmStart, findingsCount: ibmFindings.length };
-    console.log(`IBM Equal Access pre-scan complete: ${ibmFindings.length} finding(s).`);
-  } catch (err) {
-    console.warn('IBM Equal Access pre-scan failed; continuing without IBM.', err);
-    ibmReportEntry = { engine: 'ibm-equal-access', pageState: 'initial', status: 'failed', durationMs: Date.now() - ibmStart, findingsCount: 0, errorMessage: String(err) };
+  if (!options.lightScan) {
+    try {
+      console.log(`Running IBM Equal Access pre-scan: ${url}`);
+      ibmFindings = await runIbmEqualAccessUrl(url);
+      ibmReportEntry = { engine: 'ibm-equal-access', pageState: 'initial', status: 'ok', durationMs: Date.now() - ibmStart, findingsCount: ibmFindings.length };
+      console.log(`IBM Equal Access pre-scan complete: ${ibmFindings.length} finding(s).`);
+    } catch (err) {
+      console.warn('IBM Equal Access pre-scan failed; continuing without IBM.', err);
+      ibmReportEntry = { engine: 'ibm-equal-access', pageState: 'initial', status: 'failed', durationMs: Date.now() - ibmStart, findingsCount: 0, errorMessage: String(err) };
+    }
   }
 
   const debugPort = await getFreePort();
@@ -207,8 +189,11 @@ export async function scanUrl(url: string, options: {
     } else {
       console.log('No blocking overlay detected; keeping analysis in initial page state.');
     }
-    console.log('Exploring safe interactive states for hidden menus and dialogs...');
-    const interactiveStateEngineRun = await runInteractiveStateAccessibilityEngines(page);
+    // En lightScan se omite la exploración interactiva: los estados ocultos
+    // (menús, diálogos) no varían por viewport y ya se capturan en el scan desktop.
+    const interactiveStateEngineRun = !options.lightScan
+      ? await runInteractiveStateAccessibilityEngines(page)
+      : { findings: [], report: [] };
     const supportingEngineRun = await runSupportingEngines(url, debugPort, hasOverlayWorkflow ? 'post_overlay' : 'initial');
     await reportProgress(65);
 
@@ -217,8 +202,6 @@ export async function scanUrl(url: string, options: {
       ...postOverlayEngineRun.findings,
       ...interactiveStateEngineRun.findings,
       ...supportingEngineRun.findings,
-      ...pa11yFindings,
-      ...lighthouseFindings,
       ...ibmFindings,
     ];
     const coverageReport = buildCoverageReport(mergedRaw);
@@ -320,8 +303,6 @@ export async function scanUrl(url: string, options: {
         ...postOverlayEngineRun.report,
         ...interactiveStateEngineRun.report,
         ...supportingEngineRun.report,
-        ...(pa11yReportEntry ? [pa11yReportEntry] : []),
-        ...(lighthouseReportEntry ? [lighthouseReportEntry] : []),
         ...(ibmReportEntry ? [ibmReportEntry] : []),
       ],
       device: options.viewport?.width === 375 ? 'Movil' : options.viewport?.width === 768 ? 'Tablet' : 'Desktop',

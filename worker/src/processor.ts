@@ -143,10 +143,13 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
 
       for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
         const vp = viewports[viewportIndex];
-        // Progress is animated client-side now; we no longer write progress to Redis
-        // (job.updateProgress emits to the events stream, costing Upstash commands per scan).
+        // El primer viewport (desktop) recibe el set completo de motores.
+        // Los viewports secundarios (tablet/móvil) usan lightScan: las violaciones
+        // estructurales WCAG son idénticas entre viewports; solo reflow (1.4.10) y
+        // target-size (2.5.8) dependen del ancho, y axe los cubre.
         const res = await scanUrl(url, {
           viewport: vp,
+          lightScan: viewportIndex > 0,
         });
         viewportResults.push(res);
       }

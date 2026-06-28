@@ -26,24 +26,24 @@ async function main() {
       },
     },
     {
-      engine: 'pa11y',
-      onFailureMessage: 'pa11y failed',
+      engine: 'heuristic-dom',
+      onFailureMessage: 'heuristic-dom failed',
       run: async () => {
-        order.push('pa11y');
+        order.push('heuristic-dom');
         throw new Error('boom');
       },
     },
     {
-      engine: 'lighthouse',
-      onFailureMessage: 'lighthouse failed',
+      engine: 'ibm-equal-access',
+      onFailureMessage: 'ibm-equal-access failed',
       run: async () => {
-        order.push('lighthouse');
+        order.push('ibm-equal-access');
         return [];
       },
     },
   ]);
 
-  assert.deepEqual(order, ['axe', 'pa11y', 'lighthouse']);
+  assert.deepEqual(order, ['axe', 'heuristic-dom', 'ibm-equal-access']);
   assert.equal(result.findings.length, 1);
   assert.equal(result.report.length, 3);
   assert.equal(result.report[0].status, 'ok');

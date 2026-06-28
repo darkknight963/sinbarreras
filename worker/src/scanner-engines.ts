@@ -20,7 +20,6 @@ import {
   normalizeSelector,
   parseWcagTags,
   tagFindingsWithPageState,
-  toCategoryFromLighthouse,
   toSeverityEs,
   resolveLegalReference,
   resolveStatusLabel,
@@ -525,118 +524,14 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
   return findings;
 }
 
-export async function runLighthouse(url: string): Promise<RawFinding[]> {
-  const lighthouseModule: any = await import('lighthouse');
-  const lighthouse = lighthouseModule.default || lighthouseModule;
-  const chromeLauncherModule: any = await import('chrome-launcher');
-  const chromeLauncher = chromeLauncherModule.default || chromeLauncherModule;
+// Lighthouse eliminado: su categoría de accesibilidad usa axe-core internamente,
+// que ya se ejecuta directamente vía Playwright. Mantenerlo pagaba un Chrome
+// completo (chrome-launcher) por reglas idénticas a las que axe ya cubre.
 
-  const executablePath =
-    process.env.PUPPETEER_EXECUTABLE_PATH ||
-    process.env.CHROME_PATH ||
-    process.env.PLAYWRIGHT_CHROME_PATH ||
-    chromium.executablePath();
-
-  const chrome = await chromeLauncher.launch({
-    chromePath: executablePath,
-    chromeFlags: ['--headless=new', '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  });
-
-  let report: any;
-  try {
-    report = await lighthouse(url, {
-      output: 'json',
-      logLevel: 'error',
-      onlyCategories: ['accessibility'],
-      disableStorageReset: true,
-      port: chrome.port,
-    });
-  } finally {
-    try { await chrome.kill(); } catch { }
-  }
-
-  const lhr = report?.lhr;
-  const audits = lhr?.audits || {};
-  const findings: RawFinding[] = [];
-
-  for (const [auditId, audit] of Object.entries<any>(audits)) {
-    const score = typeof audit?.score === 'number' ? audit.score : 1;
-    if (score >= 1) continue;
-
-    const lhRuleKey = normalizeRuleId(String(auditId), audit?.title || audit?.description || '');
-    const lhRuleInfo = getRuleDetails(lhRuleKey);
-    const lhIsMapped = !lhRuleInfo.nameEs.startsWith('Regla Automática');
-    const lhDescription = (lhIsMapped ? lhRuleInfo.nameEs : null) || audit?.title || 'Hallazgo de Lighthouse';
-    const lhSuggestedFix = lhRuleInfo.suggestedFix || defaultSuggestedFix(String(auditId));
-
-    const details = audit?.details;
-    const items = Array.isArray(details?.items) ? details.items : [{}];
-
-    for (const item of items) {
-      const selector = normalizeSelector(item?.node?.selector || item?.selector || 'document');
-      const html = item?.node?.snippet || item?.node?.explanation || '';
-      findings.push({
-        tool: 'lighthouse',
-        ruleId: String(auditId),
-        normalizedRuleId: lhRuleKey,
-        category: toCategoryFromLighthouse(audit),
-        description: lhDescription,
-        selector,
-        elementHtml: html,
-        severity: score <= 0.3 ? 'alto' : score <= 0.6 ? 'medio' : 'bajo',
-        suggestedFix: lhSuggestedFix,
-      });
-    }
-  }
-
-  return findings;
-}
-
-export async function runPa11y(url: string, _port: number): Promise<RawFinding[]> {
-  const pa11yModule: any = await import('pa11y' as any);
-  const pa11y = pa11yModule.default || pa11yModule;
-  const executablePath =
-    process.env.PUPPETEER_EXECUTABLE_PATH ||
-    process.env.CHROME_PATH ||
-    process.env.PLAYWRIGHT_CHROME_PATH ||
-    chromium.executablePath();
-
-  const result = await pa11y(url, {
-    ignoreUrl: false,
-    standard: 'WCAG2AA',
-    runners: ['axe', 'htmlcs'],
-    includeWarnings: true,
-    includeNotices: false,
-    timeout: 30000,
-    wait: 1000,
-    chromeLaunchConfig: {
-      ignoreHTTPSErrors: true,
-      executablePath,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    },
-  });
-
-  const findings: RawFinding[] = [];
-  for (const issue of result?.issues || []) {
-    const pa11yRuleKey = normalizeRuleId(issue.code || 'pa11y-unknown', issue.message || '');
-    const pa11yRuleInfo = getRuleDetails(pa11yRuleKey);
-    const pa11yRawDesc = (issue.message || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
-    const pa11yIsMapped = !pa11yRuleInfo.nameEs.startsWith('Regla Automática');
-    findings.push({
-      tool: 'pa11y',
-      ruleId: issue.code || 'pa11y-unknown',
-      normalizedRuleId: pa11yRuleKey,
-      category: issue.typeCode === 1 ? 'violation' : 'alert',
-      description: (pa11yIsMapped ? pa11yRuleInfo.nameEs : null) || pa11yRawDesc || 'Hallazgo de Pa11y',
-      selector: normalizeSelector(issue.selector || 'document'),
-      elementHtml: issue.context || '',
-      severity: toSeverityEs(issue.type || issue.typeCode),
-      suggestedFix: pa11yRuleInfo.suggestedFix || defaultSuggestedFix(issue.code || 'pa11y-unknown'),
-    });
-  }
-
-  return findings;
-}
+// Pa11y eliminado: estaba configurado con runners: ['axe', 'htmlcs'], ejecutando
+// axe-core de nuevo (ya cubierto por Playwright) más HTML_CodeSniffer (motor más
+// antiguo con mayor tasa de falsos positivos, en desuso en la industria).
+// Pagaba un Chrome completo por findings redundantes o de menor calidad.
 
 let ibmScanSequence = 0;
 
@@ -647,7 +542,6 @@ async function configureIbmEqualAccess(aChecker: any): Promise<void> {
     puppeteerArgs: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
     ],
   });
 }
