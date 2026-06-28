@@ -479,10 +479,10 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
         </div>
       )}
 
-      <div className="project-list-toolbar">
-        <div className="min-w-0">
+      <div className="project-list-toolbar admin-toolbar-stack">
+        <div className="min-w-0 admin-toolbar-copy-block">
           <h3>Operacion</h3>
-          <p className="mt-1 text-sm text-slate-500">Revisa primero el listado y usa las acciones de gestion solo cuando sean necesarias.</p>
+          <p className="admin-toolbar-copy">Revisa primero el listado y usa las acciones de gestion solo cuando sean necesarias.</p>
         </div>
         <div className="project-filter-tabs" role="group" aria-label="Secciones de administracion">
           <button type="button" className={activeTab === 'users' ? 'project-filter-active' : undefined} onClick={() => setActiveTab('users')}>
