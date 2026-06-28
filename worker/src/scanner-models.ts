@@ -86,7 +86,7 @@ export interface FocusTraversalStep {
 }
 
 export interface FocusTraversalReport {
-  screenshotUrl: string;
+  screenshotUrl: string | undefined;
   viewport: {
     width: number;
     height: number;

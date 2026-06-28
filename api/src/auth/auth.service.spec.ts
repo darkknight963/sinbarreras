@@ -26,16 +26,18 @@ describe('AuthService', () => {
       get: jest.fn().mockImplementation((key: string, fallback?: number) => (key === 'SESSION_TTL_DAYS' ? 30 : fallback)),
     } as any, { isBlocked: jest.fn().mockResolvedValue(false), recordFailedAttempt: jest.fn(), resetAttempts: jest.fn(), getBlockRemaining: jest.fn() } as any);
 
-    await expect(service.me('user-1')).resolves.toMatchObject({
+    const result = await service.me('user-1');
+    expect(result).toMatchObject({
       id: 'user-1',
       email: 'cliente@demo.pe',
       billingStatus: 'active',
       billingPlan: 'monthly',
       billingProvider: 'culqi',
       billingCurrency: 'PEN',
-      billingCustomerId: 'cus_test_123',
-      billingSubscriptionId: 'sxn_test_123',
     });
+    // Los IDs internos del proveedor de pagos no se exponen al cliente.
+    expect(result).not.toHaveProperty('billingCustomerId');
+    expect(result).not.toHaveProperty('billingSubscriptionId');
   });
 
   it('reports OAuth provider availability from configuration', () => {

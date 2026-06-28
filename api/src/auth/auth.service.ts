@@ -396,12 +396,22 @@ export class AuthService {
     await this.sessionRepository.delete({ tokenHash });
   }
 
-  buildFrontendSessionRedirect(token: string, provider: OAuthProvider) {
+  async createExtensionToken(userId: string): Promise<string> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 horas
+    await this.sessionRepository.save(
+      this.sessionRepository.create({ tokenHash: this.hashToken(token), expiresAt, user, scope: 'extension' }),
+    );
+    return token;
+  }
+
+  buildFrontendOAuthSuccessRedirect(provider: OAuthProvider) {
+    // El token ya viaja en la cookie httpOnly que el controlador setea antes de redirigir.
+    // Solo informamos al frontend el proveedor para que pueda mostrar un mensaje contextual.
     const frontendUrl = new URL(this.getFrontendUrl());
-    frontendUrl.hash = new URLSearchParams({
-      session_token: token,
-      provider,
-    }).toString();
+    frontendUrl.hash = new URLSearchParams({ provider }).toString();
     return frontendUrl.toString();
   }
 
@@ -442,8 +452,8 @@ export class AuthService {
       billingProvider: user.billingProvider,
       billingCurrency: user.billingCurrency,
       billingPeriodEnd: user.billingPeriodEnd ? user.billingPeriodEnd.toISOString() : null,
-      billingCustomerId: user.billingCustomerId,
-      billingSubscriptionId: user.billingSubscriptionId,
+      // billingCustomerId y billingSubscriptionId son IDs internos del proveedor de pagos;
+      // no tienen uso en el frontend y reducen la superficie de exposición de metadatos.
     };
   }
 

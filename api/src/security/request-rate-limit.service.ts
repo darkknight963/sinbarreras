@@ -180,6 +180,32 @@ export class RequestRateLimitService implements OnModuleDestroy {
     await this.redis.del(key);
   }
 
+  async getJson<T>(key: string): Promise<T | null> {
+    const raw = await this.redis.get(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async setJson(key: string, value: unknown, ttlMs: number): Promise<void> {
+    await this.redis.set(key, JSON.stringify(value), 'PX', ttlMs);
+  }
+
+  // SCAN uses Redis SCAN cursor — safe for production (doesn't block like KEYS).
+  async scanKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor = '0';
+    do {
+      const [nextCursor, batch] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+      keys.push(...batch);
+    } while (cursor !== '0');
+    return keys;
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.redis.quit();
   }

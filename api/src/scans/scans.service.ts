@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository, DataSource } from 'typeorm';
@@ -166,7 +166,9 @@ export class ScansService {
     }
 
     scan.status = 'cancelled';
-    return this.scanRepository.save(scan);
+    const saved = await this.scanRepository.save(scan);
+    await this.invalidateScanCache(id);
+    return saved;
   }
 
   private async enforceSingleFreeUrl(ownerId: string, project: Project, urls: string[]): Promise<void> {
@@ -555,6 +557,23 @@ export class ScansService {
     const savedScan = await this.scanRepository.save(scan);
 
     if (loginMode !== 'manual_assisted') {
+      // Backpressure: si la cola tiene demasiados jobs pendientes, rechazar con 503
+      // en lugar de acumular jobs que esperarían horas. El umbral es configurable.
+      const QUEUE_MAX_PENDING = Number(process.env.QUEUE_MAX_PENDING || 50);
+      const [waiting, delayed] = await Promise.all([
+        this.scansQueue.getWaitingCount(),
+        this.scansQueue.getDelayedCount(),
+      ]);
+      const pendingTotal = waiting + delayed;
+      if (pendingTotal >= QUEUE_MAX_PENDING) {
+        // Marcar el scan como fallido antes de rechazar para no dejar registros huérfanos.
+        await this.scanRepository.update(savedScan.id, { status: 'failed' });
+        throw new ServiceUnavailableException(
+          `El servicio está procesando muchos escaneos en este momento (${pendingTotal} en cola). ` +
+          `Por favor intenta en unos minutos.`,
+        );
+      }
+
       await this.scansQueue.add(
         'process-scan',
         {
@@ -621,7 +640,38 @@ export class ScansService {
     return query.getMany();
   }
 
+  // Scans en estado terminal no cambian nunca; scans activos se cachean brevemente
+  // para absorber el polling del frontend sin saturar Postgres.
+  private getScanCacheTtlMs(status: string): number {
+    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+      return 5 * 60 * 1000; // 5 min — resultado inmutable
+    }
+    return 8 * 1000; // 8 s — polling absorber sin staleness perceptible
+  }
+
+  private scanCacheKey(id: string, ownerId: string | null): string {
+    return `scan:cache:${id}:${ownerId ?? 'public'}`;
+  }
+
+  async invalidateScanCache(id: string): Promise<void> {
+    // Borra todas las variantes de caché para este scan: pública y por owner.
+    // El worker llama esto al completar o fallar un scan.
+    const pattern = `scan:cache:${id}:*`;
+    try {
+      const keys = await this.rateLimitService.scanKeys(pattern);
+      if (keys.length) {
+        await Promise.all(keys.map((k) => this.rateLimitService.deleteKey(k)));
+      }
+    } catch {
+      // No fatal: la caché expirará sola en max 8s
+    }
+  }
+
   async findOne(id: string, ownerId: string | null): Promise<ScanWithProgress | null> {
+    const cacheKey = this.scanCacheKey(id, ownerId);
+    const cached = await this.rateLimitService.getJson<ScanWithProgress>(cacheKey);
+    if (cached !== null) return cached;
+
     const query = this.scanRepository
       .createQueryBuilder('scan')
       .leftJoinAndSelect('scan.project', 'project')
@@ -633,10 +683,19 @@ export class ScansService {
       query.andWhere('owner.id = :ownerId', { ownerId });
     }
 
-    return this.attachQueueProgress(await this.repairExtensionApplicability(await query.getOne()));
+    const result = await this.attachQueueProgress(await this.repairExtensionApplicability(await query.getOne()));
+    if (result) {
+      const ttl = this.getScanCacheTtlMs(result.status);
+      await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+    }
+    return result;
   }
 
   async findPublicOne(id: string): Promise<ScanWithProgress | null> {
+    const cacheKey = this.scanCacheKey(id, null);
+    const cached = await this.rateLimitService.getJson<ScanWithProgress>(cacheKey);
+    if (cached !== null) return cached;
+
     const scan = await this.scanRepository
       .createQueryBuilder('scan')
       .leftJoinAndSelect('scan.project', 'project')
@@ -646,7 +705,12 @@ export class ScansService {
       .andWhere('owner.id IS NULL')
       .getOne();
 
-    return this.attachQueueProgress(await this.repairExtensionApplicability(scan));
+    const result = await this.attachQueueProgress(await this.repairExtensionApplicability(scan));
+    if (result) {
+      const ttl = this.getScanCacheTtlMs(result.status);
+      await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+    }
+    return result;
   }
 
   async submitExtensionResult(id: string, ownerId: string | null, payload: ExtensionAuditResult): Promise<ScanWithProgress> {
@@ -715,6 +779,7 @@ export class ScansService {
       throw err;
     }
 
+    await this.invalidateScanCache(scan.id);
     const updated = await this.findOne(scan.id, ownerId);
     if (!updated) {
       throw new NotFoundException('Scan not found');
@@ -727,6 +792,7 @@ export class ScansService {
     const existing = await this.findOne(id, ownerId);
     if (!existing) throw new Error('Scan not found');
     await this.scanRepository.update(id, updateData);
+    await this.invalidateScanCache(id);
     const updated = await this.findOne(id, ownerId);
     if (!updated) throw new Error('Scan not found');
     return updated;
@@ -735,6 +801,7 @@ export class ScansService {
   async remove(id: string, ownerId: string | null): Promise<void> {
     const scan = await this.findOne(id, ownerId);
     if (!scan) throw new Error('Scan not found');
+    await this.invalidateScanCache(id);
     await this.scanRepository.delete(id);
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
@@ -55,50 +55,35 @@ export class BillingController {
   handleWebhook(
     @Body() payload: CulqiWebhookDto,
     @Req() request: Request & { rawBody?: Buffer },
-    @Query('secret') querySecret?: string,
   ) {
     const webhookSecret = this.billingService.getWebhookSecret();
 
-    if (webhookSecret) {
-      // Culqi firma el body con HMAC-SHA256 usando el webhook secret.
-      // Verificamos con el raw body para que el parseo JSON no altere la firma.
-      const signature = String(
-        request.headers['x-culqi-signature'] ||
-        request.headers['x-webhook-signature'] ||
-        '',
-      ).trim();
+    if (!webhookSecret) {
+      throw new UnauthorizedException('Webhook no configurado: falta CULQI_WEBHOOK_SECRET');
+    }
 
-      if (signature) {
-        // Verificación HMAC: comparación en tiempo constante para prevenir timing attacks.
-        const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
-        const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
-        const expectedBuf = Buffer.from(expected, 'hex');
-        const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+    // Culqi firma el body con HMAC-SHA256. Verificamos contra el raw body para que
+    // el parseo JSON no altere la firma. timingSafeEqual previene timing attacks.
+    const signature = String(
+      request.headers['x-culqi-signature'] ||
+      request.headers['x-webhook-signature'] ||
+      '',
+    ).trim();
 
-        if (
-          expectedBuf.length !== incomingBuf.length ||
-          !timingSafeEqual(expectedBuf, incomingBuf)
-        ) {
-          throw new UnauthorizedException('Firma HMAC de webhook inválida');
-        }
-      } else {
-        // Fallback: secret plano en header o query (para compatibilidad con Culqi legacy).
-        const incomingSecret = String(
-          request.headers['x-culqi-webhook-secret'] ||
-          request.headers['x-webhook-secret'] ||
-          querySecret ||
-          '',
-        ).trim();
+    if (!signature) {
+      throw new UnauthorizedException('Webhook sin firma HMAC');
+    }
 
-        const expectedBuf = Buffer.from(webhookSecret);
-        const incomingBuf = Buffer.from(incomingSecret);
-        if (
-          expectedBuf.length !== incomingBuf.length ||
-          !timingSafeEqual(expectedBuf, incomingBuf)
-        ) {
-          throw new UnauthorizedException('Webhook no autorizado');
-        }
-      }
+    const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
+    const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+    const expectedBuf = Buffer.from(expected, 'hex');
+    const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+
+    if (
+      expectedBuf.length !== incomingBuf.length ||
+      !timingSafeEqual(expectedBuf, incomingBuf)
+    ) {
+      throw new UnauthorizedException('Firma HMAC de webhook inválida');
     }
 
     return this.billingService.handleWebhook({
@@ -109,11 +94,5 @@ export class BillingController {
         userAgent: request?.headers?.['user-agent'] || '',
       },
     });
-  }
-
-  @Public()
-  @Get('webhooks/culqi/config')
-  getCulqiWebhookConfig() {
-    return this.billingService.getCulqiWebhookConfig();
   }
 }

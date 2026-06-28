@@ -65,8 +65,15 @@ describe('BillingService', () => {
     subscriptionRepository.findOne.mockResolvedValue(null);
   });
 
+  const dataSource = {
+    transaction: jest.fn(async (fn: any) => fn({
+      save: jest.fn(async (entity: any, value: any) => value ?? entity),
+      update: jest.fn(async () => ({})),
+    })),
+  } as any;
+
   it('lists the available plans for both currencies', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(service.listPlans()).resolves.toEqual([
       expect.objectContaining({ code: 'monthly', currency: 'PEN', available: true }),
@@ -101,6 +108,7 @@ describe('BillingService', () => {
       subscriptionRepository,
       legacyConfigService,
       culqiFallbackClient,
+      dataSource,
     );
 
     await expect(service.listPlans()).resolves.toEqual([
@@ -115,7 +123,7 @@ describe('BillingService', () => {
   });
 
   it('creates and confirms a subscription from a Culqi token', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(
       service.confirmSubscription('user-1', {
@@ -168,7 +176,7 @@ describe('BillingService', () => {
       billingCustomerId: 'cus_existing',
       billingSubscriptionId: 'sxn_existing',
     });
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(
       service.confirmSubscription('user-1', {
@@ -190,7 +198,7 @@ describe('BillingService', () => {
       id: 'sxn_pending',
       next_billing_date: 1767225600,
     });
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(
       service.confirmSubscription('user-1', {
@@ -205,7 +213,7 @@ describe('BillingService', () => {
   });
 
   it('returns the current billing state', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(service.getBillingState('user-1')).resolves.toMatchObject({
       status: 'inactive',
@@ -242,7 +250,7 @@ describe('BillingService', () => {
       providerSubscriptionId: 'sxn_test_123',
     };
     subscriptionRepository.findOne.mockResolvedValueOnce(record);
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(
       service.handleWebhook({
@@ -259,7 +267,7 @@ describe('BillingService', () => {
   });
 
   it('ignores unrelated webhook events without changing billing', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
 
     await expect(
       service.handleWebhook({ event: 'refund.creation.succeeded' } as any),

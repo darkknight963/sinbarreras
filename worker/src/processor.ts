@@ -2,8 +2,9 @@ import { Job } from 'bullmq';
 import pg from 'pg';
 import { scanUrl } from './scanner.js';
 import { validateScanTargetUrls } from './urlPolicy.js';
-import { deleteEvidenceUrls } from './storage.js';
+import { deleteEvidenceUrls, runWithScanContext } from './storage.js';
 import { createLogger } from './logger.js';
+import { getRedisClient } from './redis-client.js';
 
 const log = createLogger('processor');
 
@@ -31,6 +32,28 @@ const pool = new Pool(
         connectionTimeoutMillis: 5_000,
       }
 );
+
+// Invalida todas las entradas de caché para un scan dado usando SCAN cursor.
+// No-fatal: si Redis no está disponible, la caché expira sola (máx 8s activa, 5min terminal).
+async function invalidateScanCache(scanId: string): Promise<void> {
+  try {
+    const redis = getRedisClient();
+    const pattern = `scan:cache:${scanId}:*`;
+    let cursor = '0';
+    const toDelete: string[] = [];
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = next;
+      toDelete.push(...keys);
+    } while (cursor !== '0');
+    if (toDelete.length) {
+      await redis.del(...toDelete);
+      log.info('Cache invalidada', { scanId, keys: toDelete.length });
+    }
+  } catch (err) {
+    log.warn('Cache invalidation fallida (no-fatal)', { scanId, error: (err as Error)?.message });
+  }
+}
 
 let schemaChecked = false;
 
@@ -121,8 +144,23 @@ export async function cleanupPublicScan(scanId: string): Promise<void> {
 
 export async function processScan(job: Job): Promise<{ scanId: string; publicScan?: boolean }> {
   const { scanId, urls, scanMode, preNavigationScript, publicScan } = job.data;
-  log.info('Scan started', { scanId, urlCount: urls?.length, scanMode });
+  log.info('Scan started', { scanId, urlCount: urls?.length, scanMode, publicScan });
   await ensureUrlResultSchema(); // no-op after first run in this process
+
+  // runWithScanContext usa AsyncLocalStorage: el contexto isPublic queda aislado
+  // por cadena de promesas, por lo que con concurrencia 3 cada scan tiene su
+  // propio contexto y no puede contaminar al de otro.
+  return runWithScanContext(Boolean(publicScan), () => _processScanBody(job, scanId, urls, scanMode, preNavigationScript, publicScan));
+}
+
+async function _processScanBody(
+  job: Job,
+  scanId: string,
+  urls: string[],
+  scanMode: string,
+  preNavigationScript: string | undefined,
+  publicScan: boolean | undefined,
+): Promise<{ scanId: string; publicScan?: boolean }> {
 
   // Update scan status to running
   await pool.query(
@@ -139,6 +177,7 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
       `UPDATE scans SET status = 'failed' WHERE id = $1`,
       [scanId]
     );
+    await invalidateScanCache(scanId);
     throw err;
   }
   if (preNavigationScript) {
@@ -154,6 +193,7 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
     const cancelCheck = await pool.query(`SELECT status FROM scans WHERE id = $1`, [scanId]);
     if (cancelCheck.rows[0]?.status === 'cancelled') {
       await pool.query(`UPDATE scans SET status = 'cancelled' WHERE id = $1`, [scanId]);
+      await invalidateScanCache(scanId);
       log.info('Scan cancelled mid-execution', { scanId, urlIndex: i });
       return { scanId, publicScan };
     }
@@ -296,6 +336,7 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
     [finalScore, vp, scanId]
   );
 
+  await invalidateScanCache(scanId);
   await job.updateProgress({ scanId, value: 100 });
   return { scanId, publicScan };
 }

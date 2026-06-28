@@ -86,7 +86,11 @@ const buildRedisConnection = (
             }),
         entities: [Project, Scan, UrlResult, User, Session, BillingSubscription, Complaint, AdminAuditLog],
         synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
-        extra: { max: 5 },
+        extra: {
+          max: Number(config.get('DB_POOL_MAX') || 20),
+          idleTimeoutMillis: 30_000,
+          connectionTimeoutMillis: 5_000,
+        },
         ssl: config.get<string>('DATABASE_URL')?.includes('neon.tech') ? { rejectUnauthorized: false } : false,
       }),
     }),

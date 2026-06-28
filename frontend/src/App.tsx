@@ -20,7 +20,6 @@ const AdminView = lazy(() => import('./views/AdminView').then(m => ({ default: m
 let runtimeApiBaseUrl = API_BASE_URL;
 const BRAND_NAME = 'Sin Barreras';
 const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
-const SESSION_STORAGE_KEY = 'sin-barreras-session-token';
 const CULQI_CHECKOUT_SRC = 'https://js.culqi.com/checkout-js';
 let culqiCheckoutLoader: Promise<void> | null = null;
 
@@ -37,23 +36,14 @@ type AuthUser = {
   billingProvider?: string;
   billingCurrency?: string | null;
   billingPeriodEnd?: string | null;
-  billingCustomerId?: string | null;
-  billingSubscriptionId?: string | null;
 };
 
 const apiUrl = (path: string) => `${runtimeApiBaseUrl}${path}`;
 
-const getStoredAuthToken = () =>
-  typeof window === 'undefined' ? '' : (window.localStorage.getItem(SESSION_STORAGE_KEY)?.trim() || '');
-
-const withAuthHeaders = (headers?: HeadersInit): HeadersInit => {
-  const nextHeaders = new Headers(headers);
-  const token = getStoredAuthToken();
-  if (token) {
-    nextHeaders.set('Authorization', `Bearer ${token}`);
-  }
-  return nextHeaders;
-};
+// La sesión viaja en una cookie httpOnly establecida por el servidor.
+// El navegador la envía automáticamente con credentials: 'include' — el frontend
+// nunca lee ni escribe el token directamente.
+const withAuthHeaders = (headers?: HeadersInit): HeadersInit => new Headers(headers);
 
 const parseScanUrls = (value: string) =>
   value
@@ -95,9 +85,10 @@ const getProjectReservedFreeUrl = (project: Project | null) => {
 };
 
 const fetchWithFallback = async (path: string, init?: RequestInit) => {
-  const requestInit = {
+  const requestInit: RequestInit = {
     ...init,
     headers: withAuthHeaders(init?.headers),
+    credentials: 'include', // envía la cookie httpOnly sb_session automáticamente
   };
   const first = await fetch(apiUrl(path), requestInit);
 
@@ -297,7 +288,6 @@ export default function App() {
       }
 
       const data = await res.json();
-      window.localStorage.setItem(SESSION_STORAGE_KEY, data.token);
       setCurrentUser(data.user);
       setAuthMode('session');
       if (postLoginAction === 'billing') {
@@ -318,7 +308,6 @@ export default function App() {
     setAppError(null);
 
     try {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
       setCurrentUser(null);
       setAuthMode('public');
       setCurrentProject({
@@ -351,7 +340,6 @@ export default function App() {
     setAppError(null);
 
     try {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
       setCurrentUser(null);
       setAuthMode('public');
       setCurrentProject(null);
@@ -374,18 +362,11 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    const token = window.localStorage.getItem(SESSION_STORAGE_KEY)?.trim();
     try {
-      if (token) {
-        await fetchWithFallback('/auth/logout', {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-      } catch (err) {
-        console.warn('Logout request failed', err);
+      await fetchWithFallback('/auth/logout', { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Logout request failed', err);
     } finally {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
       setCurrentUser(null);
       setView('projects');
       setCurrentProject(null);
@@ -528,39 +509,35 @@ export default function App() {
 
   useEffect(() => {
     const bootstrapAuth = async () => {
+      // OAuth: el backend ya setea la cookie httpOnly antes de redirigir.
+      // Solo limpiamos el hash por si quedó un parámetro de proveedor o error.
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const sessionTokenFromHash = hashParams.get('session_token');
       const oauthError = hashParams.get('oauth_error');
 
-      if (sessionTokenFromHash) {
-        window.localStorage.setItem(SESSION_STORAGE_KEY, sessionTokenFromHash);
+      if (hashParams.toString()) {
         window.history.replaceState({}, window.document.title, `${window.location.pathname}${window.location.search}`);
       }
 
       if (oauthError) {
         setAppError(decodeURIComponent(oauthError));
-        window.history.replaceState({}, window.document.title, `${window.location.pathname}${window.location.search}`);
+        setAuthMode('none');
+        setAuthLoading(false);
+        return;
       }
 
-      const storedToken = window.localStorage.getItem(SESSION_STORAGE_KEY)?.trim();
+      // La cookie sb_session se envía automáticamente con credentials: 'include'.
+      // Si el servidor devuelve 200 con datos de usuario, la sesión es válida.
+      try {
+        const res = await fetchWithFallback('/auth/me');
 
-      if (storedToken) {
-        try {
-          const res = await fetchWithFallback('/auth/me', {
-            headers: { Authorization: `Bearer ${storedToken}` },
-          });
-
-          if (res.ok) {
-            const user = await res.json();
-            setCurrentUser(user);
-            setAuthMode('session');
-            return;
-          }
-        } catch (err) {
-          console.warn('Session bootstrap failed', err);
+        if (res.ok) {
+          const user = await res.json();
+          setCurrentUser(user);
+          setAuthMode('session');
+          return;
         }
-
-        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      } catch (err) {
+        console.warn('Session bootstrap failed', err);
       }
 
       setAuthMode('none');
@@ -978,12 +955,16 @@ export default function App() {
         const createdScan = await res.json() as Scan;
         if (newScanLoginMode === 'manual_assisted') {
           const EXTENSION_ID = 'bipiiijphpkdbodephdbahlkdcnopjao';
-          const token = typeof window !== 'undefined' ? window.localStorage.getItem('sin-barreras-session-token')?.trim() || '' : '';
           try {
-            if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime && (window as any).chrome.runtime.sendMessage) {
+            // Solicitar un token efímero de un solo uso al backend para pasárselo a la extensión.
+            // La extensión no puede acceder a cookies httpOnly, por lo que necesita un bearer
+            // token de corta duración exclusivo para este flujo de auditoría manual.
+            const extTokenRes = await fetchWithFallback('/auth/extension-token', { method: 'POST' });
+            const extToken = extTokenRes.ok ? (await extTokenRes.json() as { token: string }).token : '';
+            if (extToken && typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime && (window as any).chrome.runtime.sendMessage) {
               (window as any).chrome.runtime.sendMessage(EXTENSION_ID, {
                 type: 'SET_SCAN_DATA',
-                token,
+                token: extToken,
                 scanId: createdScan.id,
               }, (response: any) => {
                 console.log('Mensaje enviado a la extensión', response);
@@ -1864,8 +1845,6 @@ export default function App() {
             renderStatusBadge={renderStatusBadge}
             getVpCategory={getVpCategory}
             openInspectionUrl={openInspectionUrl}
-            extensionApiBaseUrl={runtimeApiBaseUrl}
-            extensionAccessToken={getStoredAuthToken()}
           />
         )}
 

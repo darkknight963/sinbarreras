@@ -60,6 +60,7 @@ services:
       MINIO_PORT: 9000
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      QUEUE_MAX_PENDING: ${QUEUE_MAX_PENDING:-50}
     ports:
       - "3000:3000"
     depends_on:
@@ -93,6 +94,10 @@ services:
       MINIO_PORT: 9000
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # Cuántos scans corren en paralelo. Con 2GB RAM el máximo seguro es 3.
+      # Aumentar si hay más RAM disponible (cada scan usa ~600MB peak).
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-3}
+      QUEUE_MAX_PENDING: ${QUEUE_MAX_PENDING:-50}
     depends_on:
       - postgres
       - redis

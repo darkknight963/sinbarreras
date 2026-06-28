@@ -72,6 +72,16 @@ async function bootstrap() {
     }
   };
 
+  // WORKER_CONCURRENCY controla cuántos scans corren en paralelo.
+  // Cada scan lanza hasta 2 navegadores (Playwright + IBM). Con 2GB de RAM:
+  // 3 scans × ~600MB/scan = ~1.8GB — margen seguro.
+  // En producción con más RAM, aumentar WORKER_CONCURRENCY en docker-compose.
+  const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 3);
+
+  // lockDuration: tiempo máximo que un job puede tener el lock antes de ser
+  // marcado como stalled. Un scan "profundo" de 50 URLs puede tardar 30+ minutos.
+  const lockDurationMs = Number(process.env.WORKER_LOCK_DURATION_MS || 45 * 60 * 1000);
+
   const worker = new Worker(
     'scans',
     async (job: Job) => {
@@ -85,12 +95,13 @@ async function bootstrap() {
     },
     {
       connection: buildRedisConnection(),
-      concurrency: 1,
+      concurrency: workerConcurrency,
       stalledInterval: 60 * 1000,
-      lockDuration: 10 * 60 * 1000,
+      lockDuration: lockDurationMs,
       drainDelay: 30,
     }
   );
+  log.info('Worker iniciado', { concurrency: workerConcurrency, lockDurationMs });
 
   const cleanupWorker = new Worker(
     'scans-cleanup',

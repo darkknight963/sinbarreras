@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { json, urlencoded } from 'express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from './app.module';
@@ -10,6 +11,7 @@ async function bootstrap() {
   // antes de que el body sea parseado y modificado por express.json().
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.use(compression());
+  app.use(cookieParser());
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {

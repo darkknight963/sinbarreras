@@ -228,31 +228,8 @@ export class BillingService {
     return { ok: true, matched: true };
   }
 
-  getWebhookSecret() {
+  getWebhookSecret(): string {
     return this.configService.get<string>('CULQI_WEBHOOK_SECRET', '').trim();
-  }
-
-  getCulqiWebhookConfig() {
-    const webhookSecret = this.getWebhookSecret();
-    return {
-      path: webhookSecret
-        ? `/billing/webhooks/culqi?secret=${encodeURIComponent(webhookSecret)}`
-        : '/billing/webhooks/culqi',
-      method: 'POST',
-      supportedEvents: [
-        'subscription.creation.succeeded',
-        'subscription.creation.failed',
-        'subscription.charge.succeeded',
-        'subscription.charge.failed',
-        'subscription.cancel.succeeded',
-        'subscription.cancel.failed',
-        'charge.succeeded',
-        'charge.failed',
-      ],
-      secretHeaderNames: ['x-culqi-webhook-secret', 'x-webhook-secret'],
-      secretEnvVar: 'CULQI_WEBHOOK_SECRET',
-      note: 'Registra la URL completa en Culqi. El secreto puede enviarse por query string o por header.',
-    };
   }
 
   private async resolvePlan(planCode: BillingPlanCode, currency: BillingCurrency) {

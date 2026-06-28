@@ -6,6 +6,25 @@ import { Public } from './public.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { RateLimit } from '../security/rate-limit.decorator';
 
+const SESSION_COOKIE = 'sb_session';
+const COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+
+// El token de sesión viaja exclusivamente en una cookie httpOnly para que JavaScript
+// del cliente no pueda leerlo ni en caso de XSS. SameSite=Strict impide CSRF.
+function setSessionCookie(res: Response, token: string) {
+  res.cookie(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
+  });
+}
+
+function clearSessionCookie(res: Response) {
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' });
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -13,22 +32,32 @@ export class AuthController {
   @Public()
   @RateLimit({ scope: 'auth', limit: 10, windowMs: 10 * 60 * 1000 })
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.register(dto);
+    if (result.token) setSessionCookie(res, result.token);
+    // No devolver el token en el body — viaja solo en cookie httpOnly.
+    const { token: _token, ...safeResult } = result;
+    return safeResult;
   }
 
   @Public()
   @RateLimit({ scope: 'auth', limit: 10, windowMs: 10 * 60 * 1000 })
   @Post('login')
-  login(@Body() dto: LoginDto, @Req() request: Request) {
-    return this.authService.login(dto, request);
+  async login(@Body() dto: LoginDto, @Req() request: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto, request);
+    if (result.token) setSessionCookie(res, result.token);
+    const { token: _token, ...safeResult } = result;
+    return safeResult;
   }
 
   @Public()
   @RateLimit({ scope: 'auth', limit: 5, windowMs: 10 * 60 * 1000 })
   @Post('guest')
-  guest(@Req() request: Request) {
-    return this.authService.createGuestSession(request);
+  async guest(@Req() request: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.createGuestSession(request);
+    if (result.token) setSessionCookie(res, result.token);
+    const { token: _token, ...safeResult } = result;
+    return safeResult;
   }
 
   @Public()
@@ -73,6 +102,18 @@ export class AuthController {
     return this.handleOAuthCallback(res, 'microsoft', code, state);
   }
 
+  // Emite un bearer token de corta duración (2h) para que la extensión de Chrome pueda
+  // autenticarse al enviar resultados. La extensión no puede acceder a cookies httpOnly.
+  @Post('extension-token')
+  async extensionToken(
+    @CurrentUser() user: { id: string } | null,
+    @Req() _req: Request,
+  ) {
+    if (!user) throw new UnauthorizedException('Sesión inválida');
+    const token = await this.authService.createExtensionToken(user.id);
+    return { token };
+  }
+
   @Get('me')
   me(@CurrentUser() user: { id: string }) {
     if (!user) {
@@ -82,28 +123,35 @@ export class AuthController {
   }
 
   @Patch('me/password')
-  changePassword(
+  async changePassword(
     @CurrentUser() user: { id: string } | null,
     @Body() dto: ChangePasswordDto,
-    @Req() request: Request,
+    @Req() request: Request & { authSessionToken?: string },
+    @Res({ passthrough: true }) res: Response,
   ) {
     if (!user) {
       throw new UnauthorizedException('Sesión inválida');
     }
-    const authorization = request.headers.authorization;
-    const raw = Array.isArray(authorization) ? authorization[0] : authorization;
-    const token = typeof raw === 'string' ? raw.replace(/^Bearer\s+/i, '').trim() : undefined;
-    return this.authService.changePassword(user.id, dto, token);
+    const result = await this.authService.changePassword(user.id, dto, request.authSessionToken);
+    // Si se generó un nuevo token (rotación de sesión tras cambio de password), renovar cookie.
+    if (result.newToken) {
+      setSessionCookie(res, result.newToken);
+      const { newToken: _nt, ...safe } = result;
+      return safe;
+    }
+    return result;
   }
 
   @Delete('logout')
-  async logout(@Req() request: Request & { authSessionToken?: string }) {
-    const authorization = request.headers.authorization;
-    const raw = Array.isArray(authorization) ? authorization[0] : authorization;
-    const token = typeof raw === 'string' ? raw.replace(/^Bearer\s+/i, '').trim() : '';
+  async logout(
+    @Req() request: Request & { authSessionToken?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const token = request.authSessionToken;
     if (token) {
       await this.authService.revokeSession(token);
     }
+    clearSessionCookie(res);
     return { ok: true };
   }
 
@@ -115,9 +163,11 @@ export class AuthController {
   ) {
     try {
       const session = await this.authService.completeOAuthLogin(provider, code, state);
-      return res.redirect(302, this.authService.buildFrontendSessionRedirect(session.token, provider));
+      // Setear cookie httpOnly antes de redirigir al frontend.
+      // Ya no se pasa el token en el hash de la URL.
+      setSessionCookie(res, session.token);
+      return res.redirect(302, this.authService.buildFrontendOAuthSuccessRedirect(provider));
     } catch (error) {
-      // Never leak internal error messages to the client via redirect URL.
       const isExpected = error instanceof Error && (
         error.message.includes('expiro') ||
         error.message.includes('invalido') ||

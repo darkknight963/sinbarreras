@@ -14,6 +14,10 @@ export class Session {
   @Column({ type: 'timestamp with time zone' })
   expiresAt!: Date;
 
+  // null = sesión normal de usuario; 'extension' = token de corta duración para la extensión Chrome
+  @Column({ type: 'varchar', length: 32, nullable: true, default: null })
+  scope!: string | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 

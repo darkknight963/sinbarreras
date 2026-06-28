@@ -23,13 +23,20 @@ const accessKeyId = process.env.STORAGE_ACCESS_KEY
   || process.env.R2_ACCESS_KEY_ID
   || process.env.MINIO_ACCESS_KEY
   || process.env.MINIO_ROOT_USER
-  || 'admin';
+  || '';
 const secretAccessKey = process.env.STORAGE_SECRET_KEY
   || process.env.STORAGE_SECRET_ACCESS_KEY
   || process.env.R2_SECRET_ACCESS_KEY
   || process.env.MINIO_SECRET_KEY
   || process.env.MINIO_ROOT_PASSWORD
-  || 'admin123';
+  || '';
+
+if (process.env.NODE_ENV === 'production' && (!accessKeyId || !secretAccessKey)) {
+  throw new Error(
+    'STORAGE_ACCESS_KEY y STORAGE_SECRET_KEY son requeridos en producción. ' +
+    'Configura las variables de entorno antes de iniciar el worker.',
+  );
+}
 const bucketName = process.env.STORAGE_BUCKET_NAME
   || process.env.R2_BUCKET_NAME
   || process.env.MINIO_BUCKET
@@ -120,14 +127,29 @@ async function cleanupExpiredEvidence(): Promise<void> {
   }
 }
 
+import { AsyncLocalStorage } from 'async_hooks';
+
+// AsyncLocalStorage garantiza aislamiento por llamada asíncrona: con concurrencia 3,
+// cada scan tiene su propio contexto y no puede contaminar al de otro.
+const scanContext = new AsyncLocalStorage<{ isPublic: boolean }>();
+
+export function runWithScanContext<T>(isPublic: boolean, fn: () => Promise<T>): Promise<T> {
+  return scanContext.run({ isPublic }, fn);
+}
+
+// isPublicScan: si true, la evidencia es de un análisis gratuito (sin usuario) y se sube
+// con prefijo 'public/' para ser servida por el endpoint público sin autenticación.
+// Las evidencias de scans autenticados no llevan el prefijo y requieren sesión para accederse.
 export async function uploadEvidence(
   key: string,
   body: Buffer | string,
-  contentType: string
+  contentType: string,
 ): Promise<string> {
+  const isPublicScan = scanContext.getStore()?.isPublic ?? false;
+  const storageKey = isPublicScan ? `public/${key}` : key;
   const command = new PutObjectCommand({
     Bucket: bucketName,
-    Key: key,
+    Key: storageKey,
     Body: body,
     ContentType: contentType,
   });
@@ -140,7 +162,11 @@ export async function uploadEvidence(
     process.env.PUBLIC_STORAGE_URL ||
     'http://localhost:3000';
 
-  return `${publicEvidenceBaseUrl.replace(/\/+$/, '')}/evidence/${encodeURIComponent(key)}`;
+  const urlPath = isPublicScan
+    ? `/evidence/public/${encodeURIComponent(key)}`
+    : `/evidence/${encodeURIComponent(key)}`;
+
+  return `${publicEvidenceBaseUrl.replace(/\/+$/, '')}${urlPath}`;
 }
 
 export async function deleteEvidenceUrls(urls: string[]): Promise<number> {

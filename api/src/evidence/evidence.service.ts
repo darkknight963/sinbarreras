@@ -16,13 +16,20 @@ const accessKeyId = process.env.STORAGE_ACCESS_KEY
   || process.env.R2_ACCESS_KEY_ID
   || process.env.MINIO_ACCESS_KEY
   || process.env.MINIO_ROOT_USER
-  || 'admin';
+  || '';
 const secretAccessKey = process.env.STORAGE_SECRET_KEY
   || process.env.STORAGE_SECRET_ACCESS_KEY
   || process.env.R2_SECRET_ACCESS_KEY
   || process.env.MINIO_SECRET_KEY
   || process.env.MINIO_ROOT_PASSWORD
-  || 'admin123';
+  || '';
+
+if (process.env.NODE_ENV === 'production' && (!accessKeyId || !secretAccessKey)) {
+  throw new Error(
+    'STORAGE_ACCESS_KEY y STORAGE_SECRET_KEY son requeridos en producción. ' +
+    'Configura las variables de entorno antes de iniciar el servidor.',
+  );
+}
 const forcePathStyle = String(process.env.STORAGE_FORCE_PATH_STYLE || process.env.MINIO_FORCE_PATH_STYLE || '').toLowerCase() === 'true'
   || (!process.env.STORAGE_ENDPOINT && !process.env.R2_REGION && process.env.MINIO_ENDPOINT ? true : false);
 
