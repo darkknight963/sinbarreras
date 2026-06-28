@@ -701,7 +701,7 @@
       }
     });
 
-    return findings.slice(0, 220);
+    return findings.slice(0, 400);
   };
 
   // IBM Equal Access engine — runs if ace.js was injected; gracefully skips otherwise
@@ -772,7 +772,7 @@
         });
       }
 
-      return findings.slice(0, 250);
+      return findings.slice(0, 400);
     } catch (err) {
       console.warn('Sin Barreras: IBM Equal Access no pudo completar el analisis.', err && err.message);
       return [];
@@ -811,7 +811,7 @@
       'summary'
     ].join(','))).filter((element) => !element.disabled && isVisible(element));
 
-    const steps = focusables.slice(0, 80).map((element, index) => {
+    const steps = focusables.slice(0, 120).map((element, index) => {
       const rect = element.getBoundingClientRect();
       const name = accessibleName(element);
       const hasName = Boolean(name);
@@ -886,7 +886,7 @@
     document.querySelectorAll('button,a[href],input,select,textarea').forEach((element) => push('interactive', element));
 
     return {
-      items: items.slice(0, 140),
+      items: items.slice(0, 300),
       summary: {
         headings: items.filter((item) => item.kind === 'heading').length,
         landmarks: items.filter((item) => item.kind === 'landmark').length,
@@ -1013,7 +1013,7 @@
     const score = scoreFromFindings(violations, manualVerifications, contentDetection);
     const visualMarkers = [...violations, ...manualVerifications]
       .filter((finding) => finding.visualRect && finding.visualRect.width > 0 && finding.visualRect.height > 0)
-      .slice(0, 80)
+      .slice(0, 200)
       .map((finding, index) => ({
         id: `${finding.ruleId}-${index + 1}`,
         ruleId: finding.ruleId,

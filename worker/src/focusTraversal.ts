@@ -7,7 +7,7 @@ declare const document: any;
 declare const CSS: any;
 declare const Node: any;
 
-const MAX_FOCUS_STEPS = 40;
+const MAX_FOCUS_STEPS = 120;
 
 function summarizeSteps(steps: FocusTraversalStep[]) {
   return {
