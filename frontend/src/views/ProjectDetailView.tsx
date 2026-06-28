@@ -144,9 +144,20 @@ export function ProjectDetailView({
   const blocksFreeScan = exceedsUrlLimit || changesFreeUrl;
   const isManualLoginLocked = !canUseManualLogin;
   const getScanModeLabel = (scanMode: string) => {
-    if (scanMode === 'rápido') return 'análisis rápido de accesibilidad';
-    if (scanMode === 'profundo') return 'análisis profundo de accesibilidad';
-    return 'Escaneando sitio: Verificando estándares de accesibilidad...';
+    if (scanMode === 'rápido') return 'Análisis rápido';
+    if (scanMode === 'profundo') return 'Análisis profundo';
+    return 'Análisis estándar';
+  };
+
+  const getScanDisplayUrl = (scan: any) => {
+    if (scan.scanUrls?.length > 0) {
+      try {
+        const u = new URL(scan.scanUrls[0]);
+        return u.hostname + (u.pathname !== '/' ? u.pathname : '');
+      } catch { return scan.scanUrls[0]; }
+    }
+    if (currentProject?.domain) return currentProject.domain;
+    return 'Sitio web';
   };
   const urlHelpText = freeReservedUrl
     ? `Puedes reescanear tu URL guardada: ${freeReservedUrl}.`
@@ -450,7 +461,7 @@ export function ProjectDetailView({
                     <div className="scan-history-main">
                       <div className="scan-history-title-row">
                         <div>
-                          <span>{getScanModeLabel(scan.scanMode)}</span>
+                          <span className="scan-history-url">{getScanDisplayUrl(scan)}</span>
                           {renderStatusBadge(scan.status)}
                           {isRunning && onCancelScan && (
                             <button
@@ -479,26 +490,26 @@ export function ProjectDetailView({
                           )}
                         </div>
                       </div>
-                      <div className="scan-history-date">
-                        <Clock className="h-3 w-3" />
-                        <span>{new Date(scan.createdAt).toLocaleString()}</span>
+                      <div className="scan-history-meta-row">
+                        <span className="scan-history-mode-tag">{getScanModeLabel(scan.scanMode)}</span>
+                        <span className="scan-history-date">
+                          <Clock className="h-3 w-3" />
+                          {new Date(scan.createdAt).toLocaleString()}
+                        </span>
                       </div>
                     </div>
 
                     {isRunning ? (
-                      <div className="scan-history-result" style={scan.status === 'awaiting_login' ? { flexDirection: 'column', alignItems: 'flex-start' } : undefined}>
-                        <div className="flex w-full items-center justify-between" style={scan.status === 'awaiting_login' ? { width: '100%' } : undefined}>
-                          <div className="scan-history-priority">
-                            <span>Progreso</span>
-                            <strong>{scanPercent}%</strong>
+                      <div className="scan-history-result scan-history-result-running" style={scan.status === 'awaiting_login' ? { flexDirection: 'column', alignItems: 'flex-start' } : undefined}>
+                        <div className="scan-progress-block">
+                          <div className="scan-progress-header">
+                            <span className="scan-progress-stage">{getScanStatusLabel(scan.status, scanPercent)}</span>
+                            <span className="scan-progress-pct">{scanPercent}%</span>
                           </div>
-                          <div className="scan-progress-track flex-1 mx-4">
+                          <div className="scan-progress-track">
                             <div className="scan-progress-fill" style={{ width: `${scanPercent}%` }} />
                           </div>
-                          <div className="scan-history-priority text-right">
-                            <span>{getScanStatusLabel(scan.status, scanPercent)}</span>
-                            <span className="text-gob-blue">Actualizando</span>
-                          </div>
+                          <span className="scan-progress-hint">Analizando accesibilidad en tiempo real</span>
                         </div>
 
                         {scan.status === 'awaiting_login' && (
@@ -525,20 +536,12 @@ export function ProjectDetailView({
                         )}
                       </div>
                     ) : scan.status === 'cancelled' ? (
-                      <div className="scan-history-result">
-                        <div className="scan-history-priority">
-                          <span>Escaneo cancelado</span>
-                        </div>
+                      <div className="scan-history-result scan-history-result-cancelled">
+                        <span className="scan-history-cancelled-label">Escaneo cancelado</span>
                       </div>
                     ) : (
                       <div className="scan-history-result">
                         {renderScoreMeter(scan.globalScore, 'Puntaje')}
-                        <div className="scan-history-priority">
-                          <span>Priorización (Vp)</span>
-                          <span className={getVpCategory(scan.vp).color}>
-                            {getVpCategory(scan.vp).label} ({scan.vp})
-                          </span>
-                        </div>
                       </div>
                     )}
                   </div>

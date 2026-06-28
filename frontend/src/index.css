@@ -6920,25 +6920,7 @@ html body .scan-history-title-row span:first-child {
   line-height: 1.2 !important;
 }
 
-html body .scan-history-date {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 7px !important;
-  width: fit-content !important;
-  min-height: 30px !important;
-  padding: 0 10px !important;
-  border: 1px solid #d7e2f2 !important;
-  border-radius: 999px !important;
-  background: #ffffff !important;
-  color: #334155 !important;
-  font-size: 0.82rem !important;
-  font-weight: 750 !important;
-}
-
-html body .scan-history-date svg {
-  color: #123b73 !important;
-  flex-shrink: 0 !important;
-}
+/* scan-history-date styles moved below with meta-row */
 
 html body .scan-history-result {
   align-self: stretch !important;
@@ -7010,6 +6992,129 @@ html body .scan-history-priority > span:last-child {
   font-size: 0.78rem !important;
   font-weight: 850 !important;
   line-height: 1.2 !important;
+}
+
+/* ── URL como título principal de tarjeta ─────────────────────────────────── */
+html body .scan-history-url {
+  color: var(--sb-text-strong) !important;
+  font-family: "Sora", "DM Sans", sans-serif !important;
+  font-size: 1.05rem !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+  word-break: break-all !important;
+}
+
+/* ── Meta-row: modo + fecha en la misma línea ─────────────────────────────── */
+html body .scan-history-meta-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+html body .scan-history-mode-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 2px 9px !important;
+  border-radius: 999px !important;
+  background: #e0e7ff !important;
+  color: #3730a3 !important;
+  font-size: 0.72rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.02em !important;
+}
+
+html body .scan-history-date {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  color: #64748b !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+}
+
+html body .scan-history-date svg {
+  color: #94a3b8 !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Bloque de progreso mejorado ─────────────────────────────────────────── */
+html body .scan-history-result-running {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 14px 18px !important;
+}
+
+html body .scan-progress-block {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+html body .scan-progress-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+html body .scan-progress-stage {
+  font-size: 0.82rem !important;
+  font-weight: 750 !important;
+  color: #1e3a5f !important;
+}
+
+html body .scan-progress-pct {
+  font-size: 1.1rem !important;
+  font-weight: 900 !important;
+  color: #0f2d5e !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+html body .scan-progress-track {
+  width: 100% !important;
+  height: 10px !important;
+  background: #dbeafe !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+html body .scan-progress-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 100%) !important;
+  border-radius: 999px !important;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+html body .scan-progress-hint {
+  font-size: 0.72rem !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+/* ── Tarjeta cancelada ───────────────────────────────────────────────────── */
+html body .scan-history-result-cancelled {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+html body .scan-history-cancelled-label {
+  font-size: 0.85rem !important;
+  font-weight: 750 !important;
+  color: #94a3b8 !important;
+}
+
+/* ── Hover: toda la tarjeta completada es clickeable ─────────────────────── */
+html body .scan-history-item.cursor-pointer {
+  cursor: pointer !important;
+}
+
+html body .scan-history-item.cursor-pointer:hover .scan-history-url {
+  color: #1d4ed8 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
 }
 
 @media (max-width: 900px) {
