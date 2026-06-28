@@ -34,6 +34,9 @@ export class UrlResult {
   @Column({ type: 'jsonb', nullable: true })
   visualMap!: any; // full-page screenshots with positioned accessibility finding markers
 
+  @Column({ type: 'jsonb', nullable: true })
+  peruvianChecks!: any; // Peruvian-specific compliance checks (Res. 001-2025-PCM/SGTD)
+
   @Column({ default: 'completed' }) // pending, scanning, completed, failed
   status!: string;
 

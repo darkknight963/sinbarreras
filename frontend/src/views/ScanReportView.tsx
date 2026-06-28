@@ -948,6 +948,43 @@ export function ScanReportView({
 
         {selectedUrlResult && <SemanticStructureViewer structure={selectedUrlResult.semanticStructure} />}
 
+        {selectedUrlResult?.peruvianChecks && Array.isArray(selectedUrlResult.peruvianChecks) && selectedUrlResult.peruvianChecks.length > 0 && (
+          <section id="normativa-peruana" className="report-panel report-panel-spacious">
+            <h3 className="report-section-title">Normativa Peruana — Res. 001-2025-PCM/SGTD</h3>
+            <p className="text-sm text-slate-500 mt-1 mb-4">Verificaciones específicas de accesibilidad para la Administración Pública del Perú según la Ley N° 29973 y la Resolución de Presidencia del Consejo de Ministros.</p>
+            <div className="flex flex-col gap-3">
+              {selectedUrlResult.peruvianChecks.map((check: any, idx: number) => {
+                const statusColors: Record<string, string> = {
+                  pass: 'bg-green-50 border-green-200 text-green-800',
+                  fail: 'bg-red-50 border-red-200 text-red-800',
+                  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+                  manual_review: 'bg-blue-50 border-blue-200 text-blue-800',
+                };
+                const statusLabels: Record<string, string> = {
+                  pass: 'Cumple',
+                  fail: 'Incumple',
+                  warning: 'Advertencia',
+                  manual_review: 'Revisión manual',
+                };
+                const colorClass = statusColors[check.status] || statusColors.warning;
+                return (
+                  <div key={`peru-${idx}`} className={`rounded-lg border p-4 ${colorClass}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-sm">{check.name}</p>
+                        <p className="text-xs mt-0.5 opacity-70">Criterio {check.criterion}</p>
+                      </div>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-white/60 border border-current/20">{statusLabels[check.status] || check.status}</span>
+                    </div>
+                    <p className="text-sm mt-2">{check.description}</p>
+                    {check.details && <p className="text-xs mt-1 opacity-80">{check.details}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <section id="paginas" className="report-panel report-panel-spacious">
           <div className="flex items-center justify-between mb-3">
             <h3 className="report-section-title">Página auditada</h3>

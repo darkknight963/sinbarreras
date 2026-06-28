@@ -763,6 +763,7 @@ export class ScansService {
           focusTraversal: payload.focusTraversal ?? null,
           semanticStructure: payload.semanticStructure ?? null,
           visualMap: payload.visualMap ?? null,
+          peruvianChecks: (payload as any).peruvianChecks ?? null,
           status: 'completed',
           scan,
         });

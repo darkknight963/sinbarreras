@@ -704,9 +704,11 @@
     return findings.slice(0, 400);
   };
 
-  // IBM Equal Access engine — runs if ace.js was injected; gracefully skips otherwise
+  // IBM Equal Access engine — runs if ace.js was injected; returns status flag when not available
   const collectIbmFindings = async () => {
-    if (!window.ace || !window.ace.Checker) return [];
+    if (!window.ace || !window.ace.Checker) {
+      return { findings: [], available: false };
+    }
     try {
       const checker = new window.ace.Checker();
       const report = await checker.check(document, ['IBM_Accessibility']);
@@ -772,10 +774,10 @@
         });
       }
 
-      return findings.slice(0, 400);
+      return { findings: findings.slice(0, 400), available: true };
     } catch (err) {
       console.warn('Sin Barreras: IBM Equal Access no pudo completar el analisis.', err && err.message);
-      return [];
+      return { findings: [], available: true, error: String(err && err.message || err) };
     }
   };
 
@@ -984,6 +986,125 @@
     return Math.max(0, Math.min(100, Math.round((passedCount / applicableCount) * 100)));
   };
 
+  // Peruvian compliance checks — port of worker/src/peruvianChecks.ts (pure DOM, no Playwright)
+  const collectPeruvianChecks = () => {
+    const results = [];
+    const url = window.location.href;
+    const isGobPe = window.location.hostname.endsWith('.gob.pe');
+    const bodyText = (document.body && document.body.innerHTML || '').toLowerCase();
+
+    // Check 1: Sign Language in Videos (Art. 7.4 / Criterion 1.2.6)
+    const videoEls = document.querySelectorAll('video, iframe[src*="youtube"], iframe[src*="vimeo"]');
+    if (videoEls.length > 0) {
+      const signIndicators = ['lengua de señas', 'lengua de senas', 'sign language', 'intérprete', 'interprete', 'lsp', 'señas peruana', 'senas peruana'];
+      const hasSignText = signIndicators.some((ind) => bodyText.includes(ind));
+      const signEls = document.querySelectorAll('[class*="sign-language"], [class*="lengua-senas"], [class*="senas"], [aria-label*="señas"], [aria-label*="sign"]');
+      if (hasSignText || signEls.length > 0) {
+        results.push({ id: 'peru-sign-language', criterion: '1.2.6', name: 'Lengua de Señas Peruana en multimedia', status: 'manual_review', description: 'Se detectaron indicadores de Lengua de Señas Peruana. Verificar que el intérprete esté presente en los videos.', details: `${videoEls.length} elemento(s) multimedia y ${signEls.length} indicador(es) de señas.` });
+      } else {
+        results.push({ id: 'peru-sign-language', criterion: '1.2.6', name: 'Lengua de Señas Peruana en multimedia', status: isGobPe ? 'fail' : 'warning', description: `Se encontraron ${videoEls.length} elemento(s) multimedia sin indicadores de interpretación en LSP (Ley N° 29535).`, details: 'Art. 7.4 de la Resolución N° 001-2025-PCM/SGTD exige interpretación en LSP para sitios de la Administración Pública.' });
+      }
+    }
+
+    // Check 2: Native Languages (Art. 7.4) — only for .gob.pe
+    if (isGobPe) {
+      const nativeLangs = ['quechua', 'aimara', 'aymara', 'asháninka', 'ashaninka', 'shipibo', 'awajún', 'awajun'];
+      const hasNativeLang = nativeLangs.some((lang) => bodyText.includes(lang));
+      const langSwitcher = document.querySelectorAll('[class*="lang-switch"], [class*="idioma"], [id*="language"], select[name*="lang"]');
+      results.push({ id: 'peru-native-languages', criterion: '7.4', name: 'Integración de lenguas originarias', status: hasNativeLang || langSwitcher.length > 0 ? 'manual_review' : 'warning', description: hasNativeLang || langSwitcher.length > 0 ? 'Se detectaron posibles referencias a lenguas originarias. Verificar disponibilidad de contenido completo.' : 'No se detectó soporte para lenguas originarias (quechua, aimara, etc.). Obligatorio para gobiernos regionales y locales.' });
+    }
+
+    // Check 3: Support Materials (Art. 7.5) — only for .gob.pe
+    if (isGobPe) {
+      const hasInstructives = bodyText.includes('instructivo') || bodyText.includes('guía') || bodyText.includes('guia') || bodyText.includes('manual de uso');
+      const hasTutorials = bodyText.includes('tutorial') || bodyText.includes('video tutorial');
+      const hasAssistant = bodyText.includes('asistente virtual') || bodyText.includes('chatbot') || Boolean(document.querySelector('[class*="chatbot"], [class*="chat-widget"], [id*="chatbot"]'));
+      const hasChat = bodyText.includes('chat en línea') || bodyText.includes('chat en linea') || Boolean(document.querySelector('[class*="live-chat"], [class*="chat-online"]'));
+      const hasPictograms = bodyText.includes('pictograma') || Boolean(document.querySelector('[class*="pictogram"]'));
+      const anyFound = hasInstructives || hasTutorials || hasAssistant || hasChat || hasPictograms;
+      results.push({ id: 'peru-support-materials', criterion: '7.5', name: 'Materiales de apoyo accesibles', status: anyFound ? 'manual_review' : 'fail', description: 'Verificación de materiales de apoyo según Art. 7.5 de la Resolución.', details: [`Instructivos: ${hasInstructives ? '✓' : '✗'}`, `Tutoriales: ${hasTutorials ? '✓' : '✗'}`, `Asistente virtual: ${hasAssistant ? '✓' : '✗'}`, `Chat en línea: ${hasChat ? '✓' : '✗'}`, `Pictogramas: ${hasPictograms ? '✓' : '✗'}`].join(' | ') });
+    }
+
+    // Check 4: Accessibility Declaration (Art. VIII) — only for .gob.pe
+    if (isGobPe) {
+      const hasDeclaration = bodyText.includes('declaración de accesibilidad') || bodyText.includes('declaracion de accesibilidad') || bodyText.includes('accesibilidad digital') || Boolean(document.querySelector('a[href*="accesibilidad"]'));
+      results.push({ id: 'peru-accessibility-declaration', criterion: 'Art. VIII', name: 'Declaración de Accesibilidad Digital publicada', status: hasDeclaration ? 'manual_review' : 'fail', description: hasDeclaration ? 'Se encontró una posible declaración de accesibilidad. Verificar que cumple el formato requerido.' : 'No se encontró Declaración de Accesibilidad Digital. Obligatorio para entidades de la Administración Pública (Art. VIII).' });
+    }
+
+    // Check 5: Contact Channel (Art. 7.5) — only for .gob.pe
+    if (isGobPe) {
+      const hasContact = bodyText.includes('mesadeayuda@gobiernodigital.gob.pe') || bodyText.includes('mesa de ayuda') || bodyText.includes('reportar problema de accesibilidad') || bodyText.includes('canal de contacto') || Boolean(document.querySelector('a[href*="mesadeayuda"], a[href*="contacto"]'));
+      results.push({ id: 'peru-contact-channel', criterion: '7.5', name: 'Canal de contacto para problemas de accesibilidad', status: hasContact ? 'pass' : 'fail', description: hasContact ? 'Se detectó un canal de contacto para reportar problemas de accesibilidad.' : 'No se encontró canal de contacto. Referencia: mesadeayuda@gobiernodigital.gob.pe.' });
+    }
+
+    return results;
+  };
+
+  // Interactive state exploration — clicks triggers to reveal hidden states and re-scans with axe
+  // Mirrors worker runInteractiveStateAccessibilityEngines but without Playwright keyboard API.
+  const collectInteractiveStateFindings = async () => {
+    const findings = [];
+    const TRIGGER_SELECTOR = [
+      'button:not([disabled])',
+      '[role="button"]:not([disabled])',
+      '[aria-haspopup]:not([disabled])',
+      'summary',
+      '[aria-expanded="false"]',
+      'a[data-toggle]',
+    ].join(',');
+
+    const triggers = Array.from(document.querySelectorAll(TRIGGER_SELECTOR))
+      .filter((el) => isVisible(el))
+      .slice(0, 30);
+
+    if (!window.axe || triggers.length === 0) return findings;
+
+    const snapshotHtml = document.documentElement.innerHTML;
+
+    for (const trigger of triggers) {
+      const label = (trigger.getAttribute('aria-label') || trigger.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      try {
+        trigger.click();
+        await new Promise((r) => setTimeout(r, 400));
+
+        const axeAfter = await window.axe.run(document, {
+          runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag22a', 'wcag22aa'] },
+          resultTypes: ['violations'],
+        });
+
+        const newFindings = axeAfter.violations.flatMap((rule) =>
+          rule.nodes.map((node) => {
+            const f = buildFinding(rule, node, 'violation');
+            f.pageState = 'interactive_trigger';
+            f.pageStateLabel = `Estado tras clic en: "${label || trigger.tagName.toLowerCase()}"`;
+            f.tool = 'axe-extension-interactive';
+            return f;
+          })
+        );
+        findings.push(...newFindings);
+
+        // Attempt to restore: click again to close (toggles), or press Escape
+        try {
+          trigger.click();
+        } catch {
+          // ignore
+        }
+        try {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          document.activeElement && document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        } catch {
+          // ignore
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      } catch {
+        // Trigger click failed — skip
+      }
+    }
+
+    // Dedupe against base findings by ruleId+selector
+    return findings;
+  };
+
   window.__sinBarrerasAuditCurrentPage = async () => {
     if (!window.axe) {
       throw new Error('axe-core no esta disponible en la pestana.');
@@ -1004,10 +1125,12 @@
       rule.nodes.map((node) => buildFinding(rule, node, 'alert'))
     );
     const heuristicFindings = collectHeuristicDomFindings();
-    const ibmFindings = await collectIbmFindings();
-    const allFindings = dedupeFindings([...axeViolations, ...axeManualVerifications, ...heuristicFindings, ...ibmFindings]);
+    const ibmResult = await collectIbmFindings();
+    const interactiveFindings = await collectInteractiveStateFindings();
+    const allFindings = dedupeFindings([...axeViolations, ...axeManualVerifications, ...heuristicFindings, ...ibmResult.findings, ...interactiveFindings]);
     const violations = allFindings.filter((finding) => finding.findingStatus === 'confirmed');
     const manualVerifications = allFindings.filter((finding) => finding.findingStatus !== 'confirmed');
+    const peruvianChecks = collectPeruvianChecks();
 
     const contentDetection = collectContentDetection();
     const score = scoreFromFindings(violations, manualVerifications, contentDetection);
@@ -1038,6 +1161,7 @@
       score,
       violations,
       manualVerifications,
+      peruvianChecks,
       contentDetection,
       applicability: {
         summary: {
@@ -1068,9 +1192,25 @@
         {
           engine: 'ibm-equal-access-extension',
           pageState: PAGE_STATE,
-          status: ibmFindings.length >= 0 ? 'ok' : 'skip',
+          status: ibmResult.available ? (ibmResult.error ? 'failed' : 'ok') : 'not_available',
           durationMs: 0,
-          findingsCount: ibmFindings.length,
+          findingsCount: ibmResult.findings.length,
+          ...(ibmResult.available ? {} : { reason: 'ace.js no fue inyectado en esta pestaña' }),
+          ...(ibmResult.error ? { errorMessage: ibmResult.error } : {}),
+        },
+        {
+          engine: 'axe-extension-interactive',
+          pageState: 'interactive_trigger',
+          status: 'ok',
+          durationMs: 0,
+          findingsCount: interactiveFindings.length,
+        },
+        {
+          engine: 'peruvian-checks-extension',
+          pageState: PAGE_STATE,
+          status: 'ok',
+          durationMs: 0,
+          findingsCount: peruvianChecks.length,
         },
       ],
       focusTraversal: collectFocusTraversal(),

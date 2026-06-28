@@ -63,7 +63,7 @@ async function ensureUrlResultSchema(): Promise<void> {
   if (schemaChecked) return;
   schemaChecked = true;
 
-  const expected = ['applicability', 'engineReport', 'focusTraversal', 'semanticStructure', 'visualMap'];
+  const expected = ['applicability', 'engineReport', 'focusTraversal', 'semanticStructure', 'visualMap', 'peruvianChecks'];
   const result = await pool.query<{ column_name: string }>(
     `SELECT column_name FROM information_schema.columns
      WHERE table_name = 'url_results' AND column_name = ANY($1)`,
@@ -299,10 +299,10 @@ async function _processScanBody(
       ];
 
       const insertQuery = `
-        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, "engineReport", "focusTraversal", "semanticStructure", "visualMap", status, "scanId")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO url_results (url, score, violations, "manualVerifications", applicability, "engineReport", "focusTraversal", "semanticStructure", "visualMap", "peruvianChecks", status, "scanId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       `;
-      
+
       await pool.query(insertQuery, [
         url,
         avgScore,
@@ -313,6 +313,7 @@ async function _processScanBody(
         JSON.stringify(focusTraversal),
         JSON.stringify(semanticStructure),
         JSON.stringify(visualMap),
+        JSON.stringify(viewportResults[0]?.peruvianChecks ?? null),
         'completed',
         scanId,
       ]);
