@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://sinbarreras-production.up.railway.app/:path*"
+    },
+    {
+      "source": "/socket.io/:path*",
+      "destination": "https://sinbarreras-production.up.railway.app/socket.io/:path*"
+    }
+  ]
+}
