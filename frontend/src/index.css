@@ -2,6 +2,59 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* ============================================================================
+   DESIGN TOKENS — fuente única de verdad para color, tipo y espacio.
+   Usa estas variables en lugar de valores hardcoded. Añade !important solo
+   cuando un selector de terceros lo exija, nunca para ganar especificidad propia.
+   ============================================================================ */
+:root {
+  /* Paleta — "dossier técnico": fondo papel, azul institucional, rojo semáforo */
+  --sb-canvas:        #F7F8FA;   /* fondo de página */
+  --sb-surface:       #FFFFFF;   /* tarjetas y paneles */
+  --sb-surface-muted: #F1F4F8;   /* superficies secundarias */
+  --sb-border:        #E2E8F0;   /* bordes sutiles */
+  --sb-border-strong: #C8D3E0;   /* bordes en inputs */
+
+  /* Azul institucional */
+  --sb-primary:       #1A3FA4;   /* acción principal */
+  --sb-primary-hover: #152F7C;
+  --sb-primary-light: #EEF3FF;
+  --sb-focus:         rgba(26, 63, 164, 0.18);
+
+  /* Texto */
+  --sb-text:          #0F172A;   /* cuerpo principal */
+  --sb-text-strong:   #050D1A;   /* titulares */
+  --sb-text-muted:    #4B5773;   /* secundario */
+  --sb-text-faint:    #8494B0;   /* placeholder, labels */
+
+  /* Estados semánticos — solo estos, sin variantes extras */
+  --sb-error:         #C0392B;
+  --sb-error-bg:      #FEF0EE;
+  --sb-error-border:  #F5C6C1;
+  --sb-warn:          #B45309;
+  --sb-warn-bg:       #FFFBEB;
+  --sb-warn-border:   #FDE68A;
+  --sb-ok:            #0D6E45;
+  --sb-ok-bg:         #ECFDF5;
+  --sb-ok-border:     #A7F3D0;
+
+  /* Misceláneos */
+  --sb-danger:        #C0392B;
+  --sb-radius-sm:     6px;
+  --sb-radius:        10px;
+  --sb-radius-lg:     16px;
+  --sb-radius-xl:     22px;
+
+  /* Tipografía — escala de 4 tamaños claros, no 12 variantes */
+  --sb-text-xs:       0.72rem;   /* labels, kickers, chips */
+  --sb-text-sm:       0.84rem;   /* body secundario */
+  --sb-text-base:     0.95rem;   /* body principal */
+  --sb-text-lg:       1.1rem;    /* subtítulos */
+  --sb-text-xl:       1.35rem;   /* títulos de sección */
+  --sb-text-2xl:      1.75rem;   /* display */
+  --sb-text-3xl:      2.5rem;    /* hero */
+}
+
 *,
 *::before,
 *::after {
@@ -64,11 +117,8 @@
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(0, 44, 118, 0.16), transparent 40%),
-    radial-gradient(circle at 88% 5%, rgba(14, 165, 233, 0.16), transparent 42%),
-    linear-gradient(145deg, #f8fbff 0%, #eef4ff 45%, #f4f7fb 100%);
-  color: #0f172a;
+  background: var(--sb-canvas);
+  color: var(--sb-text);
   min-height: 100vh;
 }
 
@@ -16977,5 +17027,299 @@ html {
 
   html body .auth-flow-extension button {
     width: 100% !important;
+  }
+}
+
+/* ============================================================================
+   REFINAMIENTO VISUAL — "Dossier técnico de accesibilidad"
+   Reemplaza los !important del sistema anterior con reglas de mayor especificidad
+   basadas en tokens CSS. Esto es la capa de diseño definitiva.
+   ============================================================================ */
+
+/* Landing: fondo limpio, sin gradientes decorativos */
+.auth-landing {
+  background: var(--sb-canvas);
+}
+
+/* Nav: borde sutil en lugar de gradiente azul oscuro */
+.auth-landing-nav {
+  background: var(--sb-surface);
+  border-bottom: 1px solid var(--sb-border);
+  box-shadow: none;
+}
+
+/* Hero: tipografía con más contraste editorial */
+.auth-landing-hero h1 {
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  color: var(--sb-text-strong);
+}
+
+.auth-landing-hero h1 span {
+  color: var(--sb-primary);
+}
+
+.auth-landing-hero p {
+  color: var(--sb-text-muted);
+  font-size: var(--sb-text-lg);
+  line-height: 1.6;
+}
+
+/* CTA principal — azul institucional limpio sin gradiente */
+.auth-landing-hero .auth-hero-actions button,
+.auth-final-cta button {
+  background: var(--sb-primary);
+  border: none;
+  border-radius: var(--sb-radius);
+  color: #fff;
+  font-size: var(--sb-text-base);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 14px 28px;
+  transition: background 160ms ease, transform 120ms ease;
+}
+
+.auth-landing-hero .auth-hero-actions button:hover,
+.auth-final-cta button:hover {
+  background: var(--sb-primary-hover);
+  transform: translateY(-1px);
+}
+
+/* Preview del reporte — tarjeta compacta, no pantalla completa */
+.auth-report-preview {
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* Tabla WCAG completa en el preview: ocultar — demasiado detalle para ser promesa */
+.auth-report-preview-table-wrap {
+  display: none;
+}
+
+/* Metrics strip: más limpio, sin borders pesados */
+.auth-report-preview-metrics {
+  border-top: 1px solid var(--sb-border);
+  border-bottom: 1px solid var(--sb-border);
+  background: var(--sb-surface-muted);
+}
+
+.auth-report-preview-metrics div {
+  border-color: var(--sb-border);
+}
+
+.auth-report-preview-metrics strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+/* Hallazgos: tipografía más limpia */
+.auth-report-preview-finding {
+  border-radius: var(--sb-radius-sm);
+  border: 1px solid var(--sb-border);
+}
+
+/* Sección de estándares: tarjetas limpias con acento solo en el badge */
+.auth-standard-card {
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  background: var(--sb-surface);
+  box-shadow: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-standard-card:hover {
+  border-color: var(--sb-primary);
+  box-shadow: 0 0 0 3px var(--sb-focus);
+}
+
+/* Timeline: sin animación perpetua en el ícono Pro */
+.auth-flow-step-pro .auth-flow-icon {
+  animation: none;
+}
+
+/* El acento azul solo en el paso activo, no en todos */
+.auth-flow-icon {
+  background: var(--sb-primary-light);
+  border: 1px solid var(--sb-border);
+  color: var(--sb-primary);
+  box-shadow: none;
+}
+
+.auth-flow-step-pro .auth-flow-icon {
+  background: var(--sb-primary);
+  border-color: var(--sb-primary);
+  color: #fff;
+}
+
+.auth-flow-step-preview .auth-flow-icon {
+  background: var(--sb-surface-muted);
+  border-color: var(--sb-border);
+  color: var(--sb-text-muted);
+}
+
+/* Línea del timeline: estática, sin animación */
+.auth-flow-timeline::before {
+  animation: none;
+  background: linear-gradient(180deg, var(--sb-primary) 0%, var(--sb-border) 100%);
+  opacity: 0.5;
+}
+
+/* CTA final: bloque limpio */
+.auth-final-cta {
+  background: var(--sb-primary);
+  border-radius: var(--sb-radius-xl);
+}
+
+.auth-final-cta h2 {
+  color: #fff;
+}
+
+.auth-final-cta button {
+  background: #fff;
+  color: var(--sb-primary);
+}
+
+.auth-final-cta button:hover {
+  background: var(--sb-primary-light);
+}
+
+/* Modal de login: fondo blanco limpio */
+.auth-access-panel {
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.14);
+}
+
+/* Botón submit del formulario */
+.auth-submit-button {
+  background: var(--sb-primary);
+  border-radius: var(--sb-radius);
+  transition: background 160ms ease;
+}
+
+.auth-submit-button:hover {
+  background: var(--sb-primary-hover);
+}
+
+/* Inputs: sin box-shadow decorativo */
+.auth-input {
+  border: 1px solid var(--sb-border-strong);
+  border-radius: var(--sb-radius-sm);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.auth-input:focus {
+  border-color: var(--sb-primary);
+  box-shadow: 0 0 0 3px var(--sb-focus);
+  outline: none;
+}
+
+/* Modal de escaneo — dos caminos visualmente diferenciados */
+.scan-login-mode-option {
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  background: var(--sb-surface);
+  transition: border-color 140ms ease, background 140ms ease;
+  cursor: pointer;
+}
+
+.scan-login-mode-option-active {
+  border-color: var(--sb-primary);
+  background: var(--sb-primary-light);
+}
+
+.scan-login-mode-option-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Extensión: panel diferenciado del escaneo público */
+.scan-extension-helper {
+  border-left: 3px solid var(--sb-primary);
+  padding-left: 14px;
+  margin-top: 4px;
+}
+
+/* Los dos caminos de escaneo tienen íconos de contexto vía before */
+.scan-login-mode-public strong::before {
+  content: "🌐 ";
+  font-style: normal;
+}
+
+.scan-login-mode-private strong::before {
+  content: "🔒 ";
+  font-style: normal;
+}
+
+/* Footer del landing: sin decoración */
+.auth-landing-footer {
+  border-top: 1px solid var(--sb-border);
+  background: var(--sb-surface);
+}
+
+/* Chip del hero */
+.auth-hero-chip {
+  border: 1px solid var(--sb-border);
+  background: var(--sb-surface);
+  border-radius: 999px;
+  color: var(--sb-text-muted);
+  font-size: var(--sb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Section eyebrow: token en lugar de hardcoded */
+.auth-section-eyebrow {
+  color: var(--sb-primary);
+  font-size: var(--sb-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Reporte: jerarquía visual clara */
+.report-panel {
+  border-color: var(--sb-border);
+}
+
+.report-title {
+  color: var(--sb-text-strong);
+}
+
+.report-kicker {
+  color: var(--sb-text-faint);
+  font-size: var(--sb-text-xs);
+  letter-spacing: 0.12em;
+}
+
+/* Botones de acción del reporte sin animación de levitación */
+.report-action-btn:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(26, 63, 164, 0.22);
+}
+
+/* Header sticky: usa tokens en lugar de gradiente hardcoded */
+header.sticky {
+  background: var(--sb-primary) !important;
+  border-bottom-color: rgba(255,255,255,0.15) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18) !important;
+  backdrop-filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-flow-timeline::before,
+  .auth-flow-step-pro .auth-flow-icon,
+  .auth-flow-locked-preview span,
+  .auth-flow-report-card,
+  .report-action-btn,
+  .report-card-entity {
+    animation: none;
+    transition: none;
   }
 }

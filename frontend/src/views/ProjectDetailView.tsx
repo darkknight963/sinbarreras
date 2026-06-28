@@ -255,8 +255,8 @@ export function ProjectDetailView({
               </p>
 
               <fieldset className="scan-login-mode-group">
-                <legend>Acceso al sitio</legend>
-                <label className={`scan-login-mode-option ${newScanLoginMode === 'none' ? 'scan-login-mode-option-active' : ''}`}>
+                <legend>¿Cómo se accede al sitio?</legend>
+                <label className={`scan-login-mode-option scan-login-mode-public ${newScanLoginMode === 'none' ? 'scan-login-mode-option-active' : ''}`}>
                   <input
                     type="radio"
                     name="scan-login-mode"
@@ -265,12 +265,12 @@ export function ProjectDetailView({
                     onChange={() => onNewScanLoginModeChange('none')}
                   />
                   <span>
-                    <strong>Escaneo público</strong>
-                    <small>Usa esta opción si la página puede evaluarse sin iniciar sesión.</small>
+                    <strong>Sitio público</strong>
+                    <small>La página es accesible sin iniciar sesión. Pega la URL y lanza el análisis.</small>
                   </span>
                 </label>
                 <label
-                  className={`scan-login-mode-option ${newScanLoginMode === 'manual_assisted' ? 'scan-login-mode-option-active' : ''} ${isManualLoginLocked ? 'scan-login-mode-option-locked' : ''}`}
+                  className={`scan-login-mode-option scan-login-mode-private ${newScanLoginMode === 'manual_assisted' ? 'scan-login-mode-option-active' : ''} ${isManualLoginLocked ? 'scan-login-mode-option-locked' : ''}`}
                   aria-disabled={isManualLoginLocked}
                 >
                   <input
@@ -284,11 +284,11 @@ export function ProjectDetailView({
                     }}
                   />
                   <span>
-                    <strong>Login manual asistido</strong>
+                    <strong>Sitio privado — requiere sesión</strong>
                     <small>
                       {isManualLoginLocked
-                        ? 'Disponible con suscripción para escanear páginas privadas o con sesión.'
-                        : 'Usa la extensión Sin Barreras en la pestaña donde ya iniciaste sesión. No guardamos contraseñas, cookies ni sesiones.'}
+                        ? 'Disponible con plan Pro. Escanea páginas que requieren inicio de sesión.'
+                        : 'Usa la extensión Sin Barreras desde la pestaña donde ya iniciaste sesión. No almacenamos credenciales.'}
                     </small>
                   </span>
                 </label>

@@ -218,49 +218,6 @@ export function AuthView({
                 ))}
               </div>
 
-              <div className="auth-report-preview-section-title">Criterios WCAG y hallazgos</div>
-              <div
-                className="auth-report-preview-table-wrap"
-                tabIndex={0}
-                role="region"
-                aria-labelledby="auth-report-preview-table-title"
-              >
-                <h3 id="auth-report-preview-table-title" className="visually-hidden">Criterios WCAG y hallazgos</h3>
-                <table className="auth-report-preview-table">
-                  <thead>
-                    <tr>
-                      <th>Criterio</th>
-                      <th>Nivel</th>
-                      <th>Aplicabilidad</th>
-                      <th>Nombre</th>
-                      <th>Hallazgos</th>
-                      <th>Severidad</th>
-                      <th>Estado</th>
-                      <th>Solucion sugerida</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ['1.1.1', 'A', 'Aplica', 'Contenido no textual', '1 hallazgo', 'Medio', 'Requiere revision', 'Agregar texto alternativo descriptivo.'],
-                      ['1.3.1', 'A', 'Aplica', 'Campo sin etiqueta', '1 hallazgo', 'Alto', 'Falla', 'Asociar label visible o aria-label al campo.'],
-                      ['1.4.3', 'AA', 'Aplica', 'Contraste de color', '5 hallazgos', 'Alto', 'Falla', 'Ajustar colores hasta cumplir contraste minimo.'],
-                      ['1.2.1', 'A', 'No aplica', 'Solo audio/video pregrabado', '-', '-', '-', '-'],
-                    ].map(([criterion, level, applies, name, findings, severity, status, solution]) => (
-                      <tr key={criterion}>
-                        <td>{criterion}</td>
-                        <td>{level}</td>
-                        <td><span className={`auth-preview-pill ${applies === 'Aplica' ? '' : 'auth-preview-pill-muted'}`}>{applies}</span></td>
-                        <td>{name}</td>
-                        <td>{findings !== '-' ? <span className="auth-preview-pill auth-preview-pill-error">{findings}</span> : findings}</td>
-                        <td>{severity}</td>
-                        <td>{status !== '-' ? <span className={`auth-preview-pill ${status === 'Falla' ? 'auth-preview-pill-error' : 'auth-preview-pill-review'}`}>{status}</span> : status}</td>
-                        <td>{solution}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
               <div className="auth-report-preview-footer">
                 <span><Lock className="h-3.5 w-3.5" aria-hidden="true" /> Exportar PDF y Excel requiere plan Pro</span>
                 <button type="button" onClick={openAccessPanel}>
