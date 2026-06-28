@@ -893,10 +893,8 @@ export function ScanReportView({
             <div className="finding-message-list">
               {findingMessageGroups.map((group) => {
                 const wcagText = group.wcagRefs.length > 0 ? group.wcagRefs.join(', ') : 'WCAG por validar';
-                const ruleText = group.rules.length > 0 ? group.rules.slice(0, 2).join(', ') : 'Regla automática';
                 const suggestion = group.suggestions[0] || 'Revisar el contexto del componente y aplicar la corrección WCAG correspondiente.';
                 const MAX_ELEMENTS = 20;
-                const shownFindings = group.findings.slice(0, MAX_ELEMENTS);
                 return (
                   <details
                     key={group.key}

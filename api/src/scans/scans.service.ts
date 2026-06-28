@@ -11,6 +11,7 @@ import { validateScanTargetUrls } from '../security/scan-url-policy';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { flattenWcagChecklist } from '../compliance/wcag-checklist.data';
 import { RequestRateLimitService } from '../security/request-rate-limit.service';
+import { EvidenceService } from '../evidence/evidence.service';
 
 type TriggerScanOptions = {
   enforceSingleFreeUrl?: boolean;
@@ -93,6 +94,7 @@ export class ScansService {
     private readonly configService: ConfigService,
     private readonly rateLimitService: RequestRateLimitService,
     private readonly dataSource: DataSource,
+    private readonly evidenceService: EvidenceService,
   ) {}
 
   private canonicalizePlanUrl(value: string): string {
@@ -624,20 +626,37 @@ export class ScansService {
     }, null, { publicScan: true });
   }
 
-  async findAll(ownerId: string | null): Promise<Scan[]> {
+  async findAll(
+    ownerId: string | null,
+    limit = 20,
+    before?: string,
+    projectId?: string,
+  ): Promise<{ scans: Scan[]; hasMore: boolean }> {
+    const safeLimit = Math.min(Math.max(1, limit), 100);
     const query = this.scanRepository
       .createQueryBuilder('scan')
       .leftJoinAndSelect('scan.project', 'project')
       .leftJoinAndSelect('project.owner', 'owner')
       .leftJoin('scan.urlResults', 'urlResult')
       .addSelect(['urlResult.id', 'urlResult.url', 'urlResult.score', 'urlResult.status'])
-      .orderBy('scan.createdAt', 'DESC');
+      .orderBy('scan.createdAt', 'DESC')
+      .take(safeLimit + 1);
 
     if (ownerId) {
       query.where('owner.id = :ownerId', { ownerId });
     }
 
-    return query.getMany();
+    if (projectId) {
+      query.andWhere('project.id = :projectId', { projectId });
+    }
+
+    if (before) {
+      query.andWhere('scan.createdAt < :before', { before: new Date(before) });
+    }
+
+    const rows = await query.getMany();
+    const hasMore = rows.length > safeLimit;
+    return { scans: hasMore ? rows.slice(0, safeLimit) : rows, hasMore };
   }
 
   // Scans terminales no se cachean: son inmutables y Postgres es la fuente de verdad.
@@ -845,7 +864,19 @@ export class ScansService {
   async remove(id: string, ownerId: string | null): Promise<void> {
     const scan = await this.findOne(id, ownerId);
     if (!scan) throw new Error('Scan not found');
+
+    // Load full urlResults to extract R2 evidence URLs before row deletion
+    const fullUrlResults = await this.urlResultRepository.find({
+      where: { scan: { id } },
+      select: { id: true, violations: true, visualMap: true, focusTraversal: true },
+    });
+
     await this.invalidateScanCache(id);
     await this.scanRepository.delete(id);
+
+    // Best-effort R2 cleanup — never fail scan deletion due to storage errors
+    this.evidenceService.deleteEvidenceForScan(fullUrlResults).catch((err) =>
+      console.error(`R2 cleanup failed for scan ${id}:`, err),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { RateLimit } from '../security/rate-limit.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -41,9 +41,14 @@ export class ProjectsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: { id: string } | null, @Req() request: { authMode?: string }) {
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string } | null,
+    @Req() request: { authMode?: string },
+    @Query('scanLimit') scanLimit?: string,
+  ) {
     const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.projectsService.findOne(id, ownerId);
+    return this.projectsService.findOne(id, ownerId, scanLimit ? parseInt(scanLimit, 10) : 20);
   }
 
   @Put(':id')

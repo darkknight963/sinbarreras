@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ScansService } from './scans.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { RateLimit } from '../security/rate-limit.decorator';
@@ -52,9 +52,15 @@ export class ScansController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: BillingAwareUser | null, @Req() request: { authMode?: string }) {
+  findAll(
+    @CurrentUser() user: BillingAwareUser | null,
+    @Req() request: { authMode?: string },
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+    @Query('projectId') projectId?: string,
+  ) {
     const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.scansService.findAll(ownerId);
+    return this.scansService.findAll(ownerId, limit ? parseInt(limit, 10) : 20, before, projectId);
   }
 
   @Get(':id')

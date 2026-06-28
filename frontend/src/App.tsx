@@ -277,6 +277,8 @@ export default function App() {
 
   const [scanProgress, setScanProgress] = useState<Record<string, number>>({});
   const scanStartRef = useRef<Record<string, number>>({});
+  const [hasMoreScans, setHasMoreScans] = useState(false);
+  const [loadingMoreScans, setLoadingMoreScans] = useState(false);
   const [appError, setAppError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const watchedScanIdsRef = useRef<Set<string>>(new Set());
@@ -839,14 +841,40 @@ export default function App() {
       setAppError(null);
       const res = await fetchWithFallback(`/projects/${id}`);
       if (!res.ok) throw new Error(await readApiErrorMessage(res));
-      const data = await readApiJson<Project>(res);
+      const data = await readApiJson<Project & { hasMoreScans?: boolean }>(res);
       if (!data) throw new Error('La API devolvió una respuesta vacía para el proyecto.');
       setCurrentProject({
         ...data,
         scans: dedupeScansById(data.scans || []),
       });
+      setHasMoreScans(data.hasMoreScans ?? false);
     } catch (err) {
       handleApiError('No se pudo cargar el detalle del proyecto', err);
+    }
+  };
+
+  const loadMoreScans = async () => {
+    if (!currentProject || loadingMoreScans) return;
+    const scans = currentProject.scans || [];
+    if (scans.length === 0) return;
+    const oldest = scans[scans.length - 1];
+    const before = oldest.createdAt;
+    setLoadingMoreScans(true);
+    try {
+      const params = new URLSearchParams({ limit: '20', before, projectId: currentProject.id });
+      const res = await fetchWithFallback(`/scans?${params.toString()}`);
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      const data = await readApiJson<{ scans: Scan[]; hasMore: boolean }>(res);
+      if (!data) return;
+      setCurrentProject((prev) => prev ? {
+        ...prev,
+        scans: dedupeScansById([...(prev.scans || []), ...(data.scans || [])]),
+      } : prev);
+      setHasMoreScans(data.hasMore);
+    } catch (err) {
+      handleApiError('No se pudo cargar más escaneos', err);
+    } finally {
+      setLoadingMoreScans(false);
     }
   };
 
@@ -1984,8 +2012,10 @@ export default function App() {
             scanProgress={scanProgress}
             renderScoreMeter={renderScoreMeter}
             renderStatusBadge={renderStatusBadge}
-            getVpCategory={getVpCategory}
             openInspectionUrl={openInspectionUrl}
+            hasMoreScans={hasMoreScans}
+            loadingMoreScans={loadingMoreScans}
+            onLoadMoreScans={loadMoreScans}
           />
           </Suspense>
         )}

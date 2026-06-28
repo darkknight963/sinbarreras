@@ -38,8 +38,11 @@ interface ProjectDetailViewProps {
   scanProgress: Record<string, number>;
   renderScoreMeter: (score: number | null | undefined, label?: string, size?: 'compact' | 'large', showCaption?: boolean) => React.ReactNode;
   renderStatusBadge: (status: string) => React.ReactNode;
-  getVpCategory: (vp: number | null) => { label: string; color: string };
+  getVpCategory?: (vp: number | null) => { label: string; color: string };
   openInspectionUrl: (url: string) => void;
+  hasMoreScans?: boolean;
+  loadingMoreScans?: boolean;
+  onLoadMoreScans?: () => void;
 }
 
 export function ProjectDetailView({
@@ -64,8 +67,10 @@ export function ProjectDetailView({
   scanProgress,
   renderScoreMeter,
   renderStatusBadge,
-  getVpCategory,
   openInspectionUrl,
+  hasMoreScans = false,
+  loadingMoreScans = false,
+  onLoadMoreScans,
 }: ProjectDetailViewProps) {
   const urlCount = parsedNewScanUrls.length;
   const scans = [...new Map((currentProject.scans || []).map((scan: any) => [scan.id, scan])).values()].sort((a: any, b: any) => {
@@ -548,6 +553,27 @@ export function ProjectDetailView({
                 );
               })}
             </div>
+            {hasMoreScans && (
+              <div style={{ textAlign: 'center', paddingTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={onLoadMoreScans}
+                  disabled={loadingMoreScans}
+                  style={{
+                    background: 'none',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '0.4rem 1.2rem',
+                    color: '#334155',
+                    cursor: loadingMoreScans ? 'not-allowed' : 'pointer',
+                    fontSize: '0.85rem',
+                    opacity: loadingMoreScans ? 0.6 : 1,
+                  }}
+                >
+                  {loadingMoreScans ? 'Cargando...' : 'Ver más escaneos'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

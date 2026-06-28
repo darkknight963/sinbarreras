@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const endpoint = process.env.STORAGE_ENDPOINT
@@ -55,5 +55,49 @@ export class EvidenceService {
     } catch {
       throw new NotFoundException('Evidence not found');
     }
+  }
+
+  private extractKeyFromUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      const match = parsed.pathname.match(/\/evidence\/(.+)$/);
+      return match ? decodeURIComponent(match[1]) : '';
+    } catch {
+      const match = url.match(/\/evidence\/([^?#]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+  }
+
+  async deleteEvidenceForScan(urlResults: any[]): Promise<number> {
+    const urls = new Set<string>();
+
+    for (const ur of urlResults ?? []) {
+      const states = ur?.visualMap?.states ?? [];
+      for (const state of states) {
+        if (state?.screenshotUrl) urls.add(state.screenshotUrl);
+      }
+      if (ur?.focusTraversal?.screenshotUrl) urls.add(ur.focusTraversal.screenshotUrl);
+      for (const v of ur?.violations ?? []) {
+        if (v?.screenshotUrl) urls.add(v.screenshotUrl);
+      }
+    }
+
+    const keys = [...urls].map((u) => this.extractKeyFromUrl(u)).filter(Boolean);
+    if (keys.length === 0) return 0;
+
+    let deleted = 0;
+    for (let i = 0; i < keys.length; i += 1000) {
+      const batch = keys.slice(i, i + 1000);
+      try {
+        await this.s3Client.send(new DeleteObjectsCommand({
+          Bucket: bucketName,
+          Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+        }));
+        deleted += batch.length;
+      } catch (err) {
+        console.error(`R2 batch delete error (offset ${i}):`, err);
+      }
+    }
+    return deleted;
   }
 }

@@ -2,12 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
+import { Scan } from '../scans/entities/scan.entity';
+import { UrlResult } from '../url-results/entities/url-result.entity';
 
 @Injectable()
 export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    @InjectRepository(Scan)
+    private readonly scanRepository: Repository<Scan>,
+    @InjectRepository(UrlResult)
+    private readonly urlResultRepository: Repository<UrlResult>,
   ) {}
 
   async create(name: string, domain: string, vo: number, entityType: string, ownerId: string | null): Promise<Project> {
@@ -42,20 +48,34 @@ export class ProjectsService {
       .getMany();
   }
 
-  async findOne(id: string, ownerId: string | null): Promise<Project | null> {
-    const query = this.projectRepository
+  async findOne(id: string, ownerId: string | null, scanLimit = 20): Promise<(Project & { hasMoreScans: boolean }) | null> {
+    const safeLimit = Math.min(Math.max(1, scanLimit), 100);
+
+    const projectQuery = this.projectRepository
       .createQueryBuilder('project')
-      .leftJoinAndSelect('project.scans', 'scan')
-      .leftJoinAndSelect('scan.urlResults', 'urlResult')
       .leftJoinAndSelect('project.owner', 'owner')
-      .where('project.id = :id', { id })
-      .orderBy('scan.createdAt', 'DESC');
+      .where('project.id = :id', { id });
 
     if (ownerId) {
-      query.andWhere('owner.id = :ownerId', { ownerId });
+      projectQuery.andWhere('owner.id = :ownerId', { ownerId });
     }
 
-    return query.getOne();
+    const project = await projectQuery.getOne();
+    if (!project) return null;
+
+    // Load scans paginated (limit+1 to detect hasMore)
+    const scanRows = await this.scanRepository
+      .createQueryBuilder('scan')
+      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .where('scan.project = :projectId', { projectId: id })
+      .orderBy('scan.createdAt', 'DESC')
+      .take(safeLimit + 1)
+      .getMany();
+
+    const hasMoreScans = scanRows.length > safeLimit;
+    project.scans = hasMoreScans ? scanRows.slice(0, safeLimit) : scanRows;
+
+    return { ...project, hasMoreScans };
   }
 
   async update(id: string, updateData: Partial<Project>, ownerId: string | null): Promise<Project> {
