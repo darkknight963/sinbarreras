@@ -51,6 +51,14 @@ type AuditLog = {
   createdAt: string;
 };
 
+type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 type AdminViewProps = {
   onBack: () => void;
   fetchWithAuth: (path: string, init?: RequestInit) => Promise<Response>;
@@ -76,10 +84,20 @@ const formatDateTime = (value: string) => {
 };
 
 export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
+  const pageSize = 10;
   const [activeTab, setActiveTab] = useState<'users' | 'complaints' | 'logs'>('users');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [usersPage, setUsersPage] = useState(1);
+  const [complaintsPage, setComplaintsPage] = useState(1);
+  const [logsPage, setLogsPage] = useState(1);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [complaintsTotal, setComplaintsTotal] = useState(0);
+  const [logsTotal, setLogsTotal] = useState(0);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [complaintsTotalPages, setComplaintsTotalPages] = useState(1);
+  const [logsTotalPages, setLogsTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,24 +121,43 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     [complaints, selectedComplaintId],
   );
 
-  const loadData = async () => {
+  const loadData = async (pages?: { users?: number; complaints?: number; logs?: number }) => {
+    const targetUsersPage = pages?.users ?? usersPage;
+    const targetComplaintsPage = pages?.complaints ?? complaintsPage;
+    const targetLogsPage = pages?.logs ?? logsPage;
+
     setLoading(true);
     setError(null);
 
     try {
       const [usersRes, complaintsRes, logsRes] = await Promise.all([
-        fetchWithAuth('/admin/users'),
-        fetchWithAuth('/complaints'),
-        fetchWithAuth('/admin/logs'),
+        fetchWithAuth(`/admin/users?page=${targetUsersPage}&pageSize=${pageSize}`),
+        fetchWithAuth(`/complaints?page=${targetComplaintsPage}&pageSize=${pageSize}`),
+        fetchWithAuth(`/admin/logs?page=${targetLogsPage}&pageSize=${pageSize}`),
       ]);
 
       if (!usersRes.ok) throw new Error(await readError(usersRes));
       if (!complaintsRes.ok) throw new Error(await readError(complaintsRes));
       if (!logsRes.ok) throw new Error(await readError(logsRes));
 
-      setUsers(await usersRes.json());
-      setComplaints(await complaintsRes.json());
-      setLogs(await logsRes.json());
+      const usersPayload = await usersRes.json() as PaginatedResponse<AdminUser>;
+      const complaintsPayload = await complaintsRes.json() as PaginatedResponse<Complaint>;
+      const logsPayload = await logsRes.json() as PaginatedResponse<AuditLog>;
+
+      setUsers(usersPayload.items);
+      setUsersPage(usersPayload.page);
+      setUsersTotal(usersPayload.total);
+      setUsersTotalPages(usersPayload.totalPages);
+
+      setComplaints(complaintsPayload.items);
+      setComplaintsPage(complaintsPayload.page);
+      setComplaintsTotal(complaintsPayload.total);
+      setComplaintsTotalPages(complaintsPayload.totalPages);
+
+      setLogs(logsPayload.items);
+      setLogsPage(logsPayload.page);
+      setLogsTotal(logsPayload.total);
+      setLogsTotalPages(logsPayload.totalPages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar la información administrativa');
     } finally {
@@ -177,7 +214,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
         companyName: '',
         role: 'free',
       });
-      await loadData();
+      await loadData({ users: 1, complaints: complaintsPage, logs: logsPage });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el usuario');
     } finally {
@@ -275,6 +312,104 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     }
   };
 
+  const handleDeleteUser = async (user: AdminUser) => {
+    const confirmed = window.confirm(`¿Eliminar al usuario ${user.email}? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+
+    setSavingKey(`delete-user-${user.id}`);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/admin/users/${user.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error(await readError(response));
+
+      if (selectedUserId === user.id) {
+        setSelectedUserId(null);
+        setUserForm({
+          email: '',
+          password: '',
+          fullName: '',
+          companyName: '',
+          role: 'free',
+        });
+        setPasswordForm('');
+      }
+
+      const nextUsersPage = users.length === 1 && usersPage > 1 ? usersPage - 1 : usersPage;
+      await loadData({ users: nextUsersPage, complaints: complaintsPage, logs: logsPage });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el usuario');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleDeleteComplaint = async (complaint: Complaint) => {
+    const confirmed = window.confirm(`¿Eliminar el reclamo de ${complaint.fullName}? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+
+    setSavingKey(`delete-complaint-${complaint.id}`);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/complaints/${complaint.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error(await readError(response));
+
+      if (selectedComplaintId === complaint.id) {
+        setSelectedComplaintId(null);
+      }
+
+      const nextComplaintsPage = complaints.length === 1 && complaintsPage > 1 ? complaintsPage - 1 : complaintsPage;
+      await loadData({ users: usersPage, complaints: nextComplaintsPage, logs: 1 });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el reclamo');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const renderPagination = (
+    label: string,
+    page: number,
+    totalPages: number,
+    total: number,
+    onPageChange: (page: number) => void,
+  ) => {
+    if (total <= 0) return null;
+
+    return (
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">
+          Página {page} de {totalPages} · {total} registros
+        </p>
+        <div className="flex flex-wrap gap-2" aria-label={`Paginación de ${label}`}>
+          <button
+            type="button"
+            className="report-ghost-btn"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1 || loading}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            className="report-ghost-btn"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages || loading}
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="report-surface project-overview-surface page-entrance">
       <div className="project-overview-header">
@@ -295,7 +430,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             <Users className="h-5 w-5" />
           </div>
           <span>Usuarios</span>
-          <strong>{users.length}</strong>
+          <strong>{usersTotal}</strong>
           <small>activos e inactivos</small>
         </div>
         <div className="project-summary-card">
@@ -303,7 +438,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             <ShieldAlert className="h-5 w-5" />
           </div>
           <span>Reclamos</span>
-          <strong>{complaints.length}</strong>
+          <strong>{complaintsTotal}</strong>
           <small>libro de reclamaciones</small>
         </div>
         <div className="project-summary-card">
@@ -311,7 +446,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             <Clock3 className="h-5 w-5" />
           </div>
           <span>Auditorías</span>
-          <strong>{logs.length}</strong>
+          <strong>{logsTotal}</strong>
           <small>acciones registradas</small>
         </div>
       </section>
@@ -468,6 +603,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                           <button type="button" className="report-ghost-btn" onClick={() => toggleUserActive(user)} disabled={savingKey === `active-${user.id}`}>
                             {user.isActive ? 'Dar baja' : 'Dar alta'}
                           </button>
+                          <button type="button" className="report-ghost-btn" onClick={() => handleDeleteUser(user)} disabled={savingKey === `delete-user-${user.id}`}>
+                            Eliminar
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -475,6 +613,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 </tbody>
               </table>
             </div>
+            {renderPagination('usuarios', usersPage, usersTotalPages, usersTotal, (page) => {
+              void loadData({ users: page, complaints: complaintsPage, logs: logsPage });
+            })}
           </div>
         </div>
       )}
@@ -527,6 +668,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                         <button type="button" className="report-ghost-btn" onClick={() => updateComplaintStatus(complaint, 'closed')} disabled={savingKey === `complaint-${complaint.id}`}>
                           Cerrado
                         </button>
+                        <button type="button" className="report-ghost-btn" onClick={() => handleDeleteComplaint(complaint)} disabled={savingKey === `delete-complaint-${complaint.id}`}>
+                          Eliminar
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -534,6 +678,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               </tbody>
             </table>
           </div>
+          {renderPagination('reclamos', complaintsPage, complaintsTotalPages, complaintsTotal, (page) => {
+            void loadData({ users: usersPage, complaints: page, logs: logsPage });
+          })}
 
           {selectedComplaint && (
             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -606,6 +753,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               </tbody>
             </table>
           </div>
+          {renderPagination('logs', logsPage, logsTotalPages, logsTotal, (page) => {
+            void loadData({ users: usersPage, complaints: complaintsPage, logs: page });
+          })}
         </div>
       )}
     </div>

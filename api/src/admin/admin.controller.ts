@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminGuard } from '../auth/admin.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateAdminUserDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
@@ -12,8 +12,11 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('users')
-  listUsers() {
-    return this.adminService.listUsers();
+  listUsers(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return this.adminService.listUsers(page, pageSize);
   }
 
   @Post('users')
@@ -36,8 +39,16 @@ export class AdminController {
     return this.adminService.setActiveState(user, id, Boolean(isActive));
   }
 
+  @Delete('users/:id')
+  deleteUser(@CurrentUser() user: AdminRequestUser, @Param('id') id: string) {
+    return this.adminService.deleteUser(user, id);
+  }
+
   @Get('logs')
-  listLogs() {
-    return this.adminService.listLogs();
+  listLogs(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return this.adminService.listLogs(page, pageSize);
   }
 }

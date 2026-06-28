@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Public } from '../auth/public.decorator';
 import { AdminGuard } from '../auth/admin.guard';
@@ -19,13 +19,22 @@ export class ComplaintsController {
 
   @UseGuards(AdminGuard)
   @Get()
-  list() {
-    return this.complaintsService.list();
+  list(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    return this.complaintsService.list(page, pageSize);
   }
 
   @UseGuards(AdminGuard)
   @Patch(':id/status')
   updateStatus(@CurrentUser() user: { id: string; email: string }, @Param('id') id: string, @Body() dto: UpdateComplaintStatusDto) {
     return this.complaintsService.updateStatus(user, id, dto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete(':id')
+  delete(@CurrentUser() user: { id: string; email: string }, @Param('id') id: string) {
+    return this.complaintsService.delete(user, id);
   }
 }

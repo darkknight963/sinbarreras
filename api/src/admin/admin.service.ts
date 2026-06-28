@@ -8,6 +8,13 @@ import { AdminAuditLog } from './entities/admin-audit-log.entity';
 import { CreateAdminUserDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
 
 type AppRole = 'admin' | 'superadmin' | 'guest';
+type PaginatedResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
 
 @Injectable()
 export class AdminService {
@@ -27,12 +34,33 @@ export class AdminService {
     return 'admin';
   }
 
-  async listUsers() {
-    const users = await this.userRepository.find({
+  private normalizePagination(page: number, pageSize: number) {
+    const safePage = Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1;
+    const safePageSize = Number.isFinite(pageSize) ? Math.min(50, Math.max(1, Math.trunc(pageSize))) : 10;
+
+    return {
+      page: safePage,
+      pageSize: safePageSize,
+      skip: (safePage - 1) * safePageSize,
+      take: safePageSize,
+    };
+  }
+
+  async listUsers(page = 1, pageSize = 10): Promise<PaginatedResult<ReturnType<AdminService['serializeUser']>>> {
+    const pagination = this.normalizePagination(page, pageSize);
+    const [users, total] = await this.userRepository.findAndCount({
       order: { createdAt: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
     });
 
-    return users.map((user) => this.serializeUser(user));
+    return {
+      items: users.map((user) => this.serializeUser(user)),
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pagination.pageSize)),
+    };
   }
 
   async createUser(actor: { id: string; email: string }, dto: CreateAdminUserDto) {
@@ -141,13 +169,41 @@ export class AdminService {
     return this.updateUser(actor, id, { isActive });
   }
 
-  async listLogs() {
-    const logs = await this.auditLogRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 100,
+  async deleteUser(actor: { id: string; email: string }, id: string) {
+    if (actor.id === id) {
+      throw new BadRequestException('No puedes eliminar tu propio usuario mientras estás autenticado');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    await this.revokeUserSessions(user.id);
+    await this.userRepository.remove(user);
+    await this.writeAudit(actor, 'user.delete', 'user', id, {
+      email: user.email,
+      role: this.normalizeRole(user.role),
     });
 
-    return logs;
+    return { ok: true };
+  }
+
+  async listLogs(page = 1, pageSize = 10): Promise<PaginatedResult<AdminAuditLog>> {
+    const pagination = this.normalizePagination(page, pageSize);
+    const [logs, total] = await this.auditLogRepository.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip: pagination.skip,
+      take: pagination.take,
+    });
+
+    return {
+      items: logs,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pagination.pageSize)),
+    };
   }
 
   private async revokeUserSessions(userId: string) {
