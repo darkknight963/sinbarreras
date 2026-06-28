@@ -1,6 +1,5 @@
 const isDev = import.meta.env.DEV;
 const runtimeHostname = typeof window === 'undefined' ? '' : window.location.hostname;
-const runtimeOrigin = typeof window === 'undefined' ? '' : window.location.origin;
 
 export const isLocalRuntimeHost = (hostname: string) =>
   hostname === 'localhost' ||
