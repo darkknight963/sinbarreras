@@ -2291,6 +2291,29 @@ select {
   font-weight: 750;
 }
 
+.report-occurrence-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.report-occurrence-label {
+  font-size: 0.75rem;
+  color: #475569;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.report-rule-id-sub {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #64748b;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  margin-top: 2px;
+}
+
 .report-reference-link {
   width: fit-content;
   color: #1e40af;

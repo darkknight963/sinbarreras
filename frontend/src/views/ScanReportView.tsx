@@ -572,6 +572,24 @@ const getFindingImpact = (finding: any) => {
   return values.length > 0 ? values.join(', ') : 'Impacto por revisar';
 };
 
+// Extrae el texto visible de un fragmento HTML para mostrarlo junto al selector.
+// Ejemplo: '<a href="/minedu">Inicio </a>' → 'Inicio'
+const getVisibleTextFromHtml = (html: string): string => {
+  if (!html) return '';
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > 60 ? text.slice(0, 60) + '…' : text;
+};
+
+// Devuelve el nombre amigable de una regla a partir del finding.
+// Prioriza nameEs del finding (ya mapeado por el diccionario), luego el ruleId.
+const getFriendlyRuleName = (finding: any): string => {
+  return finding?.nameEs || finding?.ruleId || 'Sin identificador';
+};
+
 interface ScanReportViewProps {
   currentScan: any;
   currentProject: any;
@@ -1341,7 +1359,7 @@ export function ScanReportView({
                                             <div><span>Rol responsable</span><strong>{item.role || 'Por asignar'}</strong></div>
                                             <div><span>Impacto</span><strong>{getFindingImpact(item)}</strong></div>
                                             <div><span>Criterio WCAG</span><strong>{item.wcagCriterion || item.criterion || row.id}</strong></div>
-                                            <div><span>Regla</span><strong>{item.ruleId || 'Sin identificador'}</strong></div>
+                                            <div><span>Regla</span><strong>{getFriendlyRuleName(item)}{item.ruleId && item.nameEs ? <span className="report-rule-id-sub">{item.ruleId}</span> : null}</strong></div>
                                           </div>
 
                                           <div className="report-finding-detail-copy">
@@ -1358,12 +1376,19 @@ export function ScanReportView({
                                                 <strong>{occurrenceCount}</strong>
                                               </div>
                                               <div className="report-finding-occurrence-list">
-                                                {occurrenceItems.slice(0, 12).map((occurrence: string, occurrenceIndex: number) => (
-                                                  <div key={`${row.id}-${itemIndex}-${occurrenceIndex}`}>
-                                                    <span>{occurrenceIndex + 1}</span>
-                                                    <code>{occurrence}</code>
-                                                  </div>
-                                                ))}
+                                                {occurrenceItems.slice(0, 12).map((occurrence: string, occurrenceIndex: number) => {
+                                                  const htmlSample = (affectedSamples[occurrenceIndex] || item.elementHtml || '');
+                                                  const visibleText = getVisibleTextFromHtml(htmlSample);
+                                                  return (
+                                                    <div key={`${row.id}-${itemIndex}-${occurrenceIndex}`}>
+                                                      <span>{occurrenceIndex + 1}</span>
+                                                      <div className="report-occurrence-cell">
+                                                        <code>{occurrence}</code>
+                                                        {visibleText && <em className="report-occurrence-label">"{visibleText}"</em>}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
                                               {occurrenceItems.length > 12 && <p className="report-finding-occurrence-note">+{occurrenceItems.length - 12} elementos adicionales agrupados en este mismo problema.</p>}
                                             </div>
