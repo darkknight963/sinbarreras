@@ -801,58 +801,131 @@
     return Array.from(byKey.values());
   };
 
-  const collectFocusTraversal = () => {
-    const focusables = Array.from(document.querySelectorAll([
-      'a[href]',
-      'button',
-      'input',
-      'select',
-      'textarea',
-      '[tabindex]:not([tabindex="-1"])',
-      '[contenteditable="true"]',
-      'summary'
-    ].join(','))).filter((element) => !element.disabled && isVisible(element));
+  // Tab-walk real: simula pulsaciones de Tab reales y lee document.activeElement
+  // en cada paso — igual que el worker usa page.keyboard.press('Tab') de Playwright.
+  // Detecta: orden de tabulacion roto por tabindex positivos, focus traps, elementos
+  // ocultos que reciben foco, y ausencia de indicador visual de foco.
+  // Limitacion inherente del browser: dispatchEvent no es OS-level como Playwright,
+  // pero es significativamente mas fiel que un inventario DOM puro.
+  const collectFocusTraversal = async () => {
+    const MAX_FOCUS_STEPS = 120;
+    const steps = [];
+    const seen = new Set();
 
-    const steps = focusables.slice(0, 120).map((element, index) => {
-      const rect = element.getBoundingClientRect();
-      const name = accessibleName(element);
-      const hasName = Boolean(name);
-      const status = hasName ? 'ok' : 'warning';
-      return {
-        index: index + 1,
-        selector: selectorFor(element),
-        elementHtml: element.outerHTML.slice(0, MAX_HTML_SAMPLE),
-        text: textOf(element).slice(0, 160),
-        tagName: element.tagName.toLowerCase(),
-        role: inferRole(element),
-        accessibleName: name,
+    // Guardar estado previo para restaurar al terminar
+    const previousActiveElement = document.activeElement;
+    window.scrollTo(0, 0);
+    if (document.activeElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+    document.body.focus();
+
+    const simulateTab = () => {
+      const target = document.activeElement || document.body;
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', keyCode: 9, bubbles: true, cancelable: true }));
+      target.dispatchEvent(new KeyboardEvent('keyup',  { key: 'Tab', code: 'Tab', keyCode: 9, bubbles: true, cancelable: true }));
+    };
+
+    for (let i = 1; i <= MAX_FOCUS_STEPS; i++) {
+      simulateTab();
+      // Pequena pausa para que frameworks React/Vue procesen el evento de foco
+      await new Promise((r) => setTimeout(r, 60));
+
+      const active = document.activeElement;
+      if (!active || active === document.body || active === document.documentElement) continue;
+
+      const style = window.getComputedStyle(active);
+      const rect = active.getBoundingClientRect();
+
+      // Detectar si el elemento es realmente visible
+      const isHidden =
+        rect.width <= 0 ||
+        rect.height <= 0 ||
+        style.visibility === 'hidden' ||
+        style.display === 'none' ||
+        active.getAttribute('aria-hidden') === 'true';
+
+      // Detectar indicador visual de foco (outline o box-shadow)
+      const outlineWidth = parseFloat(style.outlineWidth || '0');
+      const hasOutline = outlineWidth >= 2 && style.outlineStyle !== 'none' && style.outlineColor !== 'transparent';
+      const hasBoxShadow = style.boxShadow && style.boxShadow !== 'none';
+      const hasVisibleFocus = hasOutline || hasBoxShadow;
+
+      const sel = selectorFor(active);
+      const posKey = `${sel}-${Math.round(rect.x)}-${Math.round(rect.y)}`;
+
+      // Detectar ciclo: el foco volvio al inicio
+      if (seen.has(posKey)) break;
+      seen.add(posKey);
+
+      let status = 'ok';
+      let issue = 'Flujo correcto con foco visible.';
+      let suggestedFix = 'Mantener el orden de foco y el indicador visible.';
+
+      if (isHidden) {
+        status = 'error';
+        issue = 'El foco llega a un elemento oculto o sin area visible.';
+        suggestedFix = 'Quitar el elemento oculto del orden de tabulacion con tabindex="-1" o hacerlo visible al recibir foco.';
+      } else if (!hasVisibleFocus) {
+        status = 'warning';
+        issue = 'El elemento recibe foco pero no se detecta un indicador visual claro.';
+        suggestedFix = 'Agregar :focus-visible con outline de alto contraste y al menos 2px de grosor. No usar outline:none sin reemplazo.';
+      }
+
+      // Detectar saltos visuales bruscos respecto al paso anterior (tabindex positivos mal usados)
+      const previous = steps[steps.length - 1];
+      if (previous && status === 'ok') {
+        const backwardsJump = rect.y + 80 < previous.rect.y;
+        const farJump = Math.abs(rect.y - previous.rect.y) > window.innerHeight * 1.35;
+        if (backwardsJump || farJump) {
+          status = 'error';
+          issue = 'El recorrido de Tab presenta un salto visual que puede desorientar al usuario de teclado.';
+          suggestedFix = 'Reordenar el DOM o eliminar tabindex positivos para que el foco avance en orden visual y de lectura.';
+        }
+      }
+
+      steps.push({
+        index: i,
+        selector: sel,
+        elementHtml: active.outerHTML.slice(0, MAX_HTML_SAMPLE),
+        text: textOf(active).slice(0, 160),
+        tagName: active.tagName.toLowerCase(),
+        role: inferRole(active),
+        accessibleName: accessibleName(active),
         rect: {
-          x: Math.max(0, Math.round(rect.x)),
-          y: Math.max(0, Math.round(rect.y)),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
+          x: Math.max(0, Math.round(rect.left + window.scrollX)),
+          y: Math.max(0, Math.round(rect.top + window.scrollY)),
+          width: Math.max(1, Math.round(rect.width)),
+          height: Math.max(1, Math.round(rect.height)),
         },
         status,
-        issue: hasName ? 'Flujo correcto con nombre accesible.' : 'Elemento enfocable sin nombre accesible claro.',
-        suggestedFix: hasName
-          ? 'Mantener el orden de foco y el indicador visible.'
-          : 'Agregar texto visible, aria-label o aria-labelledby que describa la accion.',
-      };
-    });
+        issue,
+        suggestedFix,
+      });
+    }
+
+    // Restaurar foco al elemento original para no dejar la pagina en estado extrano
+    try {
+      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+        previousActiveElement.focus();
+      } else {
+        document.body.focus();
+      }
+    } catch (_) {}
 
     return {
       screenshotUrl: '',
       viewport: { width: window.innerWidth, height: window.innerHeight },
       pageSize: {
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: Math.max(document.documentElement.scrollWidth, window.innerWidth),
+        height: Math.max(document.documentElement.scrollHeight, window.innerHeight),
       },
       steps,
       summary: {
         total: steps.length,
-        ok: steps.filter((step) => step.status === 'ok').length,
-        warning: steps.filter((step) => step.status === 'warning').length,
-        error: steps.filter((step) => step.status === 'error').length,
+        ok: steps.filter((s) => s.status === 'ok').length,
+        warning: steps.filter((s) => s.status === 'warning').length,
+        error: steps.filter((s) => s.status === 'error').length,
       },
     };
   };
@@ -1126,6 +1199,10 @@
     );
     const heuristicFindings = collectHeuristicDomFindings();
     const ibmResult = await collectIbmFindings();
+    // Tab-walk ANTES de los triggers interactivos: los triggers hacen click() en el DOM
+    // y pueden dejar modales abiertos o cambiar el estado de foco de la pagina.
+    // El Tab-walk necesita el DOM en estado inicial limpio para ser preciso.
+    const focusTraversalResult = await collectFocusTraversal();
     const interactiveFindings = await collectInteractiveStateFindings();
     const allFindings = dedupeFindings([...axeViolations, ...axeManualVerifications, ...heuristicFindings, ...ibmResult.findings, ...interactiveFindings]);
     const violations = allFindings.filter((finding) => finding.findingStatus === 'confirmed');
@@ -1213,7 +1290,7 @@
           findingsCount: peruvianChecks.length,
         },
       ],
-      focusTraversal: collectFocusTraversal(),
+      focusTraversal: focusTraversalResult,
       semanticStructure: collectSemanticStructure(),
       visualMap: {
         states: [
