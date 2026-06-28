@@ -551,6 +551,120 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     wcagUrl: 'https://www.w3.org/WAI/standards-guidelines/wcag/',
     findingStatus: 'needs_review',
     suggestedFix: 'Revisar el sitio en navegador y configurar un script de pre-navegacion seguro si un modal o terminos bloquean el contenido auditado.'
+  },
+
+  // ── IBM Equal Access: ruleIds frecuentes no cubiertos por axe ─────────────
+  'aria_keyboard_handler_exists': {
+    criterion: '2.1.1', nameEs: 'Manejador de teclado faltante en elemento interactivo',
+    level: 'A', disability: ['Motora'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.1.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Agregar manejadores de teclado (keydown/keyup) equivalentes a los manejadores de raton en elementos interactivos. Preferir elementos nativos como button o a que ya tienen soporte de teclado incorporado.'
+  },
+  'aria_widget_labelled': {
+    criterion: '4.1.2', nameEs: 'Widget ARIA sin nombre accesible',
+    level: 'A', disability: ['Visual', 'Cognitiva'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Agregar aria-label o aria-labelledby apuntando a un titulo visible para el widget ARIA.'
+  },
+  'aria_child_tabbable': {
+    criterion: '2.1.1', nameEs: 'Elemento hijo no alcanzable por teclado',
+    level: 'A', disability: ['Motora'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.1.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Asegurarse de que los elementos hijos interactivos dentro del widget sean alcanzables con Tab o con las teclas de cursor segun el patron de diseno ARIA.'
+  },
+  'aria_hidden_nontabbable': {
+    criterion: '4.1.2', nameEs: 'Elemento oculto con acceso de teclado',
+    level: 'A', disability: ['Visual'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Si el elemento esta oculto con aria-hidden="true", agregarlo tambien al flujo de tabulacion con tabindex="-1" o eliminarlo del DOM visible.'
+  },
+  'aria_role_allowed_props': {
+    criterion: '4.1.2', nameEs: 'Propiedad ARIA no permitida para el rol',
+    level: 'A', disability: ['Visual'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Eliminar el atributo ARIA no permitido para este rol. Consultar la especificacion WAI-ARIA 1.2 para ver que atributos acepta cada rol.'
+  },
+  'aria_semantics_role': {
+    criterion: '4.1.2', nameEs: 'Rol ARIA semanticamente incorrecto',
+    level: 'A', disability: ['Visual', 'Cognitiva'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Usar el rol ARIA correcto para el elemento o preferir el elemento HTML nativo equivalente.'
+  },
+  'aria_landmark_name_unique': {
+    criterion: '1.3.6', nameEs: 'Landmark ARIA con nombre duplicado',
+    level: 'AAA', disability: ['Visual'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.6',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/identify-purpose.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Agregar aria-label unico a cada landmark del mismo tipo para que los lectores de pantalla puedan distinguirlos.'
+  },
+  'aria_content_in_landmark': {
+    criterion: '1.3.1', nameEs: 'Contenido fuera de landmark semantico',
+    level: 'A', disability: ['Visual'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Mover el contenido dentro de un landmark semantico (main, nav, header, footer, aside, section con aria-label).'
+  },
+  'aria_eventhandler_role_valid': {
+    criterion: '4.1.2', nameEs: 'Elemento con evento sin rol accesible',
+    level: 'A', disability: ['Visual', 'Motora'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Reemplazar el div o span con manejador de evento por un elemento nativo como button o a, o agregar role, tabindex y manejadores de teclado equivalentes.'
+  },
+  'rpt_elem_event_mouseevent': {
+    criterion: '2.1.1', nameEs: 'Evento de raton sin alternativa de teclado',
+    level: 'A', disability: ['Motora'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.1.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Agregar un evento de teclado equivalente (keydown con Enter/Space) para cada manejador onclick en elementos no nativos.'
+  },
+  'rpt_elem_misuse': {
+    criterion: '1.3.1', nameEs: 'Elemento HTML usado incorrectamente',
+    level: 'A', disability: ['Visual', 'Cognitiva'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Usar el elemento HTML semanticamente correcto para el proposito del contenido.'
+  },
+  'identical_links_same_purpose': {
+    criterion: '2.4.9', nameEs: 'Enlaces identicos con distinto destino',
+    level: 'AAA', disability: ['Visual', 'Cognitiva'], role: 'Redactor UX',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.4.9',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-link-only.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Diferenciar el texto visible o el aria-label de los enlaces que apuntan a destinos distintos, por ejemplo "Leer mas sobre COVID-19" en lugar de "Leer mas".'
+  },
+  'wcag20_a_targetsize': {
+    criterion: '2.5.8', nameEs: 'Area de interaccion demasiado pequeña',
+    level: 'AA', disability: ['Motora'], role: 'Diseñador UX/UI',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.5.8',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Asegurar que areas de interaccion tengan minimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil.'
+  },
+  'wcag20_input_label_exists': {
+    criterion: '1.3.1', nameEs: 'Campo de formulario sin etiqueta visible',
+    level: 'A', disability: ['Visual', 'Cognitiva'], role: 'Desarrollador',
+    resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Asociar cada campo con un label visible usando for/id o envolver el control dentro del label.'
   }
 };
 
@@ -654,7 +768,23 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id === 'f77') return 'duplicate-id';
   if (id === 'g1.1' || id.includes('skip_link') || id === 'bypass') return 'bypass-missing';
 
-  // IBM Equal Access — prefijos exactos conocidos (rpt_, aria_, wcag_)
+  // IBM Equal Access — ruleIds exactos con entrada propia en ruleMapping
+  if (id === 'aria_keyboard_handler_exists') return 'aria_keyboard_handler_exists';
+  if (id === 'aria_widget_labelled') return 'aria_widget_labelled';
+  if (id === 'aria_child_tabbable') return 'aria_child_tabbable';
+  if (id === 'aria_hidden_nontabbable') return 'aria_hidden_nontabbable';
+  if (id === 'aria_role_allowed_props') return 'aria_role_allowed_props';
+  if (id === 'aria_semantics_role') return 'aria_semantics_role';
+  if (id === 'aria_landmark_name_unique') return 'aria_landmark_name_unique';
+  if (id === 'aria_content_in_landmark') return 'aria_content_in_landmark';
+  if (id === 'aria_eventhandler_role_valid') return 'aria_eventhandler_role_valid';
+  if (id === 'rpt_elem_event_mouseevent') return 'rpt_elem_event_mouseevent';
+  if (id === 'rpt_elem_misuse') return 'rpt_elem_misuse';
+  if (id === 'identical_links_same_purpose') return 'identical_links_same_purpose';
+  if (id === 'wcag20_a_targetsize') return 'wcag20_a_targetsize';
+  if (id === 'wcag20_input_label_exists') return 'wcag20_input_label_exists';
+
+  // IBM Equal Access — patrones de prefijo para ruleIds menos comunes
   if (id.includes('rpt_elem_lang_empty') || id.includes('aria.documentlanguage') || id.includes('html_lang')) return 'html-lang-missing';
   if (id.includes('rpt_elem_href') || id === 'f55') return 'link-href-missing';
   if (id.includes('rpt_img_alt') || id.includes('wcag20_img_hasalt')) return 'image-alt';

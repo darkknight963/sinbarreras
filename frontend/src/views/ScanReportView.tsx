@@ -400,69 +400,116 @@ const stripFindingStatePrefix = (value: string) =>
   value.replace(/^\[[^\]]+\]\s*/g, '').replace(/\s*\(https?:\/\/[^\s)]+\)\s*/gi, '').trim();
 
 
+// Mapa de ruleIds IBM Equal Access → título en español.
+// Cubre los ~40 ruleIds más frecuentes que IBM genera y que no están en el
+// diccionario del worker porque son específicos del motor IBM.
+const IBM_RULE_TITLES: Record<string, string> = {
+  aria_keyboard_handler_exists:        'Manejador de teclado faltante en elemento interactivo',
+  aria_widget_labelled:                'Widget ARIA sin nombre accesible',
+  aria_child_tabbable:                 'Elemento hijo no alcanzable por teclado',
+  aria_hidden_nontabbable:             'Elemento oculto con acceso de teclado',
+  aria_role_allowed_props:             'Propiedad ARIA no permitida para el rol',
+  aria_semantics_role:                 'Rol ARIA semánticamente incorrecto',
+  aria_semantics_attr_deprecated:      'Atributo ARIA obsoleto',
+  aria_landmark_name_unique:           'Landmark ARIA con nombre duplicado',
+  aria_main_label_visible:             'Región main sin etiqueta visible',
+  aria_complementary_label_visible:    'Región complementaria sin etiqueta visible',
+  aria_banner_label_visible:           'Banner sin etiqueta visible',
+  aria_content_in_landmark:            'Contenido fuera de landmark semántico',
+  aria_graphic_labelled:               'Gráfico ARIA sin nombre accesible',
+  aria_eventhandler_role_valid:        'Manejador de evento en elemento sin rol válido',
+  aria_attribute_conflict:             'Atributo ARIA en conflicto',
+  aria_id_unique:                      'ID duplicado en elemento ARIA',
+  rpt_elem_misuse:                     'Elemento HTML usado incorrectamente',
+  rpt_elem_deprecated:                 'Elemento HTML obsoleto',
+  rpt_elem_event_mouseevent:           'Evento de ratón sin alternativa de teclado',
+  rpt_elem_lang_empty:                 'Idioma de página no definido',
+  rpt_img_alt_null:                    'Imagen decorativa con texto alternativo innecesario',
+  rpt_img_alt_valid:                   'Texto alternativo de imagen no descriptivo',
+  rpt_label_unique:                    'Etiqueta de formulario duplicada',
+  rpt_label_combobox_widget_exists:    'Combobox sin etiqueta accesible',
+  rpt_form_ibm:                        'Formulario sin instrucciones accesibles',
+  rpt_blink_csstextdecoration:         'Parpadeo de texto por CSS',
+  rpt_media_audio_transcriptions:      'Audio sin transcripción',
+  rpt_media_video_closed_caption:      'Video sin subtítulos',
+  rpt_media_video_description:         'Video sin audiodescripción',
+  rpt_table_layout_linearized:         'Tabla de maquetación no linealizable',
+  rpt_table_headers_related:           'Encabezados de tabla no asociados a celdas',
+  rpt_table_summary_exists:            'Tabla de datos sin resumen accesible',
+  rpt_title_valid:                     'Título de página vacío o inválido',
+  rpt_html_lang_valid:                 'Código de idioma no válido',
+  wcag20_a_targetsize:                 'Área de interacción demasiado pequeña',
+  wcag20_table_scope_valid:            'Atributo scope de tabla incorrecto',
+  wcag20_input_label_exists:           'Campo de formulario sin etiqueta',
+  wcag20_input_label_before:           'Etiqueta de campo ubicada después del control',
+  wcag20_select_review_options:        'Opciones de lista sin etiqueta descriptiva',
+  wcag20_img_alt_misuse:               'Uso incorrecto del atributo alt',
+  identical_links_same_purpose:        'Enlaces idénticos con distinto destino',
+};
+
+// Convierte un ruleId_snake_case o ruleId-kebab-case en texto legible.
+// Usado como último recurso cuando no hay mapeo explícito.
+const ruleIdToReadable = (ruleId: string): string => {
+  return ruleId
+    .replace(/^(rpt_|aria_|wcag\d+_|ibm_)/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+};
+
 const getFriendlyFindingTitle = (finding: any, fallback?: string) => {
+  // 1. nameEs del worker/extensión tiene la máxima prioridad — ya está en español
+  if (finding?.nameEs && !finding.nameEs.startsWith('Regla Automática')) {
+    return finding.nameEs;
+  }
+
+  // 2. Mapa IBM por ruleId exacto
+  const ruleIdRaw = String(finding?.ruleId || '').toLowerCase();
+  if (ruleIdRaw && IBM_RULE_TITLES[ruleIdRaw]) {
+    return IBM_RULE_TITLES[ruleIdRaw];
+  }
+
+  // 3. Inferencia desde texto combinado (descripción + ruleId)
   const rawMessage = stripFindingStatePrefix(getPrimaryFindingMessage(finding, fallback));
   const text = normalizeText([rawMessage, finding?.ruleId, finding?.nameEs, fallback].filter(Boolean).join(' '));
 
-  if (text.includes('color contrast') || text.includes('contrast ratio') || text.includes('contraste')) {
-    return 'Contraste de color insuficiente';
-  }
-  if (text.includes('form field') && text.includes('label')) {
-    return 'Campo de formulario sin etiqueta accesible';
-  }
-  if (text.includes('no label for button') || (text.includes('button') && text.includes('programmatic name'))) {
-    return 'Botón sin nombre accesible';
-  }
-  if (text.includes('input has no accessible name') || text.includes('accessible name')) {
-    return 'Control sin nombre accesible';
-  }
-  if (text.includes('aria-labelledby') || text.includes('missing id') || text.includes('invalid aria')) {
-    return 'Referencia ARIA inválida';
-  }
-  if (text.includes('required owned') || text.includes('listbox') || text.includes('option element')) {
-    return 'Widget ARIA incompleto';
-  }
-  if (text.includes('content behind dialog') || text.includes('contenido detras') || text.includes('overlay visible')) {
-    return 'Contenido de fondo accesible detrás del diálogo';
-  }
-  if (text.includes('dialog') && text.includes('accessible name')) {
-    return 'Diálogo sin nombre accesible';
-  }
-  if (text.includes('scrollable') || text.includes('keyboard access') || text.includes('teclado')) {
-    return 'Región desplazable no accesible por teclado';
-  }
-  if (text.includes('iframe') && text.includes('title')) {
-    return 'Iframe sin título descriptivo';
-  }
-  if (text.includes('no link text') || text.includes('link has no text') || text.includes('enlace no tiene texto')) {
-    return 'Enlace sin texto accesible';
-  }
-  if (text.includes('missing href') || text.includes('no tiene atributo href')) {
-    return 'Enlace sin destino href';
-  }
-  if (text.includes('lang') && text.includes('html')) {
-    return 'Idioma de página no definido';
-  }
-  if (text.includes('no nav landmark')) {
-    return 'Navegación principal sin landmark';
-  }
-  if (text.includes('no main landmark')) {
-    return 'Contenido principal sin landmark';
-  }
-  if (text.includes('bypass') || text.includes('skip to main')) {
-    return 'Falta enlace para saltar bloques repetidos';
-  }
-  if (text.includes('empty list item')) {
-    return 'Elemento de lista vacío';
-  }
-  if (text.includes('unknown table purpose')) {
-    return 'Propósito de tabla no identificado';
-  }
-  if (text.includes('image') || text.includes('img') || text.includes('non-text') || text.includes('no textual')) {
-    return 'Contenido no textual requiere revisión';
+  if (text.includes('color contrast') || text.includes('contrast ratio') || text.includes('contraste')) return 'Contraste de color insuficiente';
+  if (text.includes('form field') && text.includes('label')) return 'Campo de formulario sin etiqueta accesible';
+  if (text.includes('no label for button') || (text.includes('button') && text.includes('programmatic name'))) return 'Botón sin nombre accesible';
+  if (text.includes('input has no accessible name')) return 'Control sin nombre accesible';
+  if (text.includes('accessible name') && text.includes('widget')) return 'Widget sin nombre accesible';
+  if (text.includes('aria-labelledby') || text.includes('missing id') || text.includes('invalid aria')) return 'Referencia ARIA inválida';
+  if (text.includes('required owned') || text.includes('listbox') || text.includes('option element')) return 'Widget ARIA incompleto';
+  if (text.includes('content behind dialog') || text.includes('contenido detras') || text.includes('overlay visible')) return 'Contenido de fondo accesible detrás del diálogo';
+  if (text.includes('dialog') && text.includes('accessible name')) return 'Diálogo sin nombre accesible';
+  if (text.includes('scrollable') && (text.includes('keyboard') || text.includes('teclado'))) return 'Región desplazable no accesible por teclado';
+  if (text.includes('keyboard') && text.includes('handler')) return 'Manejador de teclado faltante en elemento interactivo';
+  if (text.includes('keyboard') && text.includes('event')) return 'Evento sin alternativa de teclado';
+  if (text.includes('iframe') && text.includes('title')) return 'Iframe sin título descriptivo';
+  if (text.includes('no link text') || text.includes('link has no text') || text.includes('enlace no tiene texto')) return 'Enlace sin texto accesible';
+  if (text.includes('missing href') || text.includes('no tiene atributo href')) return 'Enlace sin destino href';
+  if (text.includes('identical') && text.includes('link')) return 'Enlaces idénticos con distinto destino';
+  if (text.includes('lang') && text.includes('html')) return 'Idioma de página no definido';
+  if (text.includes('no nav landmark')) return 'Navegación principal sin landmark';
+  if (text.includes('no main landmark')) return 'Contenido principal sin landmark';
+  if (text.includes('bypass') || text.includes('skip to main')) return 'Falta enlace para saltar bloques repetidos';
+  if (text.includes('empty list item')) return 'Elemento de lista vacío';
+  if (text.includes('unknown table purpose')) return 'Propósito de tabla no identificado';
+  if (text.includes('table') && text.includes('header')) return 'Encabezados de tabla no asociados';
+  if (text.includes('image') || text.includes('img') || text.includes('non-text') || text.includes('no textual')) return 'Contenido no textual requiere revisión';
+  if (text.includes('target size') || text.includes('tamano') || text.includes('area de interaccion')) return 'Área de interacción demasiado pequeña';
+  if (text.includes('focus') && (text.includes('visible') || text.includes('indicador'))) return 'Indicador de foco no visible';
+  if (text.includes('autocomplete')) return 'Autocompletado no definido en campo de datos';
+  if (text.includes('duplicate') && text.includes('id')) return 'ID duplicado en la página';
+  if (text.includes('label') && text.includes('empty')) return 'Etiqueta de control vacía';
+  if (text.includes('title') && text.includes('page')) return 'Título de página no descriptivo';
+
+  // 4. Último recurso: ruleId humanizado si es snake_case/kebab-case de IBM
+  if (ruleIdRaw && (ruleIdRaw.includes('_') || ruleIdRaw.includes('-')) && ruleIdRaw.length > 5) {
+    return ruleIdToReadable(finding.ruleId);
   }
 
-  return finding?.nameEs || fallback || rawMessage || 'Hallazgo por revisar';
+  return fallback || rawMessage || 'Hallazgo por revisar';
 };
 
 const getFindingMessageGroups = (rows: any[] = []) => {
