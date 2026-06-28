@@ -106,33 +106,34 @@ export class BillingService {
       },
     });
 
+    const billingStatus = this.mapStatusFromCulqi(subscription?.status ?? 'pending');
     const billingRecord = this.subscriptionRepository.create({
       user,
       provider: BILLING_PROVIDER,
       plan: plan.code,
       currency: plan.currency,
-      status: this.mapStatusFromCulqi(subscription?.status ?? 'pending'),
+      status: billingStatus,
       providerPlanId: plan.providerPlanId,
       providerCustomerId: customer?.id || null,
       providerSubscriptionId: subscription?.id || null,
       providerCardId: card?.id || null,
       providerTokenId: dto.tokenId,
       currentPeriodEnd: this.mapPeriodEnd(subscription?.next_billing_date),
-      metadata: {
-        customer,
-        card,
-        subscription,
-      },
+      metadata: { customer, card, subscription },
     });
 
-    const saved = await this.subscriptionRepository.save(billingRecord);
-    await this.updateUserBilling(user, {
-      status: saved.status,
-      plan: plan.code,
-      currency: plan.currency,
-      currentPeriodEnd: saved.currentPeriodEnd,
-      customerId: saved.providerCustomerId,
-      subscriptionId: saved.providerSubscriptionId,
+    // Transacción: subscription + user billing se guardan juntos o ninguno.
+    // Evita el caso donde la subscription se guarda pero el usuario no queda en plan activo.
+    await this.dataSource.transaction(async (manager) => {
+      const saved = await manager.save(BillingSubscription, billingRecord);
+      await manager.update(User, user.id, {
+        billingStatus: saved.status,
+        billingPlan: plan.code,
+        billingCurrency: plan.currency,
+        billingPeriodEnd: saved.currentPeriodEnd,
+        billingCustomerId: saved.providerCustomerId,
+        billingSubscriptionId: saved.providerSubscriptionId,
+      });
     });
 
     return this.serializeBillingState(await this.getUserOrThrow(userId));
@@ -145,20 +146,41 @@ export class BillingService {
       order: { createdAt: 'DESC' },
     });
 
-    if (activeSubscription?.providerSubscriptionId) {
-      await this.culqiClient.cancelSubscription(activeSubscription.providerSubscriptionId);
-      activeSubscription.status = 'canceled';
-      await this.subscriptionRepository.save(activeSubscription);
-    }
-
-    await this.updateUserBilling(user, {
-      status: 'canceled',
-      plan: null,
-      currency: null,
-      currentPeriodEnd: null,
-      customerId: activeSubscription?.providerCustomerId ?? user.billingCustomerId,
-      subscriptionId: activeSubscription?.providerSubscriptionId ?? user.billingSubscriptionId,
+    // Primero escribimos en DB — la DB es la fuente de verdad para acceso del usuario.
+    // Si Culqi falla después, el usuario pierde acceso localmente (correcto: no debe
+    // seguir con servicio activo si quiso cancelar) y el equipo puede reintentar la
+    // cancelación en Culqi manualmente. Esto evita que Culqi siga cobrando si la
+    // BD ya marcó cancelled pero Culqi no fue notificado.
+    await this.dataSource.transaction(async (manager) => {
+      if (activeSubscription) {
+        activeSubscription.status = 'canceled';
+        await manager.save(BillingSubscription, activeSubscription);
+      }
+      await manager.update(User, user.id, {
+        billingStatus: 'canceled',
+        billingPlan: null,
+        billingCurrency: null,
+        billingPeriodEnd: null,
+        billingCustomerId: activeSubscription?.providerCustomerId ?? user.billingCustomerId,
+        billingSubscriptionId: activeSubscription?.providerSubscriptionId ?? user.billingSubscriptionId,
+      });
     });
+
+    // Luego notificamos a Culqi. Si falla, queda registrado para seguimiento manual.
+    if (activeSubscription?.providerSubscriptionId) {
+      try {
+        await this.culqiClient.cancelSubscription(activeSubscription.providerSubscriptionId);
+      } catch (culqiErr) {
+        // Log crítico: la subscripción debe cancelarse en Culqi para evitar cobros futuros.
+        // El equipo debe revisar y cancelar manualmente en el panel de Culqi.
+        console.error(
+          `[BILLING CRITICAL] cancelSubscription en Culqi falló para usuario ${userId} ` +
+          `(subscriptionId: ${activeSubscription.providerSubscriptionId}). ` +
+          `Cancelar manualmente en el panel de Culqi para evitar cobros. Error:`,
+          culqiErr,
+        );
+      }
+    }
 
     return this.serializeBillingState(await this.getUserOrThrow(userId));
   }

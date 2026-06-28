@@ -2,6 +2,9 @@ import { Worker, Job, Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
 import { cleanupPublicScan, processScan } from './processor.js';
 import { initializeStorage } from './storage.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('worker');
 
 const PUBLIC_SCAN_TTL_MS = 5 * 60 * 1000;
 
@@ -12,7 +15,7 @@ const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
 const redisUrl = process.env.BULL_REDIS_URL || process.env.REDIS_URL;
 const redisPassword = process.env.REDIS_PASSWORD || process.env.REDISPASSWORD;
 
-console.log(`Starting worker. Connecting to Redis at ${redisUrl ? 'REDIS_URL' : `${redisHost}:${redisPort}`}`);
+log.info('Worker iniciando', { redis: redisUrl ? 'REDIS_URL' : `${redisHost}:${redisPort}` });
 
 const shouldUseRedisTls = (host: string, protocol?: string) =>
   protocol === 'rediss:' ||
@@ -65,42 +68,38 @@ async function bootstrap() {
         },
       );
     } catch (err) {
-      console.warn(`Failed to schedule public scan cleanup for ${scanId}:`, err);
+      log.warn('No se pudo programar el cleanup del scan público', { scanId, error: (err as Error)?.message });
     }
   };
 
   const worker = new Worker(
     'scans',
     async (job: Job) => {
-      console.log(`Processing job ${job.id} (${job.name})`);
+      log.info('Procesando job', { jobId: job.id, jobName: job.name });
       try {
         await processScan(job);
       } catch (err) {
-        console.error(`Failed to process job ${job.id}:`, err);
+        log.error('Job falló', { jobId: job.id, error: (err as Error)?.message });
         throw err;
       }
     },
     {
       connection: buildRedisConnection(),
       concurrency: 1,
-      // 60s: detecta un worker caído 5× más rápido que el default de 5 min,
-      // sin añadir carga perceptible a Redis (un comando LMOVE por minuto en idle).
       stalledInterval: 60 * 1000,
       lockDuration: 10 * 60 * 1000,
       drainDelay: 30,
     }
   );
 
-  // Worker dedicado a la cola de cleanup, con concurrencia independiente.
-  // Al estar separado, un backlog de limpiezas no retrasa scans de usuarios.
   const cleanupWorker = new Worker(
     'scans-cleanup',
     async (job: Job) => {
-      console.log(`Processing cleanup job ${job.id}`);
+      log.info('Procesando cleanup job', { jobId: job.id });
       try {
         await cleanupPublicScan(String(job.data?.scanId || ''));
       } catch (err) {
-        console.error(`Failed to process cleanup job ${job.id}:`, err);
+        log.error('Cleanup job falló', { jobId: job.id, error: (err as Error)?.message });
         throw err;
       }
     },
@@ -113,25 +112,25 @@ async function bootstrap() {
   );
 
   worker.on('completed', (job) => {
-    console.log(`Job ${job.id} has completed!`);
+    log.info('Job completado', { jobId: job.id });
     if (job.data?.publicScan && job.data?.scanId) {
       void schedulePublicScanCleanup(String(job.data.scanId));
     }
   });
 
   worker.on('failed', (job, err) => {
-    console.log(`Job ${job?.id} has failed with ${err.message}`);
+    log.error('Job fallido', { jobId: job?.id, error: err.message });
     if (job?.data?.publicScan && job.data?.scanId) {
       void schedulePublicScanCleanup(String(job.data.scanId));
     }
   });
 
   cleanupWorker.on('failed', (job, err) => {
-    console.warn(`Cleanup job ${job?.id} failed: ${err.message}`);
+    log.warn('Cleanup job fallido', { jobId: job?.id, error: err.message });
   });
 }
 
 bootstrap().catch((err) => {
-  console.error('Worker failed to start:', err);
+  log.error('Worker falló al iniciar', { error: (err as Error)?.message });
   process.exit(1);
 });

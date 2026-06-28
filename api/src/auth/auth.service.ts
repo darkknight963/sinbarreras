@@ -286,7 +286,7 @@ export class AuthService {
     return this.buildSessionResponse(user, session.token);
   }
 
-  async createGuestSession(request?: { ip?: string }) {
+  async createGuestSession(request?: { ip?: string; headers?: Record<string, string | string[] | undefined> }) {
     const identifier = this.buildGuestIdentifier(request);
     const lockout = await this.rateLimitService.isBlocked(identifier);
     if (lockout) {
@@ -336,7 +336,7 @@ export class AuthService {
     return this.serializeUser(user);
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(userId: string, dto: ChangePasswordDto, currentToken?: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Sesion invalida');
@@ -351,9 +351,28 @@ export class AuthService {
     }
 
     user.passwordHash = this.hashPassword(dto.newPassword);
-    await this.userRepository.save(user);
 
-    return { ok: true };
+    // Revocar todas las sesiones excepto la actual para forzar re-login
+    // en cualquier otro dispositivo donde la cuenta pudiera estar comprometida.
+    const currentTokenHash = currentToken ? this.hashToken(currentToken) : null;
+    await this.userRepository.save(user);
+    if (currentTokenHash) {
+      await this.sessionRepository.delete({
+        user: { id: userId },
+        // TypeORM no tiene "NOT" directo en delete shorthand; usamos QueryBuilder.
+      });
+      // Recrear la sesión actual para que el usuario no pierda su acceso.
+      const token = randomBytes(32).toString('hex');
+      const ttlDays = this.getSessionTtlDays();
+      const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
+      await this.sessionRepository.save(
+        this.sessionRepository.create({ tokenHash: this.hashToken(token), expiresAt, user }),
+      );
+      return { ok: true, newToken: token };
+    } else {
+      await this.sessionRepository.delete({ user: { id: userId } });
+      return { ok: true };
+    }
   }
 
   async validateSessionToken(token: string) {
@@ -580,17 +599,22 @@ export class AuthService {
   }
 
   private getOAuthStateSecret() {
-    const secret =
-      this.configService.get<string>('OAUTH_STATE_SECRET')?.trim() ||
-      this.configService.get<string>('API_AUTH_TOKEN')?.trim() ||
-      process.env.OAUTH_STATE_SECRET?.trim() ||
-      process.env.API_AUTH_TOKEN?.trim();
+    // OAUTH_STATE_SECRET debe ser una variable dedicada: no reutilizar API_AUTH_TOKEN
+    // ya que ese token tiene un propósito diferente (autenticación de API interna)
+    // y su compromiso afectaría adicionalmente la seguridad OAuth.
+    const secret = this.configService.get<string>('OAUTH_STATE_SECRET')?.trim();
 
     if (!secret) {
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('OAUTH_STATE_SECRET or API_AUTH_TOKEN must be set in production');
+        throw new Error(
+          'OAUTH_STATE_SECRET must be set in production (min 32 chars, dedicated variable, not API_AUTH_TOKEN)',
+        );
       }
-      return 'sin-barreras-oauth-state-dev';
+      return 'sin-barreras-oauth-state-dev-only';
+    }
+
+    if (secret.length < 32) {
+      throw new Error('OAUTH_STATE_SECRET must be at least 32 characters long');
     }
 
     return secret;
@@ -600,13 +624,29 @@ export class AuthService {
     return this.configService.get<string>('FRONTEND_URL')?.trim() || process.env.FRONTEND_URL?.trim() || 'http://localhost:5173';
   }
 
-  private buildBruteForceIdentifier(email: string, request?: { ip?: string }): string {
-    const ip = request?.ip || 'unknown';
+  private extractClientIp(request?: { ip?: string; headers?: Record<string, string | string[] | undefined> }): string {
+    // Si hay un proxy de confianza configurado, X-Forwarded-For contiene la IP real del cliente.
+    // Solo se usa si TRUST_PROXY=true para evitar spoofing en deployments sin proxy.
+    const trustProxy = this.configService.get<string>('TRUST_PROXY') === 'true' || process.env.TRUST_PROXY === 'true';
+    if (trustProxy && request?.headers) {
+      const forwarded = request.headers['x-forwarded-for'];
+      const forwardedStr = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+      // X-Forwarded-For: client, proxy1, proxy2 — el primer IP es el cliente real.
+      const clientIp = forwardedStr?.split(',')[0]?.trim();
+      if (clientIp && clientIp !== '::1' && clientIp !== '127.0.0.1') {
+        return clientIp;
+      }
+    }
+    return request?.ip || 'unknown';
+  }
+
+  private buildBruteForceIdentifier(email: string, request?: { ip?: string; headers?: Record<string, string | string[] | undefined> }): string {
+    const ip = this.extractClientIp(request);
     return `email:${createHash('sha256').update(email.toLowerCase().trim()).digest('hex')}:ip:${ip}`;
   }
 
-  private buildGuestIdentifier(request?: { ip?: string }): string {
-    const ip = request?.ip || 'unknown';
+  private buildGuestIdentifier(request?: { ip?: string; headers?: Record<string, string | string[] | undefined> }): string {
+    const ip = this.extractClientIp(request);
     return `guest:ip:${ip}`;
   }
 }

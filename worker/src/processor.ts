@@ -3,6 +3,9 @@ import pg from 'pg';
 import { scanUrl } from './scanner.js';
 import { validateScanTargetUrls } from './urlPolicy.js';
 import { deleteEvidenceUrls } from './storage.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('processor');
 
 const { Pool } = pg;
 
@@ -12,7 +15,9 @@ const pool = new Pool(
   process.env.DATABASE_URL
     ? {
         connectionString: process.env.DATABASE_URL,
-        max: 3,
+        max: 10,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 5_000,
         ...(isNeon ? { ssl: { rejectUnauthorized: false } } : {}),
       }
     : {
@@ -21,20 +26,43 @@ const pool = new Pool(
         user: process.env.DB_USER || process.env.PGUSER || 'postgres',
         password: process.env.DB_PASSWORD || process.env.PGPASSWORD || 'postgres',
         database: process.env.DB_NAME || process.env.PGDATABASE || 'accessibility_db',
-        max: 3,
+        max: 10,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 5_000,
       }
 );
 
-let schemaEnsured = false;
+let schemaChecked = false;
 
+// Verifica que las columnas esperadas existan. No hace ALTER TABLE — las migraciones
+// deben aplicarse antes del deploy, no en runtime (riesgo de table locks en producción).
 async function ensureUrlResultSchema(): Promise<void> {
-  if (schemaEnsured) return;
-  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS applicability jsonb`);
-  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "engineReport" jsonb`);
-  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "focusTraversal" jsonb`);
-  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "semanticStructure" jsonb`);
-  await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "visualMap" jsonb`);
-  schemaEnsured = true;
+  if (schemaChecked) return;
+  schemaChecked = true;
+
+  const expected = ['applicability', 'engineReport', 'focusTraversal', 'semanticStructure', 'visualMap'];
+  const result = await pool.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_name = 'url_results' AND column_name = ANY($1)`,
+    [expected],
+  );
+  const found = new Set(result.rows.map((r) => r.column_name));
+  const missing = expected.filter((col) => !found.has(col));
+
+  if (missing.length > 0) {
+    // En desarrollo aplicamos las columnas faltantes para facilitar onboarding.
+    // En producción fallamos rápido: el schema debe aplicarse mediante migración antes del deploy.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        `[SCHEMA] Columnas faltantes en url_results: ${missing.join(', ')}. ` +
+        `Aplica las migraciones antes de iniciar el worker en producción.`,
+      );
+    }
+    log.warn(`Aplicando columnas faltantes en desarrollo: ${missing.join(', ')}`);
+    for (const col of missing) {
+      await pool.query(`ALTER TABLE url_results ADD COLUMN IF NOT EXISTS "${col}" jsonb`);
+    }
+  }
 }
 
 function collectEvidenceUrls(value: unknown, urls = new Set<string>()): Set<string> {
@@ -67,7 +95,7 @@ export async function cleanupPublicScan(scanId: string): Promise<void> {
   );
 
   if (scanResult.rowCount === 0) {
-    console.log(`Public scan cleanup skipped. Scan ${scanId} was not found or is not public.`);
+    log.info('Public scan cleanup skipped: not found or not public', { scanId });
     return;
   }
 
@@ -88,12 +116,12 @@ export async function cleanupPublicScan(scanId: string): Promise<void> {
   const deletedEvidence = await deleteEvidenceUrls(Array.from(evidenceUrls));
   await pool.query(`DELETE FROM projects WHERE id = $1 AND "ownerId" IS NULL`, [scanResult.rows[0].projectId]);
 
-  console.log(`Deleted public scan ${scanId} and ${deletedEvidence} evidence object(s).`);
+  log.info('Public scan deleted', { scanId, evidenceDeleted: deletedEvidence });
 }
 
 export async function processScan(job: Job): Promise<{ scanId: string; publicScan?: boolean }> {
   const { scanId, urls, scanMode, preNavigationScript, publicScan } = job.data;
-  console.log(`Starting execution of Scan ID: ${scanId}`);
+  log.info('Scan started', { scanId, urlCount: urls?.length, scanMode });
   await ensureUrlResultSchema(); // no-op after first run in this process
 
   // Update scan status to running
@@ -106,7 +134,7 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
   try {
     validatedUrls = await validateScanTargetUrls(urls);
   } catch (err) {
-    console.error(`Rejected unsafe scan payload for Scan ID ${scanId}:`, err);
+    log.error('Rejected unsafe scan payload', { scanId, error: (err as Error)?.message });
     await pool.query(
       `UPDATE scans SET status = 'failed' WHERE id = $1`,
       [scanId]
@@ -114,24 +142,36 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
     throw err;
   }
   if (preNavigationScript) {
-    console.warn('Ignoring preNavigationScript from queue payload; scripts are disabled by default.');
+    log.warn('preNavigationScript ignorado: scripts deshabilitados por defecto', { scanId });
   }
 
   const totalUrls = validatedUrls.length;
   const results = [];
 
+  const MAX_URL_RETRIES = 2;
+
   for (let i = 0; i < totalUrls; i++) {
     const cancelCheck = await pool.query(`SELECT status FROM scans WHERE id = $1`, [scanId]);
     if (cancelCheck.rows[0]?.status === 'cancelled') {
       await pool.query(`UPDATE scans SET status = 'cancelled' WHERE id = $1`, [scanId]);
-      console.log(`Scan ${scanId} was cancelled. Aborting.`);
+      log.info('Scan cancelled mid-execution', { scanId, urlIndex: i });
       return { scanId, publicScan };
     }
 
     const url = validatedUrls[i];
 
+    let lastUrlError: unknown;
+    let succeeded = false;
+
+    for (let attempt = 0; attempt <= MAX_URL_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const backoffMs = Math.min(1000 * 2 ** attempt, 10_000);
+        log.warn('Reintentando URL con backoff', { url, attempt, maxRetries: MAX_URL_RETRIES, backoffMs });
+        await new Promise((r) => setTimeout(r, backoffMs));
+      }
+
     try {
-      console.log(`Scanning URL [${i + 1}/${totalUrls}]: ${url}`);
+      log.info('Scanning URL', { url, index: i + 1, total: totalUrls, attempt: attempt + 1, scanId });
       
       const viewports = [{ width: 1280, height: 800 }];
       if (scanMode === 'profundo') {
@@ -212,13 +252,23 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
       ]);
 
       results.push(avgScore);
+      succeeded = true;
+      break; // Éxito: salir del loop de reintentos
     } catch (urlErr) {
-      console.error(`Error scanning URL ${url}:`, urlErr);
-      await pool.query(
-        `INSERT INTO url_results (url, score, violations, applicability, "focusTraversal", "engineReport", "semanticStructure", "visualMap", status, "scanId") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [url, 0, '[]', 'null', 'null', JSON.stringify([]), JSON.stringify(null), JSON.stringify(null), 'failed', scanId]
-      );
+      lastUrlError = urlErr;
+      const isLastAttempt = attempt === MAX_URL_RETRIES;
+      if (isLastAttempt) {
+        log.error('URL scan failed after all retries', { url, attempts: MAX_URL_RETRIES + 1, error: (urlErr as Error)?.message, scanId });
+        await pool.query(
+          `INSERT INTO url_results (url, score, violations, applicability, "focusTraversal", "engineReport", "semanticStructure", "visualMap", status, "scanId") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [url, 0, '[]', 'null', 'null', JSON.stringify([]), JSON.stringify(null), JSON.stringify(null), 'failed', scanId]
+        );
+      } else {
+        log.warn('URL scan attempt failed, will retry', { url, attempt: attempt + 1, maxAttempts: MAX_URL_RETRIES + 1, error: (urlErr as Error)?.message });
+      }
     }
+    } // fin for attempt
+    void succeeded; void lastUrlError; // usadas implícitamente arriba
   }
 
   // Calculate final global score

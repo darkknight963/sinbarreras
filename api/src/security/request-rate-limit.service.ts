@@ -82,10 +82,16 @@ export class RequestRateLimitService implements OnModuleDestroy {
       return `token:${createHash('sha256').update(normalizedToken).digest('hex')}`;
     }
 
-    const forwardedFor = request.headers['x-forwarded-for'];
-    const forwarded = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
-    const forwardedIp = forwarded?.split(',')[0]?.trim();
-    const ip = forwardedIp || request.ip || request.socket?.remoteAddress || 'anonymous';
+    // X-Forwarded-For solo es confiable si el deployment está detrás de un proxy conocido.
+    // Sin TRUST_PROXY=true, ignorar el header para evitar IP spoofing.
+    const trustProxy = process.env.TRUST_PROXY === 'true';
+    let ip: string | undefined;
+    if (trustProxy) {
+      const forwardedFor = request.headers['x-forwarded-for'];
+      const forwarded = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+      ip = forwarded?.split(',')[0]?.trim();
+    }
+    ip = ip || request.ip || request.socket?.remoteAddress || 'anonymous';
     return `ip:${ip}`;
   }
 

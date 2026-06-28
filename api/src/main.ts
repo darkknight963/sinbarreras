@@ -6,7 +6,9 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true es necesario para verificar firmas HMAC de webhooks (Culqi)
+  // antes de que el body sea parseado y modificado por express.json().
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.use(compression());
   app.use(helmet({
     contentSecurityPolicy: {

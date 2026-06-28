@@ -82,12 +82,18 @@ export class AuthController {
   }
 
   @Patch('me/password')
-  changePassword(@CurrentUser() user: { id: string } | null, @Body() dto: ChangePasswordDto) {
+  changePassword(
+    @CurrentUser() user: { id: string } | null,
+    @Body() dto: ChangePasswordDto,
+    @Req() request: Request,
+  ) {
     if (!user) {
       throw new UnauthorizedException('Sesión inválida');
     }
-
-    return this.authService.changePassword(user.id, dto);
+    const authorization = request.headers.authorization;
+    const raw = Array.isArray(authorization) ? authorization[0] : authorization;
+    const token = typeof raw === 'string' ? raw.replace(/^Bearer\s+/i, '').trim() : undefined;
+    return this.authService.changePassword(user.id, dto, token);
   }
 
   @Delete('logout')

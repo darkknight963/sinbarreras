@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
@@ -53,19 +54,51 @@ export class BillingController {
   @Post('webhooks/culqi')
   handleWebhook(
     @Body() payload: CulqiWebhookDto,
-    @Req() request: Request,
+    @Req() request: Request & { rawBody?: Buffer },
     @Query('secret') querySecret?: string,
   ) {
     const webhookSecret = this.billingService.getWebhookSecret();
-    const incomingSecret = String(
-      request.headers['x-culqi-webhook-secret'] ||
-      request.headers['x-webhook-secret'] ||
-      querySecret ||
-      '',
-    ).trim();
 
-    if (webhookSecret && incomingSecret !== webhookSecret) {
-      throw new UnauthorizedException('Webhook no autorizado');
+    if (webhookSecret) {
+      // Culqi firma el body con HMAC-SHA256 usando el webhook secret.
+      // Verificamos con el raw body para que el parseo JSON no altere la firma.
+      const signature = String(
+        request.headers['x-culqi-signature'] ||
+        request.headers['x-webhook-signature'] ||
+        '',
+      ).trim();
+
+      if (signature) {
+        // Verificación HMAC: comparación en tiempo constante para prevenir timing attacks.
+        const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
+        const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+        const expectedBuf = Buffer.from(expected, 'hex');
+        const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+
+        if (
+          expectedBuf.length !== incomingBuf.length ||
+          !timingSafeEqual(expectedBuf, incomingBuf)
+        ) {
+          throw new UnauthorizedException('Firma HMAC de webhook inválida');
+        }
+      } else {
+        // Fallback: secret plano en header o query (para compatibilidad con Culqi legacy).
+        const incomingSecret = String(
+          request.headers['x-culqi-webhook-secret'] ||
+          request.headers['x-webhook-secret'] ||
+          querySecret ||
+          '',
+        ).trim();
+
+        const expectedBuf = Buffer.from(webhookSecret);
+        const incomingBuf = Buffer.from(incomingSecret);
+        if (
+          expectedBuf.length !== incomingBuf.length ||
+          !timingSafeEqual(expectedBuf, incomingBuf)
+        ) {
+          throw new UnauthorizedException('Webhook no autorizado');
+        }
+      }
     }
 
     return this.billingService.handleWebhook({
