@@ -910,7 +910,7 @@
       const style = window.getComputedStyle(element);
       return Boolean((style.animationName && style.animationName !== 'none') || (style.transitionDuration && style.transitionDuration !== '0s'));
     });
-    const hasDragHandler = all('*').some((element) => {
+    const hasDragHandler = all('*').slice(0, 2000).some((element) => {
       const attrs = Array.from(element.attributes || []).map((attr) => attr.name.toLowerCase());
       return attrs.some((name) => name.startsWith('ondrag'));
     });
@@ -1055,7 +1055,7 @@
 
     const triggers = Array.from(document.querySelectorAll(TRIGGER_SELECTOR))
       .filter((el) => isVisible(el))
-      .slice(0, 30);
+      .slice(0, 50);
 
     if (!window.axe || triggers.length === 0) return findings;
 
