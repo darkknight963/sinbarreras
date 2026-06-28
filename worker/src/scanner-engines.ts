@@ -399,7 +399,7 @@ async function discoverInteractiveTriggers(page: Page): Promise<Array<{ selector
       if (seen.has(selector)) continue;
       seen.add(selector);
       results.push({ selector, label: text.slice(0, 120) || tag });
-      if (results.length >= 30) break;
+      if (results.length >= 50) break;
     }
 
     return results;

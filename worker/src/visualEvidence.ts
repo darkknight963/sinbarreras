@@ -83,7 +83,7 @@ export async function captureVisualEvidence(
         status: finding.status || markerStatus(finding),
       }));
     })
-    .slice(0, 220);
+    .slice(0, 80);
 
   const geometry = await page.evaluate((items) => {
     const isVisible = (el: any) => {

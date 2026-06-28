@@ -1,7 +1,7 @@
 import { Worker, Job, Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
 import { cleanupPublicScan, processScan } from './processor.js';
-import { initializeStorage } from './storage.js';
+import { initializeStorage, cleanupExpiredEvidence } from './storage.js';
 import { createLogger } from './logger.js';
 import { browserPool } from './browser-pool.js';
 
@@ -50,10 +50,24 @@ const buildRedisConnection = () => {
 async function bootstrap() {
   await initializeStorage();
 
-  // Cola dedicada al cleanup de scans públicos, separada de la cola principal.
-  // Esto evita que un job de limpieza compita en prioridad con scans de usuario
-  // y permite tener políticas de retención distintas por tipo de job.
+  // Cola dedicada al cleanup de scans públicos y evidencias expiradas, separada de la
+  // cola principal para que los jobs de limpieza no compitan con scans de usuario.
   const cleanupQueue = new Queue('scans-cleanup', { connection: buildRedisConnection() });
+
+  // Programa un job de cleanup de evidencias en R2 cada 24 horas.
+  // Se hace aquí (BullMQ) en vez de en initializeStorage para evitar bloquear el
+  // arranque del worker y para poder distribuir el trabajo si hay varios workers.
+  const EVIDENCE_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+  await cleanupQueue.add(
+    'cleanup-expired-evidence',
+    {},
+    {
+      jobId: 'cleanup-expired-evidence-recurring',
+      repeat: { every: EVIDENCE_CLEANUP_INTERVAL_MS },
+      removeOnComplete: true,
+      removeOnFail: 5,
+    },
+  ).catch((err) => log.warn('No se pudo programar cleanup de evidencias', { error: (err as Error)?.message }));
 
   const schedulePublicScanCleanup = async (scanId: string) => {
     if (!scanId) return;
@@ -74,11 +88,10 @@ async function bootstrap() {
   };
 
   // WORKER_CONCURRENCY controla cuántos scans (jobs) corren en paralelo.
-  // Desde que los 3 viewports (desktop+tablet+móvil) corren en paralelo dentro de cada job,
-  // el pico de RAM por job subió de ~250MB a ~600-700MB.
-  // Con concurrencia 1: 1 job × 3 viewports = ~700MB — seguro en Railway con 512MB-1GB.
-  // Con concurrencia 2: 2 jobs × 3 viewports = ~1.4GB — requiere plan Railway con 2GB+.
-  // Con concurrencia 3: 3 jobs × 3 viewports = ~2.1GB — solo con 4GB+ dedicados.
+  // Los viewports (desktop→tablet→móvil) corren secuencialmente dentro de cada job:
+  // paralelo fue revertido para evitar falsos negativos bajo presión de memoria.
+  // Con concurrencia 1: ~250-350MB por job — seguro en Railway con 512MB-1GB.
+  // Con concurrencia 2: ~500-700MB — requiere plan Railway con 2GB+.
   // Default conservador: 1. Aumentar via WORKER_CONCURRENCY solo con RAM confirmada.
   const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 1);
 
@@ -116,9 +129,13 @@ async function bootstrap() {
   const cleanupWorker = new Worker(
     'scans-cleanup',
     async (job: Job) => {
-      log.info('Procesando cleanup job', { jobId: job.id });
+      log.info('Procesando cleanup job', { jobId: job.id, jobName: job.name });
       try {
-        await cleanupPublicScan(String(job.data?.scanId || ''));
+        if (job.name === 'cleanup-expired-evidence') {
+          await cleanupExpiredEvidence();
+        } else {
+          await cleanupPublicScan(String(job.data?.scanId || ''));
+        }
       } catch (err) {
         log.error('Cleanup job falló', { jobId: job.id, error: (err as Error)?.message });
         throw err;

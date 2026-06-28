@@ -79,13 +79,12 @@ export async function initializeStorage(): Promise<void> {
       console.log(`Bucket '${bucketName}' has no public policy to remove.`);
     }
 
-    await cleanupExpiredEvidence();
   } catch (err) {
     console.error('Error initializing storage bucket:', err);
   }
 }
 
-async function cleanupExpiredEvidence(): Promise<void> {
+export async function cleanupExpiredEvidence(): Promise<void> {
   if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
     return;
   }

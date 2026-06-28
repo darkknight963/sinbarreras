@@ -670,21 +670,50 @@ export class ScansService {
     }
   }
 
+  private isTerminalStatus(status: string): boolean {
+    return status === 'completed' || status === 'failed' || status === 'cancelled';
+  }
+
+  // Scans activos: solo campos ligeros para el polling del frontend (status, progreso, score).
+  // Los jsonb pesados (violations, visualMap, focusTraversal, semanticStructure) se cargan
+  // solo cuando el scan está terminal y el usuario abre el reporte completo.
+  private buildScanQuery(id: string, includeHeavyFields: boolean) {
+    const query = this.scanRepository
+      .createQueryBuilder('scan')
+      .leftJoinAndSelect('scan.project', 'project')
+      .leftJoinAndSelect('project.owner', 'owner')
+      .where('scan.id = :id', { id });
+
+    if (includeHeavyFields) {
+      query.leftJoinAndSelect('scan.urlResults', 'urlResult');
+    } else {
+      query
+        .leftJoin('scan.urlResults', 'urlResult')
+        .addSelect(['urlResult.id', 'urlResult.url', 'urlResult.score', 'urlResult.status', 'urlResult.createdAt']);
+    }
+    return query;
+  }
+
   async findOne(id: string, ownerId: string | null): Promise<ScanWithProgress | null> {
     const cacheKey = this.scanCacheKey(id, ownerId);
     const cached = await this.rateLimitService.getJson<ScanWithProgress>(cacheKey);
     if (cached !== null) return cached;
 
-    const query = this.scanRepository
+    // Primera pasada ligera para saber el status sin cargar jsonb
+    const statusCheck = await this.scanRepository
       .createQueryBuilder('scan')
-      .leftJoinAndSelect('scan.project', 'project')
-      .leftJoinAndSelect('project.owner', 'owner')
-      .leftJoinAndSelect('scan.urlResults', 'urlResult')
-      .where('scan.id = :id', { id });
+      .leftJoin('scan.project', 'project')
+      .leftJoin('project.owner', 'owner')
+      .select(['scan.id', 'scan.status'])
+      .where('scan.id = :id', { id })
+      .andWhere(ownerId ? 'owner.id = :ownerId' : '1=1', ownerId ? { ownerId } : {})
+      .getOne();
 
-    if (ownerId) {
-      query.andWhere('owner.id = :ownerId', { ownerId });
-    }
+    if (!statusCheck) return null;
+    const heavy = this.isTerminalStatus(statusCheck.status);
+
+    const query = this.buildScanQuery(id, heavy);
+    if (ownerId) query.andWhere('owner.id = :ownerId', { ownerId });
 
     const result = await this.attachQueueProgress(await this.repairExtensionApplicability(await query.getOne()));
     if (result) {
@@ -701,16 +730,23 @@ export class ScansService {
     const cached = await this.rateLimitService.getJson<ScanWithProgress>(cacheKey);
     if (cached !== null) return cached;
 
-    const scan = await this.scanRepository
+    // Primera pasada ligera para saber el status
+    const statusCheck = await this.scanRepository
       .createQueryBuilder('scan')
-      .leftJoinAndSelect('scan.project', 'project')
-      .leftJoinAndSelect('project.owner', 'owner')
-      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .leftJoin('scan.project', 'project')
+      .leftJoin('project.owner', 'owner')
+      .select(['scan.id', 'scan.status'])
       .where('scan.id = :id', { id })
       .andWhere('owner.id IS NULL')
       .getOne();
 
-    const result = await this.attachQueueProgress(await this.repairExtensionApplicability(scan));
+    if (!statusCheck) return null;
+    const heavy = this.isTerminalStatus(statusCheck.status);
+
+    const query = this.buildScanQuery(id, heavy);
+    query.andWhere('owner.id IS NULL');
+
+    const result = await this.attachQueueProgress(await this.repairExtensionApplicability(await query.getOne()));
     if (result) {
       const ttl = this.getScanCacheTtlMs(result.status);
       if (ttl > 0) {
