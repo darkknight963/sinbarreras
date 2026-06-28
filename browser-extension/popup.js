@@ -1,4 +1,12 @@
-const API_BASE = 'https://sinbarreras-production.up.railway.app';
+// La URL base se lee del manifest para que cambiar de host no requiera publicar
+// una nueva versión de la extensión — solo actualizar host_permissions en manifest.json.
+const getApiBase = () => {
+  const hosts = chrome.runtime.getManifest().host_permissions || [];
+  // Usa el primer host que no sea localhost ni 127.0.0.1
+  const prodHost = hosts.find(h => !h.includes('localhost') && !h.includes('127.0.0.1'));
+  return prodHost ? prodHost.replace(/\/\*$/, '') : 'https://sinbarreras.gzakgroup.com';
+};
+const API_BASE = getApiBase();
 
 const apiTokenInput = document.getElementById('api-token');
 const scanIdInput = document.getElementById('scan-id');
