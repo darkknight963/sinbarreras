@@ -82,6 +82,12 @@ async function bootstrap() {
   // marcado como stalled. Un scan "profundo" de 50 URLs puede tardar 30+ minutos.
   const lockDurationMs = Number(process.env.WORKER_LOCK_DURATION_MS || 45 * 60 * 1000);
 
+  // drainDelay: tiempo de espera entre polls cuando la cola está vacía.
+  // Upstash free tier: 500k requests/mes. Con drainDelay=5000 y 2 workers
+  // el polling idle consume ~1M requests/mes — dentro del límite.
+  // Con drainDelay=30 (default) consumía ~500k requests/día, agotando el plan.
+  const drainDelayMs = Number(process.env.WORKER_DRAIN_DELAY_MS || 5000);
+
   const worker = new Worker(
     'scans',
     async (job: Job) => {
@@ -98,10 +104,10 @@ async function bootstrap() {
       concurrency: workerConcurrency,
       stalledInterval: 60 * 1000,
       lockDuration: lockDurationMs,
-      drainDelay: 30,
+      drainDelay: drainDelayMs,
     }
   );
-  log.info('Worker iniciado', { concurrency: workerConcurrency, lockDurationMs });
+  log.info('Worker iniciado', { concurrency: workerConcurrency, lockDurationMs, drainDelayMs });
 
   const cleanupWorker = new Worker(
     'scans-cleanup',
@@ -118,7 +124,7 @@ async function bootstrap() {
       connection: buildRedisConnection(),
       concurrency: 2,
       stalledInterval: 60 * 1000,
-      drainDelay: 30,
+      drainDelay: drainDelayMs,
     }
   );
 
