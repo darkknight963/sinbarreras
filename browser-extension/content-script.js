@@ -273,6 +273,9 @@
     const nameEs = (details && details.nameEs) ? details.nameEs : (rule.help || rule.id);
     const ruleCriterion = (details && details.criterion) || criterion;
     const ruleLevel = (details && details.level) || level;
+    const elementFix = (node.any || []).map((item) => item.message).filter(Boolean).join('. ')
+      || (node.all || []).map((item) => item.message).filter(Boolean).join('. ')
+      || '';
     return {
       tool: 'axe-extension',
       ruleId: rule.id,
@@ -297,6 +300,7 @@
       selector: target || 'document',
       screenshotUrl: '',
       suggestedFix: suggestedFixForRule(rule.id, rule.description || rule.help || ''),
+      elementFix: elementFix || undefined,
       resolutionArticle: ruleCriterion && ruleCriterion !== 'N/A' && ruleCriterion !== 'Revision manual' ? `Anexo 1 - Criterio ${ruleCriterion}` : 'ISO/IEC 40500 / WCAG 2.2',
       wcagUrl: rule.helpUrl || '',
       affectedElements: [target || 'document'],

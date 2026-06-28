@@ -824,11 +824,12 @@ export function ScanReportView({
           ) : (
             <div className="finding-message-list">
               {findingMessageGroups.map((group) => {
-                const sampleFindings = group.findings.slice(0, 4);
                 const wcagText = group.wcagRefs.length > 0 ? group.wcagRefs.join(', ') : 'WCAG por validar';
                 const ruleText = group.rules.length > 0 ? group.rules.slice(0, 2).join(', ') : 'Regla automática';
                 const description = getFindingDisplayDescription(group.findings[0], group.descriptions[0] || group.message);
                 const suggestion = group.suggestions[0] || 'Revisar el contexto del componente y aplicar la corrección WCAG correspondiente.';
+                const MAX_ELEMENTS = 20;
+                const shownFindings = group.findings.slice(0, MAX_ELEMENTS);
 
                 return (
                   <details
@@ -874,31 +875,30 @@ export function ScanReportView({
                           <span>Solución sugerida</span>
                           <p>{canUsePaidFeatures ? suggestion : 'Disponible en Pro'}</p>
                         </div>
-                        <div className="finding-message-technical">
-                          <span>Mensaje técnico</span>
-                          <p>{group.message}</p>
-                        </div>
                       </div>
 
-                      <div className="finding-message-samples">
-                        <div className="finding-message-samples-head">
-                          <span>Elementos de muestra</span>
-                          <strong>{group.affectedElements} afectados en {group.criteriaCount} criterio{group.criteriaCount === 1 ? '' : 's'}</strong>
+                      <div className="finding-element-table">
+                        <div className="finding-element-table-head">
+                          <span>#</span>
+                          <span>Selector CSS</span>
+                          <span>Fragmento HTML</span>
+                          <span>Qué corregir en este elemento</span>
                         </div>
-                        {sampleFindings.map((finding: any, findingIndex: number) => {
-                          const selectors = Array.isArray(finding?.affectedElements) ? finding.affectedElements.filter(Boolean) : [];
-                          const samples = Array.isArray(finding?.affectedHtmlSamples) ? finding.affectedHtmlSamples.filter(Boolean) : [];
-                          const sample = selectors[0] || samples[0] || finding?.selector || finding?.elementHtml || 'Sin selector o HTML disponible';
-
+                        {shownFindings.map((finding: any, findingIndex: number) => {
+                          const selector = finding?.selector || 'Sin selector';
+                          const html = finding?.elementHtml || '';
+                          const elementFix = finding?.elementFix || finding?.suggestedFix || suggestion;
                           return (
-                            <div key={`${group.key}-${findingIndex}`} className="finding-message-sample-row">
-                              <span>{findingIndex + 1}</span>
-                              <code>{sample}</code>
+                            <div key={`${group.key}-el-${findingIndex}`} className="finding-element-row">
+                              <span className="finding-element-num">{findingIndex + 1}</span>
+                              <code className="finding-element-selector">{selector}</code>
+                              <pre className="finding-element-html"><code>{html || '(sin fragmento HTML)'}</code></pre>
+                              <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
                             </div>
                           );
                         })}
-                        {group.findings.length > sampleFindings.length && (
-                          <p className="finding-message-more">+{group.findings.length - sampleFindings.length} grupos adicionales con el mismo problema.</p>
+                        {group.findings.length > MAX_ELEMENTS && (
+                          <p className="finding-message-more">+{group.findings.length - MAX_ELEMENTS} elementos adicionales con el mismo problema.</p>
                         )}
                       </div>
                     </div>

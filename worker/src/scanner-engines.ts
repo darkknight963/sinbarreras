@@ -512,7 +512,9 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
     const axeDescription = (axeIsMapped ? axeRuleInfo.nameEs : null) || axeRawDesc || 'Violacion detectada por axe-core';
     for (const node of violation.nodes || []) {
       const selector = Array.isArray(node.target) ? node.target.join(' ') : 'document';
-      const fix = (node.any || []).map((item: any) => item.message).join('. ') || 'Asegurar cumplimiento WCAG.';
+      const elementFix = (node.any || []).map((item: any) => item.message).filter(Boolean).join('. ')
+        || (node.all || []).map((item: any) => item.message).filter(Boolean).join('. ')
+        || '';
       findings.push({
         tool: 'axe',
         ruleId: violation.id || 'axe-unknown',
@@ -523,7 +525,8 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
         selector: normalizeSelector(selector),
         elementHtml: node.html || '',
         severity: toSeverityEs(violation.impact),
-        suggestedFix: axeRuleInfo.suggestedFix || fix,
+        suggestedFix: axeRuleInfo.suggestedFix || elementFix || 'Asegurar cumplimiento WCAG.',
+        elementFix: elementFix || undefined,
       });
     }
   }
@@ -539,10 +542,9 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
     const axeDescription = (axeIsMapped ? axeRuleInfo.nameEs : null) || axeRawDesc || 'Requiere revision manual';
     for (const node of incomplete.nodes || []) {
       const selector = Array.isArray(node.target) ? node.target.join(' ') : 'document';
-      const fix = (node.any || []).map((item: any) => item.message).join('. ')
-        || (node.all || []).map((item: any) => item.message).join('. ')
-        || axeRuleInfo.suggestedFix
-        || 'Revisar el elemento y confirmar cumplimiento WCAG.';
+      const elementFix = (node.any || []).map((item: any) => item.message).filter(Boolean).join('. ')
+        || (node.all || []).map((item: any) => item.message).filter(Boolean).join('. ')
+        || '';
       findings.push({
         tool: 'axe',
         ruleId: incomplete.id || 'axe-unknown',
@@ -553,7 +555,8 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
         selector: normalizeSelector(selector),
         elementHtml: node.html || '',
         severity: toSeverityEs(incomplete.impact),
-        suggestedFix: axeRuleInfo.suggestedFix || fix,
+        suggestedFix: axeRuleInfo.suggestedFix || elementFix || 'Revisar el elemento y confirmar cumplimiento WCAG.',
+        elementFix: elementFix || undefined,
       });
     }
   }

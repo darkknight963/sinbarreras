@@ -26,6 +26,7 @@ export interface RawFinding {
   elementHtml: string;
   severity: SeverityEs;
   suggestedFix: string;
+  elementFix?: string;
 }
 
 export interface GroupedFinding {
