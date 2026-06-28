@@ -78,19 +78,13 @@ export function ProjectDetailView({
   const onCloseNewScanRef = React.useRef(onCloseNewScan);
   const [cancellingScanId, setCancellingScanId] = React.useState<string | null>(null);
   const [pendingScanId, setPendingScanId] = React.useState('');
-  const [copiedToken, setCopiedToken] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState(false);
 
-  const handleCopy = async (text: string, type: 'token' | 'id') => {
+  const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      if (type === 'token') {
-        setCopiedToken(true);
-        setTimeout(() => setCopiedToken(false), 2000);
-      } else {
-        setCopiedId(true);
-        setTimeout(() => setCopiedId(false), 2000);
-      }
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
     } catch (err) {
       console.error('Error copying to clipboard', err);
     }
@@ -518,7 +512,7 @@ export function ProjectDetailView({
                               <span className="block text-[11px] font-bold text-slate-500 mb-1">ID DEL ESCANEO</span>
                               <div
                                 className="flex items-center justify-between w-full bg-slate-100 border border-slate-200 p-2 rounded cursor-pointer hover:bg-slate-200 transition-colors mt-1"
-                                onClick={() => handleCopy(scan.id, 'id')}
+                                onClick={() => handleCopy(scan.id)}
                                 title="Copiar ID"
                               >
                                 <code className="text-slate-800 select-all text-xs">{scan.id}</code>
