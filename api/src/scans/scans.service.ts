@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Scan } from './entities/scan.entity';
@@ -92,6 +92,7 @@ export class ScansService {
     private readonly scansQueue: Queue,
     private readonly configService: ConfigService,
     private readonly rateLimitService: RequestRateLimitService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private canonicalizePlanUrl(value: string): string {
@@ -686,25 +687,33 @@ export class ScansService {
       ? Math.max(0, Math.min(100, Math.round(Number(payload.score))))
       : Math.max(0, 100 - violations.length * 4 - manualVerifications.length);
 
-    await this.urlResultRepository.save(this.urlResultRepository.create({
-      url,
-      score,
-      violations,
-      manualVerifications,
-      applicability: this.normalizeExtensionApplicability(payload, score),
-      engineReport: payload.engineReport ?? null,
-      focusTraversal: payload.focusTraversal ?? null,
-      semanticStructure: payload.semanticStructure ?? null,
-      visualMap: payload.visualMap ?? null,
-      status: 'completed',
-      scan,
-    }));
-
-    await this.scanRepository.update(scan.id, {
-      status: 'completed',
-      globalScore: score,
-      scanUrls: [url],
-    });
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const urlResult = manager.create(UrlResult, {
+          url,
+          score,
+          violations,
+          manualVerifications,
+          applicability: this.normalizeExtensionApplicability(payload, score),
+          engineReport: payload.engineReport ?? null,
+          focusTraversal: payload.focusTraversal ?? null,
+          semanticStructure: payload.semanticStructure ?? null,
+          visualMap: payload.visualMap ?? null,
+          status: 'completed',
+          scan,
+        });
+        await manager.save(UrlResult, urlResult);
+        await manager.update(Scan, scan.id, {
+          status: 'completed',
+          globalScore: score,
+          scanUrls: [url],
+        });
+      });
+    } catch (err) {
+      // Rollback the status to awaiting_login so the user can retry submission.
+      await this.scanRepository.update(scan.id, { status: 'awaiting_login' });
+      throw err;
+    }
 
     const updated = await this.findOne(scan.id, ownerId);
     if (!updated) {
