@@ -2305,6 +2305,136 @@ select {
   overflow-wrap: anywhere;
 }
 
+/* ── Tabla expandida de elementos afectados (en detalle de criterio) ── */
+.report-occurrence-table {
+  display: grid;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.report-occurrence-table-head {
+  display: grid;
+  grid-template-columns: 32px minmax(160px, 1fr) minmax(200px, 1.4fr) minmax(180px, 1fr);
+  gap: 0;
+  background: #f1f4f8;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.report-occurrence-table-head span {
+  padding: 7px 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #475569;
+  border-right: 1px solid #e2e8f0;
+}
+
+.report-occurrence-table-head span:last-child {
+  border-right: none;
+}
+
+.report-occurrence-table-row {
+  display: grid;
+  grid-template-columns: 32px minmax(160px, 1fr) minmax(200px, 1.4fr) minmax(180px, 1fr);
+  gap: 0;
+  border-bottom: 1px solid #f1f4f8;
+  align-items: start;
+}
+
+.report-occurrence-table-row:last-child {
+  border-bottom: none;
+}
+
+.report-occurrence-table-row:hover {
+  background: #f8fafc;
+}
+
+.report-occurrence-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #94a3b8;
+  border-right: 1px solid #f1f4f8;
+  align-self: stretch;
+}
+
+.report-occurrence-selector-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 10px;
+  border-right: 1px solid #f1f4f8;
+  min-width: 0;
+}
+
+.report-occurrence-selector {
+  font-size: 0.78rem;
+  color: #1e3a8a;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.report-occurrence-visible {
+  font-size: 0.73rem;
+  color: #64748b;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.report-occurrence-html {
+  margin: 0;
+  padding: 10px;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  color: #334155;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+  border-right: 1px solid #f1f4f8;
+  background: transparent;
+  overflow: hidden;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.report-occurrence-fix {
+  margin: 0;
+  padding: 10px;
+  font-size: 0.8rem;
+  color: #0d6e45;
+  line-height: 1.55;
+}
+
+/* Evidencia visual como thumbnail — no ocupa media pantalla */
+.report-finding-evidence-thumb img {
+  max-height: 200px;
+  width: 100%;
+  object-fit: contain;
+  object-position: top left;
+}
+
+@media (max-width: 860px) {
+  .report-occurrence-table-head,
+  .report-occurrence-table-row {
+    grid-template-columns: 28px 1fr;
+  }
+
+  .report-occurrence-table-head span:nth-child(3),
+  .report-occurrence-table-head span:nth-child(4),
+  .report-occurrence-table-row .report-occurrence-html,
+  .report-occurrence-table-row .report-occurrence-fix {
+    display: none;
+  }
+}
+
 .report-rule-id-sub {
   display: block;
   font-size: 0.72rem;

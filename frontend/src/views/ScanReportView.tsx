@@ -1410,31 +1410,48 @@ export function ScanReportView({
                                                 <span>Elementos dentro de este grupo</span>
                                                 <strong>{occurrenceCount}</strong>
                                               </div>
-                                              <div className="report-finding-occurrence-list">
-                                                {occurrenceItems.slice(0, 12).map((occurrence: string, occurrenceIndex: number) => {
-                                                  const htmlSample = (affectedSamples[occurrenceIndex] || item.elementHtml || '');
+                                              <div className="report-occurrence-table">
+                                                <div className="report-occurrence-table-head">
+                                                  <span>#</span>
+                                                  <span>Selector CSS</span>
+                                                  <span>HTML afectado</span>
+                                                  <span>Corrección</span>
+                                                </div>
+                                                {occurrenceItems.slice(0, 20).map((occurrence: string, occurrenceIndex: number) => {
+                                                  const htmlSample = affectedSamples[occurrenceIndex] || item.elementHtml || '';
                                                   const visibleText = getVisibleTextFromHtml(htmlSample);
+                                                  const elementFix = item.elementFix || item.suggestedFix || 'Revisar contexto WCAG.';
                                                   return (
-                                                    <div key={`${row.id}-${itemIndex}-${occurrenceIndex}`}>
-                                                      <span>{occurrenceIndex + 1}</span>
-                                                      <div className="report-occurrence-cell">
-                                                        <code>{occurrence}</code>
-                                                        {visibleText && <em className="report-occurrence-label">"{visibleText}"</em>}
+                                                    <div key={`${row.id}-${itemIndex}-${occurrenceIndex}`} className="report-occurrence-table-row">
+                                                      <span className="report-occurrence-num">{occurrenceIndex + 1}</span>
+                                                      <div className="report-occurrence-selector-cell">
+                                                        <code className="report-occurrence-selector">{occurrence}</code>
+                                                        {visibleText && <em className="report-occurrence-visible">"{visibleText}"</em>}
                                                       </div>
+                                                      <pre className="report-occurrence-html"><code>{htmlSample || '—'}</code></pre>
+                                                      <p className="report-occurrence-fix">{elementFix}</p>
                                                     </div>
                                                   );
                                                 })}
                                               </div>
-                                              {occurrenceItems.length > 12 && <p className="report-finding-occurrence-note">+{occurrenceItems.length - 12} elementos adicionales agrupados en este mismo problema.</p>}
+                                              {occurrenceItems.length > 20 && (
+                                                <p className="report-finding-occurrence-note">+{occurrenceItems.length - 20} elementos adicionales agrupados en este mismo problema.</p>
+                                              )}
                                             </div>
                                           )}
 
                                           <div className="report-finding-evidence-grid">
                                             <div>
-                                              <p className="report-finding-detail-kicker">HTML afectado</p>
+                                              <p className="report-finding-detail-kicker">HTML del elemento principal</p>
                                               <pre className="report-html-block"><code>{item.elementHtml || 'Sin fragmento HTML disponible.'}</code></pre>
                                             </div>
-                                            {evidenceUrl ? <EvidencePreview url={evidenceUrl} /> : <div className="report-no-evidence">Sin evidencia visual disponible</div>}
+                                            <div className="report-finding-evidence-thumb">
+                                              <p className="report-finding-detail-kicker">Evidencia visual de la página</p>
+                                              {evidenceUrl
+                                                ? <EvidencePreview url={evidenceUrl} />
+                                                : <div className="report-no-evidence">Sin evidencia visual disponible</div>
+                                              }
+                                            </div>
                                           </div>
                                         </article>
                                       </details>
