@@ -640,11 +640,14 @@ export class ScansService {
     return query.getMany();
   }
 
-  // Scans en estado terminal no cambian nunca; scans activos se cachean brevemente
-  // para absorber el polling del frontend sin saturar Postgres.
+  // Scans terminales no se cachean: son inmutables y Postgres es la fuente de verdad.
+  // Cachear el objeto completo (con violations, visualMap, focusTraversal jsonb) duplicaría
+  // MBs en Redis sin beneficio real — el frontend solo re-consulta un scan terminal
+  // cuando recarga la página, no en un loop de polling.
+  // Scans activos se cachean 8s para absorber el polling sin saturar Postgres.
   private getScanCacheTtlMs(status: string): number {
     if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-      return 5 * 60 * 1000; // 5 min — resultado inmutable
+      return 0; // no cachear — Postgres sirve la respuesta directamente
     }
     return 8 * 1000; // 8 s — polling absorber sin staleness perceptible
   }
@@ -686,7 +689,9 @@ export class ScansService {
     const result = await this.attachQueueProgress(await this.repairExtensionApplicability(await query.getOne()));
     if (result) {
       const ttl = this.getScanCacheTtlMs(result.status);
-      await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+      if (ttl > 0) {
+        await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+      }
     }
     return result;
   }
@@ -708,7 +713,9 @@ export class ScansService {
     const result = await this.attachQueueProgress(await this.repairExtensionApplicability(scan));
     if (result) {
       const ttl = this.getScanCacheTtlMs(result.status);
-      await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+      if (ttl > 0) {
+        await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+      }
     }
     return result;
   }

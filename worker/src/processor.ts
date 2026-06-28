@@ -188,6 +188,9 @@ async function _processScanBody(
   const results = [];
 
   const MAX_URL_RETRIES = 2;
+  // Timeout máximo por URL: 8 min en scan profundo (3 viewports paralelos + IBM + screenshots),
+  // 4 min en scan estándar. Evita que una página que no carga o IBM bloqueado congele el job.
+  const URL_SCAN_TIMEOUT_MS = (scanMode === 'profundo' ? 8 : 4) * 60 * 1000;
 
   // Delay mínimo entre requests al mismo dominio para no triggear anti-bot
   // ni sobrecargar el servidor objetivo. Siteimprove usa 200ms + pausa de 20s
@@ -245,20 +248,24 @@ async function _processScanBody(
         viewports.push({ width: 375, height: 667 });
       }
 
-      const viewportResults = [];
-
-      for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
-        const vp = viewports[viewportIndex];
-        // El primer viewport (desktop) recibe el set completo de motores.
-        // Los viewports secundarios (tablet/móvil) usan lightScan: las violaciones
-        // estructurales WCAG son idénticas entre viewports; solo reflow (1.4.10) y
-        // target-size (2.5.8) dependen del ancho, y axe los cubre.
-        const res = await scanUrl(url, {
-          viewport: vp,
-          lightScan: viewportIndex > 0,
-        });
-        viewportResults.push(res);
-      }
+      // Los viewports corren en paralelo: cada uno usa su propio contexto incógnito
+      // del browser pool, sin interferencia entre sí. El scan desktop (índice 0) recibe
+      // el set completo de motores; tablet/móvil usan lightScan (solo axe).
+      // Tiempo total: max(desktop, tablet, móvil) en lugar de sum — ~60% más rápido.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`URL scan timeout after ${URL_SCAN_TIMEOUT_MS / 1000}s: ${url}`)), URL_SCAN_TIMEOUT_MS),
+      );
+      const viewportResults = await Promise.race([
+        Promise.all(
+          viewports.map((vp, viewportIndex) =>
+            scanUrl(url, {
+              viewport: vp,
+              lightScan: viewportIndex > 0,
+            }),
+          ),
+        ),
+        timeoutPromise,
+      ]);
 
       // Aggregate scores
       const avgScore = Math.round(viewportResults.reduce((acc, r) => acc + r.score, 0) / viewportResults.length);
