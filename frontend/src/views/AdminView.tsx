@@ -7,6 +7,7 @@ import {
   ListFilter,
   RefreshCw,
   ShieldAlert,
+  Trash2,
   UserCog,
   Users,
 } from 'lucide-react';
@@ -83,6 +84,29 @@ const formatDateTime = (value: string) => {
   }).format(date);
 };
 
+const formatRole = (role: AdminUser['role']) => {
+  if (role === 'superadmin') return 'Superadministrador';
+  if (role === 'admin') return 'Administrador';
+  if (role === 'guest') return 'Invitado';
+  return 'Usuario';
+};
+
+const formatComplaintStatus = (status: Complaint['status']) => {
+  if (status === 'in_review') return 'En revision';
+  if (status === 'resolved') return 'Resuelto';
+  if (status === 'closed') return 'Cerrado';
+  return 'Abierto';
+};
+
+const dangerButtonClass =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60';
+
+const softButtonClass =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60';
+
+const actionButtonClass =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60';
+
 export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
   const pageSize = 10;
   const [activeTab, setActiveTab] = useState<'users' | 'complaints' | 'logs'>('users');
@@ -116,6 +140,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     () => users.find((user) => user.id === selectedUserId) || null,
     [selectedUserId, users],
   );
+
   const selectedComplaint = useMemo(
     () => complaints.find((complaint) => complaint.id === selectedComplaintId) || null,
     [complaints, selectedComplaintId],
@@ -140,9 +165,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       if (!complaintsRes.ok) throw new Error(await readError(complaintsRes));
       if (!logsRes.ok) throw new Error(await readError(logsRes));
 
-      const usersPayload = await usersRes.json() as PaginatedResponse<AdminUser>;
-      const complaintsPayload = await complaintsRes.json() as PaginatedResponse<Complaint>;
-      const logsPayload = await logsRes.json() as PaginatedResponse<AuditLog>;
+      const usersPayload = (await usersRes.json()) as PaginatedResponse<AdminUser>;
+      const complaintsPayload = (await complaintsRes.json()) as PaginatedResponse<Complaint>;
+      const logsPayload = (await logsRes.json()) as PaginatedResponse<AuditLog>;
 
       setUsers(usersPayload.items);
       setUsersPage(usersPayload.page);
@@ -159,14 +184,15 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       setLogsTotal(logsPayload.total);
       setLogsTotalPages(logsPayload.totalPages);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cargar la información administrativa');
+      setError(err instanceof Error ? err.message : 'No se pudo cargar la informacion administrativa');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -187,6 +213,18 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     }
   }, [selectedComplaintId, selectedComplaint]);
 
+  const resetUserEditor = () => {
+    setSelectedUserId(null);
+    setUserForm({
+      email: '',
+      password: '',
+      fullName: '',
+      companyName: '',
+      role: 'free',
+    });
+    setPasswordForm('');
+  };
+
   const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
     setSavingKey('create-user');
@@ -206,14 +244,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       });
 
       if (!response.ok) throw new Error(await readError(response));
-
-      setUserForm({
-        email: '',
-        password: '',
-        fullName: '',
-        companyName: '',
-        role: 'free',
-      });
+      resetUserEditor();
       await loadData({ users: 1, complaints: complaintsPage, logs: logsPage });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el usuario');
@@ -249,8 +280,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     }
   };
 
-  const handleResetPassword = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleResetPassword = async () => {
     if (!selectedUser) return;
     setSavingKey(`reset-${selectedUser.id}`);
     setError(null);
@@ -266,7 +296,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       setPasswordForm('');
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo resetear la contraseña');
+      setError(err instanceof Error ? err.message : 'No se pudo resetear la contrasena');
     } finally {
       setSavingKey(null);
     }
@@ -292,6 +322,33 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     }
   };
 
+  const handleDeleteUser = async (user: AdminUser) => {
+    const confirmed = window.confirm(`Eliminar al usuario ${user.email}? Esta accion no se puede deshacer.`);
+    if (!confirmed) return;
+
+    setSavingKey(`delete-user-${user.id}`);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/admin/users/${user.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error(await readError(response));
+
+      if (selectedUserId === user.id) {
+        resetUserEditor();
+      }
+
+      const nextUsersPage = users.length === 1 && usersPage > 1 ? usersPage - 1 : usersPage;
+      await loadData({ users: nextUsersPage, complaints: complaintsPage, logs: logsPage });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el usuario');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   const updateComplaintStatus = async (complaint: Complaint, status: Complaint['status']) => {
     setSavingKey(`complaint-${complaint.id}`);
     setError(null);
@@ -312,43 +369,8 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     }
   };
 
-  const handleDeleteUser = async (user: AdminUser) => {
-    const confirmed = window.confirm(`¿Eliminar al usuario ${user.email}? Esta acción no se puede deshacer.`);
-    if (!confirmed) return;
-
-    setSavingKey(`delete-user-${user.id}`);
-    setError(null);
-
-    try {
-      const response = await fetchWithAuth(`/admin/users/${user.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error(await readError(response));
-
-      if (selectedUserId === user.id) {
-        setSelectedUserId(null);
-        setUserForm({
-          email: '',
-          password: '',
-          fullName: '',
-          companyName: '',
-          role: 'free',
-        });
-        setPasswordForm('');
-      }
-
-      const nextUsersPage = users.length === 1 && usersPage > 1 ? usersPage - 1 : usersPage;
-      await loadData({ users: nextUsersPage, complaints: complaintsPage, logs: logsPage });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar el usuario');
-    } finally {
-      setSavingKey(null);
-    }
-  };
-
   const handleDeleteComplaint = async (complaint: Complaint) => {
-    const confirmed = window.confirm(`¿Eliminar el reclamo de ${complaint.fullName}? Esta acción no se puede deshacer.`);
+    const confirmed = window.confirm(`Eliminar el reclamo de ${complaint.fullName}? Esta accion no se puede deshacer.`);
     if (!confirmed) return;
 
     setSavingKey(`delete-complaint-${complaint.id}`);
@@ -384,14 +406,14 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     if (total <= 0) return null;
 
     return (
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
         <p className="text-sm text-slate-500">
-          Página {page} de {totalPages} · {total} registros
+          Pagina {page} de {totalPages} · {total} registros
         </p>
-        <div className="flex flex-wrap gap-2" aria-label={`Paginación de ${label}`}>
+        <div className="flex flex-wrap gap-2" aria-label={`Paginacion de ${label}`}>
           <button
             type="button"
-            className="report-ghost-btn"
+            className={softButtonClass}
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || loading}
           >
@@ -399,7 +421,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
           </button>
           <button
             type="button"
-            className="report-ghost-btn"
+            className={softButtonClass}
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || loading}
           >
@@ -414,9 +436,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     <div className="report-surface project-overview-surface page-entrance">
       <div className="project-overview-header">
         <div>
-          <span className="project-overview-kicker">Administración</span>
+          <span className="project-overview-kicker">Administracion</span>
           <h2 className="text-2xl font-bold text-white">Panel maestro</h2>
-          <p className="text-slate-800 text-sm">Usuarios, libro de reclamaciones y bitácora de acciones sensibles.</p>
+          <p className="text-slate-800 text-sm">Usuarios, libro de reclamaciones y bitacora de acciones sensibles.</p>
         </div>
         <button type="button" className="report-ghost-btn" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -445,21 +467,24 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
           <div className="project-summary-icon project-summary-icon-running" aria-hidden="true">
             <Clock3 className="h-5 w-5" />
           </div>
-          <span>Auditorías</span>
+          <span>Auditorias</span>
           <strong>{logsTotal}</strong>
           <small>acciones registradas</small>
         </div>
       </section>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
           {error}
         </div>
       )}
 
       <div className="project-list-toolbar">
-        <h3>Operación</h3>
-        <div className="project-filter-tabs" role="group" aria-label="Secciones de administración">
+        <div className="min-w-0">
+          <h3>Operacion</h3>
+          <p className="mt-1 text-sm text-slate-500">Revisa primero el listado y usa las acciones de gestion solo cuando sean necesarias.</p>
+        </div>
+        <div className="project-filter-tabs" role="group" aria-label="Secciones de administracion">
           <button type="button" className={activeTab === 'users' ? 'project-filter-active' : undefined} onClick={() => setActiveTab('users')}>
             <UserCog className="h-4 w-4" />
             Usuarios
@@ -483,94 +508,27 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       ) : null}
 
       {activeTab === 'users' && (
-        <div className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-          <form className="report-card-entity" onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}>
-            <div className="project-card-top">
-              <div className="project-card-icon">
-                <UserCog className="h-6 w-6 text-gob-blue" />
-              </div>
-              <div className="project-card-main-copy">
-                <h3 className="font-bold text-lg text-gob-dark">Crear o editar usuario</h3>
-                <p className="text-slate-500 text-sm">Correo, rol, alta/baja y reinicio de contraseña.</p>
-              </div>
-            </div>
-            <div className="grid gap-3">
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Correo
-                <input className="create-project-control" type="email" autoComplete="email" required value={userForm.email} onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))} />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Nombre completo
-                <input className="create-project-control" type="text" autoComplete="name" value={userForm.fullName} onChange={(e) => setUserForm((prev) => ({ ...prev, fullName: e.target.value }))} />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Empresa
-                <input className="create-project-control" type="text" autoComplete="organization" value={userForm.companyName} onChange={(e) => setUserForm((prev) => ({ ...prev, companyName: e.target.value }))} />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Rol
-                <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}>
-                  <option value="free">Usuario (Free)</option>
-                  <option value="admin">Administrador</option>
-                  <option value="superadmin">Superadministrador</option>
-                </select>
-              </label>
-              {!selectedUser && (
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Contraseña inicial
-                  <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))} />
-                </label>
-              )}
-              {selectedUser && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                  Editando <strong>{selectedUser.email}</strong>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_380px]">
+          <section className="report-card-entity overflow-hidden">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="project-card-top">
+                <div className="project-card-icon">
+                  <Users className="h-6 w-6 text-gob-blue" />
                 </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <button type="submit" className="create-project-submit" disabled={savingKey === 'create-user' || savingKey === `update-${selectedUser?.id}`}>
-                  {selectedUser ? 'Guardar cambios' : 'Crear usuario'}
-                </button>
-                {selectedUser && (
-                  <button type="button" className="report-ghost-btn" onClick={() => { setSelectedUserId(null); setUserForm({ email: '', password: '', fullName: '', companyName: '', role: 'free' }); }}>
-                    Limpiar
-                  </button>
-                )}
+                <div className="project-card-main-copy">
+                  <h3 className="font-bold text-lg text-gob-dark">Usuarios registrados</h3>
+                  <p className="text-slate-500 text-sm">El listado es el centro operativo. Edita solo cuando detectes un cambio real.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2">{usersTotal} cuentas</span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+                  {users.filter((user) => user.isActive).length} activas en esta pagina
+                </span>
               </div>
             </div>
 
-            {selectedUser && (
-              <div className="mt-4 border-t border-slate-200 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">Contraseña</p>
-                    <p className="text-xs text-slate-500">El reinicio invalida sesiones activas.</p>
-                  </div>
-                </div>
-                <form className="mt-3 grid gap-3" onSubmit={handleResetPassword}>
-                  <label className="grid gap-2 text-sm font-medium text-slate-700">
-                    Nueva contraseña
-                    <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={passwordForm} onChange={(e) => setPasswordForm(e.target.value)} />
-                  </label>
-                  <button type="submit" className="report-action-btn" disabled={savingKey === `reset-${selectedUser.id}`}>
-                    <KeyRound className="h-4 w-4" />
-                    Resetear contraseña
-                  </button>
-                </form>
-              </div>
-            )}
-          </form>
-
-          <div className="report-card-entity overflow-hidden">
-            <div className="project-card-top">
-              <div className="project-card-icon">
-                <Users className="h-6 w-6 text-gob-blue" />
-              </div>
-              <div className="project-card-main-copy">
-                <h3 className="font-bold text-lg text-gob-dark">Usuarios registrados</h3>
-                <p className="text-slate-500 text-sm">Selecciona uno para editarlo.</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
+            <div className="mt-4 overflow-x-auto">
               <table className="auth-report-preview-table">
                 <thead>
                   <tr>
@@ -588,7 +546,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                         <strong>{user.email}</strong>
                         <div className="text-xs text-slate-500">{user.fullName || 'Sin nombre'}</div>
                       </td>
-                      <td>{user.role}</td>
+                      <td>{formatRole(user.role)}</td>
                       <td>
                         <span className={`auth-preview-pill ${user.isActive ? 'auth-preview-pill-review' : 'auth-preview-pill-error'}`}>
                           {user.isActive ? 'Activo' : 'Inactivo'}
@@ -597,13 +555,14 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                       <td>{user.billingPlan || '—'}</td>
                       <td>
                         <div className="flex flex-wrap gap-2">
-                          <button type="button" className="report-ghost-btn" onClick={() => setSelectedUserId(user.id)}>
+                          <button type="button" className={actionButtonClass} onClick={() => setSelectedUserId(user.id)}>
                             Editar
                           </button>
-                          <button type="button" className="report-ghost-btn" onClick={() => toggleUserActive(user)} disabled={savingKey === `active-${user.id}`}>
+                          <button type="button" className={softButtonClass} onClick={() => toggleUserActive(user)} disabled={savingKey === `active-${user.id}`}>
                             {user.isActive ? 'Dar baja' : 'Dar alta'}
                           </button>
-                          <button type="button" className="report-ghost-btn" onClick={() => handleDeleteUser(user)} disabled={savingKey === `delete-user-${user.id}`}>
+                          <button type="button" className={dangerButtonClass} onClick={() => handleDeleteUser(user)} disabled={savingKey === `delete-user-${user.id}`}>
+                            <Trash2 className="h-4 w-4" />
                             Eliminar
                           </button>
                         </div>
@@ -613,25 +572,123 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 </tbody>
               </table>
             </div>
+
             {renderPagination('usuarios', usersPage, usersTotalPages, usersTotal, (page) => {
               void loadData({ users: page, complaints: complaintsPage, logs: logsPage });
             })}
-          </div>
+          </section>
+
+          <section className="report-card-entity">
+            <form className="grid gap-4" onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}>
+              <div className="project-card-top">
+                <div className="project-card-icon">
+                  <UserCog className="h-6 w-6 text-gob-blue" />
+                </div>
+                <div className="project-card-main-copy">
+                  <h3 className="font-bold text-lg text-gob-dark">{selectedUser ? 'Editar usuario' : 'Crear usuario'}</h3>
+                  <p className="text-slate-500 text-sm">Panel lateral para altas, ajustes y recuperacion de acceso.</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                {selectedUser ? (
+                  <span>
+                    Editando <strong>{selectedUser.email}</strong>
+                  </span>
+                ) : (
+                  <span>Completa los datos para crear una nueva cuenta.</span>
+                )}
+              </div>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Correo
+                <input className="create-project-control" type="email" autoComplete="email" required value={userForm.email} onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))} />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Nombre completo
+                <input className="create-project-control" type="text" autoComplete="name" value={userForm.fullName} onChange={(event) => setUserForm((prev) => ({ ...prev, fullName: event.target.value }))} />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Empresa
+                <input className="create-project-control" type="text" autoComplete="organization" value={userForm.companyName} onChange={(event) => setUserForm((prev) => ({ ...prev, companyName: event.target.value }))} />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Rol
+                <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value as AdminUser['role'] }))}>
+                  <option value="free">Usuario (Free)</option>
+                  <option value="admin">Administrador</option>
+                  <option value="superadmin">Superadministrador</option>
+                </select>
+              </label>
+
+              {!selectedUser && (
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  Contrasena inicial
+                  <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))} />
+                </label>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" className="create-project-submit" disabled={savingKey === 'create-user' || savingKey === `update-${selectedUser?.id}`}>
+                  {selectedUser ? 'Guardar cambios' : 'Crear usuario'}
+                </button>
+                {selectedUser && (
+                  <button type="button" className={softButtonClass} onClick={resetUserEditor}>
+                    Limpiar
+                  </button>
+                )}
+              </div>
+            </form>
+
+            {selectedUser && (
+              <div className="mt-5 border-t border-slate-100 pt-5">
+                <div className="flex items-center gap-3">
+                  <div className="project-card-icon">
+                    <KeyRound className="h-5 w-5 text-gob-blue" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Reinicio de contrasena</p>
+                    <p className="text-xs text-slate-500">Este cambio invalida las sesiones activas del usuario.</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    Nueva contrasena
+                    <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={passwordForm} onChange={(event) => setPasswordForm(event.target.value)} />
+                  </label>
+                  <button type="button" className="report-action-btn" disabled={!passwordForm || savingKey === `reset-${selectedUser.id}`} onClick={() => void handleResetPassword()}>
+                    <KeyRound className="h-4 w-4" />
+                    Resetear contrasena
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       )}
 
       {activeTab === 'complaints' && (
         <div className="report-card-entity overflow-hidden">
-          <div className="project-card-top">
-            <div className="project-card-icon">
-              <AlertTriangle className="h-6 w-6 text-gob-blue" />
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="project-card-top">
+              <div className="project-card-icon">
+                <AlertTriangle className="h-6 w-6 text-gob-blue" />
+              </div>
+              <div className="project-card-main-copy">
+                <h3 className="font-bold text-lg text-gob-dark">Libro de reclamaciones</h3>
+                <p className="text-slate-500 text-sm">Los cambios de estado siguen siendo visibles, pero la accion destructiva queda claramente separada.</p>
+              </div>
             </div>
-            <div className="project-card-main-copy">
-              <h3 className="font-bold text-lg text-gob-dark">Libro de reclamaciones</h3>
-              <p className="text-slate-500 text-sm">Reclamos y quejas recibidos desde la web.</p>
+            <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              {complaintsTotal} casos
             </div>
           </div>
-          <div className="overflow-x-auto">
+
+          <div className="mt-4 overflow-x-auto">
             <table className="auth-report-preview-table">
               <thead>
                 <tr>
@@ -652,23 +709,26 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                     </td>
                     <td>{complaint.type}</td>
                     <td>{complaint.service}</td>
-                    <td>{complaint.status}</td>
+                    <td>
+                      <span className="auth-preview-pill auth-preview-pill-review">{formatComplaintStatus(complaint.status)}</span>
+                    </td>
                     <td>{formatDateTime(complaint.createdAt)}</td>
                     <td>
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" className="report-ghost-btn" onClick={() => setSelectedComplaintId(complaint.id)}>
+                        <button type="button" className={actionButtonClass} onClick={() => setSelectedComplaintId(complaint.id)}>
                           Ver detalle
                         </button>
-                        <button type="button" className="report-ghost-btn" onClick={() => updateComplaintStatus(complaint, 'in_review')} disabled={savingKey === `complaint-${complaint.id}`}>
-                          En revisión
+                        <button type="button" className={softButtonClass} onClick={() => updateComplaintStatus(complaint, 'in_review')} disabled={savingKey === `complaint-${complaint.id}`}>
+                          En revision
                         </button>
-                        <button type="button" className="report-ghost-btn" onClick={() => updateComplaintStatus(complaint, 'resolved')} disabled={savingKey === `complaint-${complaint.id}`}>
+                        <button type="button" className={softButtonClass} onClick={() => updateComplaintStatus(complaint, 'resolved')} disabled={savingKey === `complaint-${complaint.id}`}>
                           Resuelto
                         </button>
-                        <button type="button" className="report-ghost-btn" onClick={() => updateComplaintStatus(complaint, 'closed')} disabled={savingKey === `complaint-${complaint.id}`}>
+                        <button type="button" className={softButtonClass} onClick={() => updateComplaintStatus(complaint, 'closed')} disabled={savingKey === `complaint-${complaint.id}`}>
                           Cerrado
                         </button>
-                        <button type="button" className="report-ghost-btn" onClick={() => handleDeleteComplaint(complaint)} disabled={savingKey === `delete-complaint-${complaint.id}`}>
+                        <button type="button" className={dangerButtonClass} onClick={() => handleDeleteComplaint(complaint)} disabled={savingKey === `delete-complaint-${complaint.id}`}>
+                          <Trash2 className="h-4 w-4" />
                           Eliminar
                         </button>
                       </div>
@@ -678,12 +738,13 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               </tbody>
             </table>
           </div>
+
           {renderPagination('reclamos', complaintsPage, complaintsTotalPages, complaintsTotal, (page) => {
             void loadData({ users: usersPage, complaints: page, logs: logsPage });
           })}
 
           {selectedComplaint && (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Detalle del reclamo</p>
@@ -692,25 +753,25 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                     {selectedComplaint.type} · {selectedComplaint.email} · {selectedComplaint.phone}
                   </p>
                 </div>
-                <button type="button" className="report-ghost-btn" onClick={() => setSelectedComplaintId(null)}>
+                <button type="button" className={softButtonClass} onClick={() => setSelectedComplaintId(null)}>
                   Cerrar detalle
                 </button>
               </div>
 
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Servicio</p>
                   <p className="mt-2 text-sm font-medium text-slate-900">{selectedComplaint.service}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Estado</p>
-                  <p className="mt-2 text-sm font-medium text-slate-900">{selectedComplaint.status}</p>
+                  <p className="mt-2 text-sm font-medium text-slate-900">{formatComplaintStatus(selectedComplaint.status)}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Detalle</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">{selectedComplaint.detail}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pedido del consumidor</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">{selectedComplaint.request}</p>
                 </div>
@@ -722,22 +783,28 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
 
       {activeTab === 'logs' && (
         <div className="report-card-entity overflow-hidden">
-          <div className="project-card-top">
-            <div className="project-card-icon">
-              <Clock3 className="h-6 w-6 text-gob-blue" />
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="project-card-top">
+              <div className="project-card-icon">
+                <Clock3 className="h-6 w-6 text-gob-blue" />
+              </div>
+              <div className="project-card-main-copy">
+                <h3 className="font-bold text-lg text-gob-dark">Bitacora de acciones</h3>
+                <p className="text-slate-500 text-sm">Trazabilidad de cambios sensibles con menos ruido visual y foco en lectura rapida.</p>
+              </div>
             </div>
-            <div className="project-card-main-copy">
-              <h3 className="font-bold text-lg text-gob-dark">Bitácora de acciones</h3>
-              <p className="text-slate-500 text-sm">Trazabilidad de cambios sensibles de usuario y reclamos.</p>
+            <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              {logsTotal} eventos
             </div>
           </div>
-          <div className="overflow-x-auto">
+
+          <div className="mt-4 overflow-x-auto">
             <table className="auth-report-preview-table">
               <thead>
                 <tr>
                   <th>Fecha</th>
                   <th>Actor</th>
-                  <th>Acción</th>
+                  <th>Accion</th>
                   <th>Objetivo</th>
                 </tr>
               </thead>
@@ -747,12 +814,16 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                     <td>{formatDateTime(log.createdAt)}</td>
                     <td>{log.actorEmail}</td>
                     <td>{log.action}</td>
-                    <td>{log.targetType}{log.targetId ? ` / ${log.targetId}` : ''}</td>
+                    <td>
+                      {log.targetType}
+                      {log.targetId ? ` / ${log.targetId}` : ''}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
           {renderPagination('logs', logsPage, logsTotalPages, logsTotal, (page) => {
             void loadData({ users: usersPage, complaints: complaintsPage, logs: page });
           })}
