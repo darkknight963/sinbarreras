@@ -493,10 +493,17 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
         type: 'tag',
         values: ['wcag2a', 'wcag2aa', 'wcag2aaa', 'wcag22a', 'wcag22aa', 'wcag22aaa', 'best-practice'],
       },
+      // Pedir explicitamente incomplete: axe no lo incluye por defecto.
+      // incomplete = hallazgos que axe no puede confirmar al 100% pero son
+      // problemas reales: referencias ARIA a IDs inexistentes, SVGs sin role,
+      // atributos ARIA invalidos. ARC Toolkit los muestra como "Alerts".
+      resultTypes: ['violations', 'incomplete'],
     });
   }, contextSelector);
 
   const findings: RawFinding[] = [];
+
+  // Procesar violations (confirmados)
   for (const violation of results.violations || []) {
     const axeRuleKey = normalizeRuleId(violation.id || 'axe-unknown', violation.description || violation.help || '');
     const axeRuleInfo = getRuleDetails(axeRuleKey);
@@ -516,6 +523,36 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
         selector: normalizeSelector(selector),
         elementHtml: node.html || '',
         severity: toSeverityEs(violation.impact),
+        suggestedFix: axeRuleInfo.suggestedFix || fix,
+      });
+    }
+  }
+
+  // Procesar incomplete (requieren revision) — equivalente a los "Alerts" de ARC Toolkit.
+  // Incluye: aria-describedby/aria-labelledby a IDs inexistentes, SVG sin role="img",
+  // atributos ARIA invalidos, y otros checks que axe no puede confirmar automaticamente.
+  for (const incomplete of results.incomplete || []) {
+    const axeRuleKey = normalizeRuleId(incomplete.id || 'axe-unknown', incomplete.description || incomplete.help || '');
+    const axeRuleInfo = getRuleDetails(axeRuleKey);
+    const axeRawDesc = (incomplete.description || incomplete.help || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const axeIsMapped = !axeRuleInfo.nameEs.startsWith('Regla Automática');
+    const axeDescription = (axeIsMapped ? axeRuleInfo.nameEs : null) || axeRawDesc || 'Requiere revision manual';
+    for (const node of incomplete.nodes || []) {
+      const selector = Array.isArray(node.target) ? node.target.join(' ') : 'document';
+      const fix = (node.any || []).map((item: any) => item.message).join('. ')
+        || (node.all || []).map((item: any) => item.message).join('. ')
+        || axeRuleInfo.suggestedFix
+        || 'Revisar el elemento y confirmar cumplimiento WCAG.';
+      findings.push({
+        tool: 'axe',
+        ruleId: incomplete.id || 'axe-unknown',
+        normalizedRuleId: axeRuleKey,
+        category: 'alert',
+        ...parseWcagTags(incomplete.tags),
+        description: axeDescription,
+        selector: normalizeSelector(selector),
+        elementHtml: node.html || '',
+        severity: toSeverityEs(incomplete.impact),
         suggestedFix: axeRuleInfo.suggestedFix || fix,
       });
     }
