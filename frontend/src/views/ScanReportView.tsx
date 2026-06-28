@@ -399,6 +399,112 @@ const getPrimaryFindingMessage = (finding: any, fallback?: string) => {
 const stripFindingStatePrefix = (value: string) =>
   value.replace(/^\[[^\]]+\]\s*/g, '').replace(/\s*\(https?:\/\/[^\s)]+\)\s*/gi, '').trim();
 
+// Explicación en dos niveles para cada tipo de problema.
+// simple: para gestores, directivos y redactores — sin tecnicismos.
+// technical: para desarrolladores — qué atributo/elemento corregir exactamente.
+const PLAIN_EXPLANATIONS: Record<string, { simple: string; technical: string; whoFixes: string }> = {
+  'color-contrast': {
+    simple: 'El texto es difícil de leer porque el color del texto y el fondo son muy parecidos. Personas con baja visión o daltonismo no pueden distinguirlo.',
+    technical: 'La relación de contraste no alcanza 4.5:1 (texto normal) o 3:1 (texto grande ≥18pt/14pt negrita). Ajusta los valores de color en CSS.',
+    whoFixes: 'Diseñador UX/UI',
+  },
+  'color-contrast-enhanced': {
+    simple: 'El contraste del texto no alcanza el nivel más estricto de accesibilidad (AAA), necesario para personas con baja visión severa.',
+    technical: 'Relación de contraste debe ser ≥7:1 para texto normal y ≥4.5:1 para texto grande (nivel AAA WCAG).',
+    whoFixes: 'Diseñador UX/UI',
+  },
+  'image-alt': {
+    simple: 'Esta imagen no tiene descripción alternativa. Las personas ciegas que usan lectores de pantalla no sabrán qué muestra la imagen.',
+    technical: 'Agrega el atributo alt="" con texto descriptivo al elemento <img>. Si es decorativa, usa alt="" vacío.',
+    whoFixes: 'Redactor UX / Desarrollador',
+  },
+  'button-name': {
+    simple: 'Este botón no tiene nombre visible ni descripción. Un lector de pantalla anunciará "botón" sin decirle al usuario qué hace.',
+    technical: 'El botón carece de texto visible, aria-label o aria-labelledby válido. Agrega texto interno o aria-label="Descripción de la acción".',
+    whoFixes: 'Desarrollador',
+  },
+  'link-name': {
+    simple: 'Este enlace no tiene texto que explique a dónde lleva. Los usuarios de teclado y lectores de pantalla no pueden saber su destino.',
+    technical: 'El elemento <a> no tiene texto visible ni aria-label. Agrega texto descriptivo o aria-label con el destino real.',
+    whoFixes: 'Redactor UX / Desarrollador',
+  },
+  'duplicate-id': {
+    simple: 'Hay dos o más elementos en la página con el mismo identificador. Esto confunde a los lectores de pantalla y puede romper la navegación por teclado.',
+    technical: 'El atributo id debe ser único en todo el documento. Cambia los id duplicados y actualiza todos los aria-labelledby, for y aria-controls que los referencian.',
+    whoFixes: 'Desarrollador',
+  },
+  'aria-valid-attr-value': {
+    simple: 'Un elemento está apuntando a otro elemento que no existe en la página. El lector de pantalla intentará leer una descripción que no puede encontrar.',
+    technical: 'El valor de un atributo ARIA (aria-labelledby, aria-describedby, aria-controls) referencia un id que no existe en el DOM. Corrige el id o elimina el atributo.',
+    whoFixes: 'Desarrollador',
+  },
+  'aria-labelledby': {
+    simple: 'Un elemento está apuntando a otro elemento que no existe en la página. El lector de pantalla intentará leer una descripción que no puede encontrar.',
+    technical: 'El valor de aria-labelledby referencia un id inexistente en el DOM. Verifica que el elemento con ese id exista o usa aria-label directamente.',
+    whoFixes: 'Desarrollador',
+  },
+  'scrollable-region-focusable': {
+    simple: 'Hay una zona de contenido desplazable (scroll) que no se puede usar con el teclado. Usuarios que no usan ratón quedan atrapados sin poder acceder a ese contenido.',
+    technical: 'El contenedor con overflow:scroll/auto necesita tabindex="0" para ser alcanzable con Tab y permitir el desplazamiento con teclas de flecha.',
+    whoFixes: 'Desarrollador',
+  },
+  'document-title': {
+    simple: 'La página no tiene título o el título está vacío. Los usuarios de lector de pantalla no saben en qué página están cuando cambian de pestaña.',
+    technical: 'El elemento <title> del <head> está ausente o vacío. Define un título único y descriptivo para cada página.',
+    whoFixes: 'Redactor UX / Desarrollador',
+  },
+  'html-has-lang': {
+    simple: 'La página no indica en qué idioma está escrita. Los lectores de pantalla pueden pronunciar el texto con el acento o idioma equivocado.',
+    technical: 'El elemento <html> carece del atributo lang. Agrega lang="es" o lang="es-PE" según corresponda.',
+    whoFixes: 'Desarrollador',
+  },
+  'label': {
+    simple: 'Un campo del formulario no tiene etiqueta visible. Los usuarios con discapacidad visual no saben qué dato deben ingresar en ese campo.',
+    technical: 'El input/select/textarea no tiene un <label> asociado, ni title, ni aria-label, ni aria-labelledby válido.',
+    whoFixes: 'Desarrollador',
+  },
+  'target-size': {
+    simple: 'Este botón o enlace es demasiado pequeño para hacer clic fácilmente, especialmente en pantallas táctiles o para personas con temblor en las manos.',
+    technical: 'El área interactiva mide menos de 24×24 px CSS (WCAG 2.2 AA). Aumenta el tamaño o agrega padding para alcanzar el mínimo.',
+    whoFixes: 'Diseñador UX/UI',
+  },
+  'bypass': {
+    simple: 'No existe un enlace para saltar la navegación repetida. Los usuarios de teclado deben presionar Tab decenas de veces en cada página para llegar al contenido.',
+    technical: 'Agrega un enlace "Saltar al contenido principal" como primer elemento del body, visible al recibir foco, que apunte a id="main-content".',
+    whoFixes: 'Desarrollador',
+  },
+  'iframe-title': {
+    simple: 'Hay un contenido incrustado (mapa, video, formulario) sin descripción. Los usuarios de lector de pantalla no saben qué contiene.',
+    technical: 'El elemento <iframe> no tiene atributo title con texto descriptivo. Agrega title="Descripción del contenido".',
+    whoFixes: 'Desarrollador',
+  },
+  'region': {
+    simple: 'El contenido de la página no está organizado en secciones reconocibles. Los usuarios de lector de pantalla no pueden navegar directamente a la zona que les interesa.',
+    technical: 'El contenido está fuera de landmarks HTML5 (main, nav, header, footer, section con nombre). Estructura la página con estos elementos semánticos.',
+    whoFixes: 'Desarrollador',
+  },
+};
+
+const getPlainExplanation = (ruleId: string, title: string) => {
+  if (PLAIN_EXPLANATIONS[ruleId]) return PLAIN_EXPLANATIONS[ruleId];
+  const t = normalizeText(title);
+  if (t.includes('contraste')) return PLAIN_EXPLANATIONS['color-contrast'];
+  if (t.includes('boton') || t.includes('button')) return PLAIN_EXPLANATIONS['button-name'];
+  if (t.includes('enlace') || t.includes('link')) return PLAIN_EXPLANATIONS['link-name'];
+  if (t.includes('imagen') || t.includes('image')) return PLAIN_EXPLANATIONS['image-alt'];
+  if (t.includes('etiqueta') || t.includes('label')) return PLAIN_EXPLANATIONS['label'];
+  if (t.includes('id unico') || t.includes('ids unicos') || t.includes('duplicate')) return PLAIN_EXPLANATIONS['duplicate-id'];
+  if (t.includes('aria') && t.includes('invalida')) return PLAIN_EXPLANATIONS['aria-valid-attr-value'];
+  if (t.includes('desplazable') || t.includes('scroll')) return PLAIN_EXPLANATIONS['scrollable-region-focusable'];
+  if (t.includes('idioma') || t.includes('lang')) return PLAIN_EXPLANATIONS['html-has-lang'];
+  if (t.includes('titulo') || t.includes('title')) return PLAIN_EXPLANATIONS['document-title'];
+  if (t.includes('tamano') || t.includes('interaccion') || t.includes('target')) return PLAIN_EXPLANATIONS['target-size'];
+  if (t.includes('saltar') || t.includes('bypass')) return PLAIN_EXPLANATIONS['bypass'];
+  if (t.includes('iframe')) return PLAIN_EXPLANATIONS['iframe-title'];
+  if (t.includes('region') || t.includes('landmark')) return PLAIN_EXPLANATIONS['region'];
+  return null;
+};
+
 const getFriendlyFindingTitle = (finding: any, fallback?: string) => {
   const rawMessage = stripFindingStatePrefix(getPrimaryFindingMessage(finding, fallback));
   const text = normalizeText([rawMessage, finding?.ruleId, finding?.nameEs, fallback].filter(Boolean).join(' '));
@@ -826,10 +932,10 @@ export function ScanReportView({
               {findingMessageGroups.map((group) => {
                 const wcagText = group.wcagRefs.length > 0 ? group.wcagRefs.join(', ') : 'WCAG por validar';
                 const ruleText = group.rules.length > 0 ? group.rules.slice(0, 2).join(', ') : 'Regla automática';
-                const description = getFindingDisplayDescription(group.findings[0], group.descriptions[0] || group.message);
                 const suggestion = group.suggestions[0] || 'Revisar el contexto del componente y aplicar la corrección WCAG correspondiente.';
                 const MAX_ELEMENTS = 20;
                 const shownFindings = group.findings.slice(0, MAX_ELEMENTS);
+                const plain = getPlainExplanation(group.rules[0] || '', group.title);
 
                 return (
                   <details
@@ -850,57 +956,79 @@ export function ScanReportView({
                     </summary>
 
                     <div className="finding-message-body">
-                      <div className="finding-message-body-grid">
-                        <div>
-                          <span>Qué significa</span>
-                          <p>{description}</p>
-                        </div>
-                        <div>
-                          <span>Criterio WCAG</span>
-                          <p>{wcagText}</p>
-                        </div>
-                        <div>
-                          <span>Regla / motor</span>
-                          <p>{ruleText}</p>
-                        </div>
-                        <div>
-                          <span>Vistas evaluadas</span>
-                          <p>{group.views.length > 0 ? group.views.join(', ') : 'Vista principal'}</p>
-                        </div>
-                        <div>
-                          <span>Rol responsable</span>
-                          <p>{group.roles.length > 0 ? group.roles.join(', ') : 'Por asignar'}</p>
-                        </div>
-                        <div>
-                          <span>Solución sugerida</span>
-                          <p>{canUsePaidFeatures ? suggestion : 'Disponible en Pro'}</p>
+
+                      {/* Nivel 1 — explicación para cualquier persona */}
+                      <div className="finding-plain-block">
+                        <div className="finding-plain-icon" aria-hidden="true">👤</div>
+                        <div className="finding-plain-content">
+                          <p className="finding-plain-label">¿Qué significa este problema?</p>
+                          <p className="finding-plain-text">
+                            {plain?.simple || group.title + ' — afecta la accesibilidad de la página para personas con discapacidad.'}
+                          </p>
+                          {canUsePaidFeatures && (
+                            <p className="finding-plain-action">
+                              <strong>Quién lo corrige:</strong> {plain?.whoFixes || group.roles[0] || 'Equipo técnico'}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="finding-element-table">
-                        <div className="finding-element-table-head">
-                          <span>#</span>
-                          <span>Selector CSS</span>
-                          <span>Fragmento HTML</span>
-                          <span>Qué corregir en este elemento</span>
-                        </div>
-                        {shownFindings.map((finding: any, findingIndex: number) => {
-                          const selector = finding?.selector || 'Sin selector';
-                          const html = finding?.elementHtml || '';
-                          const elementFix = finding?.elementFix || finding?.suggestedFix || suggestion;
-                          return (
-                            <div key={`${group.key}-el-${findingIndex}`} className="finding-element-row">
-                              <span className="finding-element-num">{findingIndex + 1}</span>
-                              <code className="finding-element-selector">{selector}</code>
-                              <pre className="finding-element-html"><code>{html || '(sin fragmento HTML)'}</code></pre>
-                              <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
+                      {/* Nivel 2 — detalles técnicos colapsados */}
+                      <details className="finding-technical-block">
+                        <summary className="finding-technical-toggle">
+                          Ver detalles técnicos para desarrolladores
+                        </summary>
+                        <div className="finding-technical-content">
+                          <div className="finding-message-body-grid">
+                            <div>
+                              <span>Qué corregir exactamente</span>
+                              <p>{canUsePaidFeatures ? (plain?.technical || suggestion) : 'Disponible en Pro'}</p>
                             </div>
-                          );
-                        })}
-                        {group.findings.length > MAX_ELEMENTS && (
-                          <p className="finding-message-more">+{group.findings.length - MAX_ELEMENTS} elementos adicionales con el mismo problema.</p>
-                        )}
-                      </div>
+                            <div>
+                              <span>Criterio WCAG</span>
+                              <p>{wcagText}</p>
+                            </div>
+                            <div>
+                              <span>Regla / motor</span>
+                              <p>{ruleText}</p>
+                            </div>
+                            <div>
+                              <span>Vistas evaluadas</span>
+                              <p>{group.views.length > 0 ? group.views.join(', ') : 'Vista principal'}</p>
+                            </div>
+                            <div>
+                              <span>Solución completa</span>
+                              <p>{canUsePaidFeatures ? suggestion : 'Disponible en Pro'}</p>
+                            </div>
+                          </div>
+
+                          <div className="finding-element-table">
+                            <div className="finding-element-table-head">
+                              <span>#</span>
+                              <span>Selector CSS</span>
+                              <span>Fragmento HTML afectado</span>
+                              <span>Corrección específica</span>
+                            </div>
+                            {shownFindings.map((finding: any, findingIndex: number) => {
+                              const selector = finding?.selector || 'Sin selector';
+                              const html = finding?.elementHtml || '';
+                              const elementFix = finding?.elementFix || finding?.suggestedFix || suggestion;
+                              return (
+                                <div key={`${group.key}-el-${findingIndex}`} className="finding-element-row">
+                                  <span className="finding-element-num">{findingIndex + 1}</span>
+                                  <code className="finding-element-selector">{selector}</code>
+                                  <pre className="finding-element-html"><code>{html || '(sin fragmento HTML)'}</code></pre>
+                                  <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
+                                </div>
+                              );
+                            })}
+                            {group.findings.length > MAX_ELEMENTS && (
+                              <p className="finding-message-more">+{group.findings.length - MAX_ELEMENTS} elementos adicionales con el mismo problema.</p>
+                            )}
+                          </div>
+                        </div>
+                      </details>
+
                     </div>
                   </details>
                 );

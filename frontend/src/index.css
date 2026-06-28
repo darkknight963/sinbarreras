@@ -15493,6 +15493,97 @@ html body .scan-launch-history-back:hover {
   font-weight: 750;
 }
 
+/* Bloque nivel 1 — explicación para cualquier persona */
+.finding-plain-block {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--sb-accent, #2563eb) 5%, white);
+  border: 1px solid color-mix(in srgb, var(--sb-accent, #2563eb) 20%, white);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.finding-plain-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.finding-plain-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.finding-plain-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sb-accent, #2563eb);
+}
+
+.finding-plain-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--sb-text, #0f172a);
+}
+
+.finding-plain-action {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--sb-text-muted, #475569);
+}
+
+.finding-plain-action strong {
+  color: var(--sb-text, #0f172a);
+}
+
+/* Bloque nivel 2 — detalles técnicos colapsados */
+.finding-technical-block {
+  border: 1px solid var(--sb-border, #dbe6ff);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.finding-technical-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--sb-text-muted, #475569);
+  cursor: pointer;
+  list-style: none;
+  background: var(--sb-surface-soft, #f8fafc);
+  user-select: none;
+}
+
+.finding-technical-toggle::-webkit-details-marker { display: none; }
+
+.finding-technical-toggle::before {
+  content: '▶';
+  font-size: 0.6rem;
+  transition: transform 0.15s;
+  color: var(--sb-accent, #2563eb);
+}
+
+.finding-technical-block[open] > .finding-technical-toggle::before {
+  transform: rotate(90deg);
+}
+
+.finding-technical-content {
+  padding: 12px 14px 14px;
+}
+
 /* Tabla de elementos afectados — estilo ARC Toolkit */
 .finding-element-table {
   margin-top: 16px;
