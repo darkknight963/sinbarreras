@@ -477,12 +477,14 @@ const getFindingMessageGroups = (rows: any[] = []) => {
       const statusType = getFindingGroupType(finding);
       const wcagRef = String(finding?.wcagCriterion || finding?.criterion || row?.id || '').trim();
       const ruleId = String(finding?.ruleId || '').trim();
-      // Agrupamos por título amigable + ruleId + statusType para fusionar instancias
-      // del mismo problema (ej: duplicate-id genera un mensaje distinto por cada elemento).
+      // Clave: título amigable + criterio WCAG + statusType.
+      // No incluimos ruleId porque distintas reglas técnicas del mismo criterio
+      // (aria-required-attr, aria-allowed-attr, scrollable-region-focusable en
+      // distintos viewports) son el mismo problema para el usuario final.
       const key = [
         statusType,
         normalizeText(title),
-        normalizeText(ruleId),
+        normalizeText(wcagRef),
       ].join('|');
 
       const current = groupMap.get(key) || {
