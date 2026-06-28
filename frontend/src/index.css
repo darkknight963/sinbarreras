@@ -15671,13 +15671,45 @@ html body .scan-launch-history-back:hover {
   flex-shrink: 0;
 }
 
+.finding-element-selector-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-right: 8px;
+}
+
 .finding-element-selector {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.78rem;
   color: var(--sb-accent, #2563eb);
   overflow-wrap: anywhere;
-  padding-right: 8px;
   background: none;
+}
+
+.finding-element-visible-text {
+  font-size: 0.73rem;
+  color: var(--sb-text-muted, #475569);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.finding-element-contexts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.finding-element-ctx-tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--sb-accent, #2563eb) 12%, white);
+  color: var(--sb-accent, #2563eb);
+  border: 1px solid color-mix(in srgb, var(--sb-accent, #2563eb) 25%, white);
+  white-space: nowrap;
 }
 
 .finding-element-html {

@@ -900,22 +900,55 @@ export function ScanReportView({
                               <span>Fragmento HTML afectado</span>
                               <span>Corrección específica del elemento</span>
                             </div>
-                            {shownFindings.map((finding: any, findingIndex: number) => {
-                              const selector = finding?.selector || 'Sin selector';
-                              const html = finding?.elementHtml || '';
-                              const elementFix = finding?.elementFix || finding?.suggestedFix || suggestion;
+                            {(() => {
+                              // Deduplicar por selector+html: si el mismo elemento aparece
+                              // en varios viewports/estados, mostrarlo una vez y anotar
+                              // en qué contextos ocurre (Desktop, Tablet, Móvil, etc.)
+                              const seen = new Map<string, { finding: any; contexts: string[] }>();
+                              for (const finding of group.findings) {
+                                const dedupeKey = `${finding?.selector || ''}||${(finding?.elementHtml || '').slice(0, 120)}`;
+                                const ctx = finding?.pageStateLabel || finding?.pageState || '';
+                                if (seen.has(dedupeKey)) {
+                                  const entry = seen.get(dedupeKey)!;
+                                  if (ctx && !entry.contexts.includes(ctx)) entry.contexts.push(ctx);
+                                } else {
+                                  seen.set(dedupeKey, { finding, contexts: ctx ? [ctx] : [] });
+                                }
+                              }
+                              const dedupedFindings = Array.from(seen.values()).slice(0, MAX_ELEMENTS);
+                              const hiddenCount = seen.size - dedupedFindings.length;
                               return (
-                                <div key={`${group.key}-el-${findingIndex}`} className="finding-element-row">
-                                  <span className="finding-element-num">{findingIndex + 1}</span>
-                                  <code className="finding-element-selector">{selector}</code>
-                                  <pre className="finding-element-html"><code>{html || '(sin fragmento HTML)'}</code></pre>
-                                  <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
-                                </div>
+                                <>
+                                  {dedupedFindings.map(({ finding, contexts }, findingIndex) => {
+                                    const selector = finding?.selector || 'Sin selector';
+                                    const html = finding?.elementHtml || '';
+                                    const elementFix = finding?.elementFix || finding?.suggestedFix || suggestion;
+                                    const visibleText = getVisibleTextFromHtml(html);
+                                    return (
+                                      <div key={`${group.key}-el-${findingIndex}`} className="finding-element-row">
+                                        <span className="finding-element-num">{findingIndex + 1}</span>
+                                        <div className="finding-element-selector-cell">
+                                          <code className="finding-element-selector">{selector}</code>
+                                          {visibleText && <em className="finding-element-visible-text">"{visibleText}"</em>}
+                                          {contexts.length > 0 && (
+                                            <div className="finding-element-contexts">
+                                              {contexts.map((ctx) => (
+                                                <span key={ctx} className="finding-element-ctx-tag">{ctx}</span>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <pre className="finding-element-html"><code>{html || '(sin fragmento HTML)'}</code></pre>
+                                        <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
+                                      </div>
+                                    );
+                                  })}
+                                  {hiddenCount > 0 && (
+                                    <p className="finding-message-more">+{hiddenCount} elementos adicionales con el mismo problema.</p>
+                                  )}
+                                </>
                               );
-                            })}
-                            {group.findings.length > MAX_ELEMENTS && (
-                              <p className="finding-message-more">+{group.findings.length - MAX_ELEMENTS} elementos adicionales con el mismo problema.</p>
-                            )}
+                            })()}
                           </div>
                         </div>
                       </details>
