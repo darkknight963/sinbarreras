@@ -51,6 +51,19 @@ export class AuthController {
     return safeResult;
   }
 
+  // Endpoint de recuperación: resetea brute-force y re-aplica el hash de la contraseña.
+  // Protegido por la ADMIN_PASSWORD del env (no requiere sesión activa).
+  @Public()
+  @RateLimit({ scope: 'auth', limit: 5, windowMs: 60 * 60 * 1000 })
+  @Post('admin/reset')
+  async adminReset(
+    @Body() body: { password: string },
+    @Req() req: Request,
+  ) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    return this.authService.resetAdminBruteForce(body.password, ip);
+  }
+
   @Public()
   @RateLimit({ scope: 'auth', limit: 5, windowMs: 10 * 60 * 1000 })
   @Post('guest')

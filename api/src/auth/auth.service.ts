@@ -86,6 +86,24 @@ export class AuthService {
     await this.ensureAdminUser('administrador@gzakgroup.com', '12345678', ['administrador@sinbarreras.com', 'demo@sinbarreras.local']);
   }
 
+  async resetAdminBruteForce(providedPassword: string, clientIp: string): Promise<{ ok: boolean; message: string }> {
+    const configuredPassword = this.configService.get<string>('ADMIN_PASSWORD')?.trim();
+    if (!configuredPassword || providedPassword !== configuredPassword) {
+      throw new UnauthorizedException('Contraseña incorrecta');
+    }
+    const adminEmail = (this.configService.get<string>('ADMIN_EMAIL') || 'administrador@gzakgroup.com').trim().toLowerCase();
+    const { createHash } = await import('crypto');
+    const emailHash = createHash('sha256').update(adminEmail).digest('hex');
+    const identifier = `email:${emailHash}:ip:${clientIp}`;
+    await this.rateLimitService.resetAttempts(identifier);
+    // Also reset the generic IP-only identifier in case it was stored differently
+    const identifierNoIp = `email:${emailHash}:ip:unknown`;
+    await this.rateLimitService.resetAttempts(identifierNoIp).catch(() => {});
+    // Re-seed admin to ensure password hash is fresh
+    await this.ensureAdminUser(adminEmail, configuredPassword);
+    return { ok: true, message: 'Brute-force reset y contraseña re-aplicada. Puedes iniciar sesión ahora.' };
+  }
+
   private async ensureAdminUser(email: string, password: string, legacyEmails: string[] = []) {
     const existingMaster = await this.userRepository.findOne({ where: { email } });
     const legacyUsers = await Promise.all(
