@@ -11,7 +11,10 @@ const allowedOrigins = [
   'http://127.0.0.1:80',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:4173',
-  process.env.FRONTEND_ORIGIN?.trim(),
+  // Support comma-separated list in FRONTEND_ORIGIN, e.g. "https://sinbarreras.gzakgroup.com,https://www.sinbarreras.gzakgroup.com"
+  ...(process.env.FRONTEND_ORIGIN?.trim()
+    ? process.env.FRONTEND_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+    : []),
 ].filter((origin): origin is string => Boolean(origin));
 
 // UUID v4 pattern — clients can only subscribe to valid scan IDs

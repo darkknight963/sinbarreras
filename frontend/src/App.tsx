@@ -9,7 +9,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost } from './config';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH } from './config';
 import { BillingView } from './BillingView';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
@@ -260,14 +260,11 @@ export default function App() {
   }, [currentProject]);
 
   // WebSocket connection — replaces polling for active scans.
+  // SOCKET_URL points directly to Railway (not Vercel), because Vercel cannot proxy WebSockets.
   // The socket connects once and stays alive; individual scans are subscribed by UUID room.
   useEffect(() => {
-    const wsBase = runtimeApiBaseUrl === '/api'
-      ? window.location.origin
-      : runtimeApiBaseUrl.replace('/api', '').replace(/\/$/, '');
-
-    const socket = socketIo(wsBase, {
-      path: '/socket.io',
+    const socket = socketIo(SOCKET_URL, {
+      path: SOCKET_PATH,
       transports: ['websocket', 'polling'],
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
