@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ArrowLeft,
   Download,
@@ -10,76 +10,38 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
+// Normaliza la URL de evidencia para que apunte siempre al API correcto.
+// El endpoint /evidence/:key devuelve un redirect 302 a la presigned URL de R2,
+// así el browser descarga directo desde Cloudflare R2, sin pasar por Railway.
+function resolveEvidenceUrl(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const match = parsed.pathname.match(/\/(?:api\/)?evidence\/(.+)$/);
+    if (match) {
+      return `${API_BASE_URL.replace(/\/+$/, '')}/evidence/${match[1]}`;
+    }
+  } catch {
+    // fall through
+  }
+  return url;
+}
 
 function EvidencePreview({ url }: { url: string }) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const evidenceUrl = resolveEvidenceUrl(url);
 
-  useEffect(() => {
-    let active = true;
-    let generatedUrl: string | null = null;
-
-    const loadEvidence = async () => {
-      try {
-        let evidenceUrl = url;
-        try {
-          const parsed = new URL(url, window.location.origin);
-          const evidenceMatch = parsed.pathname.match(/\/(?:api\/)?evidence\/(.+)$/);
-          if (evidenceMatch) {
-            evidenceUrl = `${API_BASE_URL.replace(/\/+$/, '')}/evidence/${evidenceMatch[1]}`;
-          }
-        } catch {
-          // Keep the original URL if it cannot be normalized.
-        }
-
-        const response = await fetch(evidenceUrl, {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error(`Evidence fetch failed: ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        generatedUrl = URL.createObjectURL(blob);
-
-        if (active) {
-          setObjectUrl(generatedUrl);
-        }
-      } catch {
-        if (active) {
-          setObjectUrl(null);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    setLoading(true);
-    setObjectUrl(null);
-    loadEvidence();
-
-    return () => {
-      active = false;
-      if (generatedUrl) {
-        URL.revokeObjectURL(generatedUrl);
-      }
-    };
-  }, [url]);
-
-  if (loading) {
-    return <div className="report-no-evidence">Cargando evidencia visual...</div>;
-  }
-
-  if (!objectUrl) {
+  if (error) {
     return <div className="report-no-evidence">Sin evidencia visual disponible</div>;
   }
 
   return (
-    <a href={objectUrl} target="_blank" rel="noreferrer" className="report-evidence-link">
-      <img src={objectUrl} alt="Evidencia visual" className="w-full rounded-lg border border-slate-200" />
+    <a href={evidenceUrl} target="_blank" rel="noreferrer" className="report-evidence-link">
+      <img
+        src={evidenceUrl}
+        alt="Evidencia visual"
+        className="w-full rounded-lg border border-slate-200"
+        onError={() => setError(true)}
+      />
     </a>
   );
 }
