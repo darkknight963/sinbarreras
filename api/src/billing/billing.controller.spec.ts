@@ -1,5 +1,12 @@
+import { createHmac } from 'crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { BillingController } from './billing.controller';
+
+function makeSignedRequest(payload: object, secret: string): { headers: Record<string, string>; rawBody: Buffer } {
+  const rawBody = Buffer.from(JSON.stringify(payload));
+  const signature = createHmac('sha256', secret).update(rawBody).digest('hex');
+  return { headers: { 'x-culqi-signature': signature }, rawBody };
+}
 
 describe('BillingController', () => {
   it('delegates checkout and billing state access to the service', async () => {
@@ -24,18 +31,15 @@ describe('BillingController', () => {
       controller.confirmSubscription({ id: 'user-1' }, { planCode: 'monthly', currency: 'PEN', tokenId: 'tok' } as any),
     ).resolves.toEqual({ status: 'active' });
     await expect(controller.cancel({ id: 'user-1' })).resolves.toEqual({ status: 'canceled' });
+
+    const webhookPayload = { event: 'subscription.creation.succeeded' };
+    const { headers, rawBody } = makeSignedRequest(webhookPayload, 'whsec_test_123');
     await expect(
-      controller.handleWebhook(
-        { event: 'subscription.creation.succeeded' } as any,
-        { headers: {} } as any,
-        'whsec_test_123',
-      ),
-    ).resolves.toEqual({
-      ok: true,
-    });
+      controller.handleWebhook(webhookPayload as any, { headers, rawBody } as any),
+    ).resolves.toEqual({ ok: true });
   });
 
-  it('rejects Culqi webhooks with an invalid secret', () => {
+  it('rejects Culqi webhooks without a valid HMAC signature', () => {
     const billingService = {
       getWebhookSecret: jest.fn(() => 'whsec_test_123'),
       handleWebhook: jest.fn(),
@@ -45,25 +49,40 @@ describe('BillingController', () => {
     expect(() =>
       controller.handleWebhook(
         { event: 'subscription.creation.succeeded' } as any,
-        { headers: {} } as any,
-        'wrong-secret',
+        { headers: { 'x-culqi-signature': 'badfeed' }, rawBody: Buffer.from('{}') } as any,
       ),
     ).toThrow(UnauthorizedException);
     expect(billingService.handleWebhook).not.toHaveBeenCalled();
   });
 
-  it('accepts the webhook secret through a header', async () => {
+  it('rejects webhooks with missing signature header', () => {
+    const billingService = {
+      getWebhookSecret: jest.fn(() => 'whsec_test_123'),
+      handleWebhook: jest.fn(),
+    } as any;
+    const controller = new BillingController(billingService);
+
+    expect(() =>
+      controller.handleWebhook(
+        { event: 'subscription.charge.succeeded' } as any,
+        { headers: {} } as any,
+      ),
+    ).toThrow(UnauthorizedException);
+    expect(billingService.handleWebhook).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid HMAC-signed webhook', async () => {
     const billingService = {
       getWebhookSecret: jest.fn(() => 'whsec_test_123'),
       handleWebhook: jest.fn(async () => ({ ok: true })),
     } as any;
     const controller = new BillingController(billingService);
 
+    const payload = { event: 'subscription.charge.succeeded' };
+    const { headers, rawBody } = makeSignedRequest(payload, 'whsec_test_123');
+
     await expect(
-      controller.handleWebhook(
-        { event: 'subscription.charge.succeeded' } as any,
-        { headers: { 'x-culqi-webhook-secret': 'whsec_test_123' } } as any,
-      ),
+      controller.handleWebhook(payload as any, { headers, rawBody } as any),
     ).resolves.toEqual({ ok: true });
   });
 });

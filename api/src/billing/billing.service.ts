@@ -126,17 +126,20 @@ export class BillingService {
     // Evita el caso donde la subscription se guarda pero el usuario no queda en plan activo.
     await this.dataSource.transaction(async (manager) => {
       const saved = await manager.save(BillingSubscription, billingRecord);
-      await manager.update(User, user.id, {
+      const userUpdate = {
         billingStatus: saved.status,
         billingPlan: plan.code,
         billingCurrency: plan.currency,
         billingPeriodEnd: saved.currentPeriodEnd,
         billingCustomerId: saved.providerCustomerId,
         billingSubscriptionId: saved.providerSubscriptionId,
-      });
+      };
+      // Keep the in-memory user in sync so the return value reflects the committed state.
+      Object.assign(user, userUpdate);
+      await manager.update(User, user.id, userUpdate);
     });
 
-    return this.serializeBillingState(await this.getUserOrThrow(userId));
+    return this.serializeBillingState(user);
   }
 
   async cancelSubscription(userId: string) {
@@ -213,16 +216,21 @@ export class BillingService {
     billingRecord.status = this.mapStatusFromEvent(eventName, billingRecord.status);
     billingRecord.currentPeriodEnd = this.mapPeriodEnd(this.extractPeriodEnd(payload));
 
+    const userUpdate = {
+      billingStatus: billingRecord.status,
+      billingPlan: billingRecord.plan,
+      billingCurrency: billingRecord.currency,
+      billingPeriodEnd: billingRecord.currentPeriodEnd,
+      billingCustomerId: billingRecord.providerCustomerId,
+      billingSubscriptionId: billingRecord.providerSubscriptionId,
+    };
+
+    // Keep the eager-loaded user in sync so callers see the updated state.
+    Object.assign(billingRecord.user, userUpdate);
+
     await this.dataSource.transaction(async (manager) => {
       await manager.save(BillingSubscription, billingRecord);
-      await manager.update(User, billingRecord.user.id, {
-        billingStatus: billingRecord.status,
-        billingPlan: billingRecord.plan,
-        billingCurrency: billingRecord.currency,
-        billingPeriodEnd: billingRecord.currentPeriodEnd,
-        billingCustomerId: billingRecord.providerCustomerId,
-        billingSubscriptionId: billingRecord.providerSubscriptionId,
-      });
+      await manager.update(User, billingRecord.user.id, userUpdate);
     });
 
     return { ok: true, matched: true };

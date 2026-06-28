@@ -10,19 +10,20 @@ const SESSION_COOKIE = 'sb_session';
 const COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 
 // El token de sesión viaja exclusivamente en una cookie httpOnly para que JavaScript
-// del cliente no pueda leerlo ni en caso de XSS. SameSite=Strict impide CSRF.
+// del cliente no pueda leerlo ni en caso de XSS. SameSite=Lax cubre CSRF en la mayoría
+// de flujos y además permite que las redirecciones OAuth cross-origin entreguen la cookie.
 function setSessionCookie(res: Response, token: string) {
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: COOKIE_MAX_AGE_MS,
     path: '/',
   });
 }
 
 function clearSessionCookie(res: Response) {
-  res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' });
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
 }
 
 @Controller('auth')

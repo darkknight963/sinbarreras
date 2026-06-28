@@ -10,19 +10,6 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
-const SESSION_STORAGE_KEY = 'sin-barreras-session-token';
-
-const getStoredAuthToken = () =>
-  typeof window === 'undefined' ? '' : (window.localStorage.getItem(SESSION_STORAGE_KEY)?.trim() || '');
-
-const withAuthHeaders = (headers?: HeadersInit): HeadersInit => {
-  const nextHeaders = new Headers(headers);
-  const token = getStoredAuthToken();
-  if (token) {
-    nextHeaders.set('Authorization', `Bearer ${token}`);
-  }
-  return nextHeaders;
-};
 
 function EvidencePreview({ url }: { url: string }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -46,7 +33,7 @@ function EvidencePreview({ url }: { url: string }) {
         }
 
         const response = await fetch(evidenceUrl, {
-          headers: withAuthHeaders(),
+          credentials: 'include',
         });
 
         if (!response.ok) {

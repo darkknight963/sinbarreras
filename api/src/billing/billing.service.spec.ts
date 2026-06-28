@@ -260,10 +260,10 @@ describe('BillingService', () => {
     ).resolves.toEqual({ ok: true, matched: true });
 
     expect(record.status).toBe(expectedStatus);
+    // user es el objeto eager-loaded en billingRecord; handleWebhook lo actualiza in-place.
     expect(user.billingStatus).toBe(expectedStatus);
-    expect(userRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ billingStatus: expectedStatus }),
-    );
+    // El servicio persiste mediante dataSource.transaction (manager.update), no userRepository.save directamente.
+    expect(dataSource.transaction).toHaveBeenCalled();
   });
 
   it('ignores unrelated webhook events without changing billing', async () => {
