@@ -248,24 +248,22 @@ async function _processScanBody(
         viewports.push({ width: 375, height: 667 });
       }
 
-      // Los viewports corren en paralelo: cada uno usa su propio contexto incógnito
-      // del browser pool, sin interferencia entre sí. El scan desktop (índice 0) recibe
-      // el set completo de motores; tablet/móvil usan lightScan (solo axe).
-      // Tiempo total: max(desktop, tablet, móvil) en lugar de sum — ~60% más rápido.
+      // Viewports secuenciales: desktop completo primero, luego tablet y móvil en lightScan.
+      // Paralelo fue revertido: bajo presión de memoria los contextos simultáneos pueden
+      // producir falsos negativos en axe y capturas incompletas. El timeout por URL
+      // sigue activo para evitar que una página lenta congele el job.
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`URL scan timeout after ${URL_SCAN_TIMEOUT_MS / 1000}s: ${url}`)), URL_SCAN_TIMEOUT_MS),
       );
-      const viewportResults = await Promise.race([
-        Promise.all(
-          viewports.map((vp, viewportIndex) =>
-            scanUrl(url, {
-              viewport: vp,
-              lightScan: viewportIndex > 0,
-            }),
-          ),
-        ),
-        timeoutPromise,
-      ]);
+      const viewportResults: Awaited<ReturnType<typeof scanUrl>>[] = [];
+      for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
+        const vp = viewports[viewportIndex];
+        const res = await Promise.race([
+          scanUrl(url, { viewport: vp, lightScan: viewportIndex > 0 }),
+          timeoutPromise,
+        ]);
+        viewportResults.push(res);
+      }
 
       // Aggregate scores
       const avgScore = Math.round(viewportResults.reduce((acc, r) => acc + r.score, 0) / viewportResults.length);

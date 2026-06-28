@@ -35,11 +35,12 @@ export async function detectPageContent(page: Page): Promise<ContentDetection> {
     const q = (selector) => !!document.querySelector(selector);
     const text = document.body?.innerText?.toLowerCase() || '';
     const all = (selector) => Array.from(document.querySelectorAll(selector));
-    const hasAnimation = all('*').slice(0, 1500).some((el) => {
+    const allElements = all('*').slice(0, 2000);
+    const hasAnimation = allElements.some((el) => {
       const style = window.getComputedStyle(el);
       return style.animationName && style.animationName !== 'none' || style.transitionDuration && style.transitionDuration !== '0s';
     });
-    const hasDragHandler = all('*').some((el) => {
+    const hasDragHandler = allElements.some((el) => {
       const attrs = Array.from(el.attributes || []).map((a) => a.name.toLowerCase());
       return attrs.some((name) => name.startsWith('ondrag'));
     });

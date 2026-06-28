@@ -40,7 +40,9 @@ export function buildCoverageReport(rawFindings: RawLike[]): CoverageReport {
     };
   }
 
-  const expectedTools = ['axe', 'lighthouse', 'pa11y', 'ibm-equal-access'];
+  // Motores activos: axe (motor principal WCAG), ibm-equal-access (cobertura complementaria)
+  // y heuristic-dom (checks semánticos propios). Lighthouse y pa11y fueron eliminados.
+  const expectedTools = ['axe', 'ibm-equal-access', 'heuristic-dom'];
   const presentCoreTools = expectedTools.filter((t) => toolsSet.has(t)).length;
   const toolCoverageRatio = expectedTools.length ? presentCoreTools / expectedTools.length : 1;
   const coverageDepthRatio = uniqueNorm.size > 0 ? Math.min(1, uniqueNorm.size / Math.max(1, uniqueRaw.size)) : 0;
