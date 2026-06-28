@@ -2435,6 +2435,21 @@ select {
   }
 }
 
+.report-finding-group-state-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 .report-rule-id-sub {
   display: block;
   font-size: 0.72rem;

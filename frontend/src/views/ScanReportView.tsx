@@ -1337,7 +1337,12 @@ export function ScanReportView({
                                             {getFindingGroupBadge(item, occurrenceCount)}
                                           </span>
                                           <span className="report-finding-group-title">
-                                            <strong>{getFindingDescriptionSummary([item]) || item.nameEs || row.nombre}</strong>
+                                            <strong>
+                                              {getFindingDescriptionSummary([item]) || item.nameEs || row.nombre}
+                                              {item.pageStateLabel && (
+                                                <span className="report-finding-group-state-tag">{item.pageStateLabel}</span>
+                                              )}
+                                            </strong>
                                             <small>{item.ruleId || item.wcagCriterion || item.criterion || row.id}</small>
                                           </span>
                                           <span className={`report-severity-chip ${getSeverityClass(item.severity)}`}>{item.severity || 'medio'}</span>
@@ -1347,7 +1352,12 @@ export function ScanReportView({
                                           <div className="report-finding-detail-header">
                                             <div>
                                               <p className="report-finding-detail-kicker">Grupo {itemIndex + 1} de {findingCount}</p>
-                                              <h4>{item.nameEs || row.nombre}</h4>
+                                              <h4>
+                                                {item.nameEs || row.nombre}
+                                                {item.pageStateLabel && (
+                                                  <span className="report-finding-group-state-tag">{item.pageStateLabel}</span>
+                                                )}
+                                              </h4>
                                             </div>
                                             <div className="report-finding-detail-badges">
                                               <span className={`report-status-badge ${getFindingStatusClass(item)}`}>{getFindingStatusLabel(item)}</span>
