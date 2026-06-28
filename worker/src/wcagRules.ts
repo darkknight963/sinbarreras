@@ -556,70 +556,117 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
 
 function normalizeRuleLookupKey(ruleId: string): string {
   const id = (ruleId || '').toLowerCase();
+
+  // axe-core: extraer nombre de regla de URL Deque o prefijo axe:
   const dequeMatch = id.match(/dequeuniversity\.com\/rules\/axe\/[0-9.]+\/([^?)\s]+)/);
   if (dequeMatch?.[1]) return dequeMatch[1];
   if (id.startsWith('axe:')) return id.slice(4);
-  // heuristic-dom custom rules
-  if (id.includes('html-lang-missing')) return 'html-lang-missing';
-  if (id.includes('aria-dialog-name')) return 'aria-dialog-name';
-  if (id.includes('aria-required-owned-element')) return 'aria-required-owned-element';
-  if (id.includes('aria-widget-name-missing')) return 'aria-widget-name-missing';
-  if (id.includes('aria-valid-attr-value')) return 'aria-valid-attr-value';
-  if (id.includes('scrollable-region-focusable')) return 'scrollable-region-focusable';
-  if (id.includes('empty-list-item')) return 'empty-list-item';
-  if (id.includes('link-href-missing')) return 'link-href-missing';
-  if (id.includes('link-name-missing')) return 'link-name-missing';
-  if (id.includes('button-name-missing')) return 'button-name-missing';
-  if (id.includes('input-name-missing')) return 'input-name-missing';
-  if (id.includes('table-purpose-review')) return 'table-purpose-review';
-  if (id.includes('title-non-interactive')) return 'title-non-interactive';
-  if (id.includes('h1-in-header')) return 'h1-in-header';
-  if (id.includes('content-behind-dialog-accessible')) return 'content-behind-dialog-accessible';
-  if (id.includes('form-field-multiple-labels')) return 'form-control-multiple-labels';
-  if (id.includes('multiple-labels')) return 'form-control-multiple-labels';
-  if (id.includes('required-html5-attribute')) return 'required-html5-indicator';
-  if (id.includes('frame-tested')) return 'frame-tested';
+
+  // Reglas propias heuristic-dom (nombres exactos con guion, nunca ambiguos)
+  if (id === 'html-lang-missing') return 'html-lang-missing';
+  if (id === 'aria-dialog-name') return 'aria-dialog-name';
+  if (id === 'aria-required-owned-element') return 'aria-required-owned-element';
+  if (id === 'aria-widget-name-missing') return 'aria-widget-name-missing';
+  if (id === 'aria-valid-attr-value') return 'aria-valid-attr-value';
+  if (id === 'scrollable-region-focusable') return 'scrollable-region-focusable';
+  if (id === 'empty-list-item') return 'empty-list-item';
+  if (id === 'link-href-missing') return 'link-href-missing';
+  if (id === 'link-name-missing') return 'link-name-missing';
+  if (id === 'button-name-missing') return 'button-name-missing';
+  if (id === 'input-name-missing') return 'input-name-missing';
+  if (id === 'table-purpose-review') return 'table-purpose-review';
+  if (id === 'title-non-interactive') return 'title-non-interactive';
+  if (id === 'h1-in-header') return 'h1-in-header';
+  if (id === 'content-behind-dialog-accessible') return 'content-behind-dialog-accessible';
+  if (id === 'frame-tested') return 'frame-tested';
+  if (id === 'color-contrast-enhanced') return 'color-contrast-enhanced';
+  if (id === 'color-contrast') return 'color-contrast';
+  if (id === 'landmark-main-missing') return 'landmark-main-missing';
+  if (id === 'landmark-nav-missing') return 'landmark-nav-missing';
+  if (id === 'bypass-missing') return 'bypass-missing';
+  if (id === 'aria-allowed-attr' || id === 'aria-prohibited-attr') return 'aria-allowed-attr';
+  if (id === 'aria-roles' || id === 'aria-required-attr' || id === 'aria-conditional-attr') return 'aria-roles';
+  if (id === 'autocomplete-missing' || id === 'autocomplete-valid') return 'autocomplete-missing';
+  if (id === 'form-control-multiple-labels' || id === 'form-field-multiple-labels' || id === 'multiple-labels') return 'form-control-multiple-labels';
+  if (id === 'required-html5-indicator' || id === 'required-html5-attribute') return 'required-html5-indicator';
+  if (id === 'duplicate-id') return 'duplicate-id';
+  if (id === 'region') return 'region';
+  if (id === 'focus-visible') return 'focus-visible';
+  if (id === 'target-size') return 'target-size';
+  if (id === 'document-title') return 'document-title';
+  if (id === 'image-alt' || id === 'image-ignored-review' || id === 'input-image-alt') return id;
+  if (id === 'label' || id === 'label-empty-text' || id === 'label-not-form-control') return id;
+  if (id === 'form-field-label-missing') return 'form-field-label-missing';
+  if (id === 'heading-markup-review') return 'heading-markup-review';
+  if (id === 'iframe-title') return 'iframe-title';
+  if (id === 'link-name') return 'link-name';
+  if (id === 'button-name') return 'button-name';
+  if (id === 'reflow-fixed-position') return 'reflow-fixed-position';
+  if (id === 'html-has-lang') return 'html-has-lang';
+  if (id === 'html-lang-valid') return 'html-lang-valid';
+  if (id === 'valid-lang') return 'valid-lang';
+  if (id === 'contrast-image-background-undetermined') return 'contrast-image-background-undetermined';
+  if (id === 'select-value') return 'select-value';
+  if (id === 'textarea-name') return 'textarea-name';
+
+  // axe-core reglas con sufijos o variantes
   if (id.includes('color-contrast-enhanced')) return 'color-contrast-enhanced';
   if (id.includes('color-contrast') || id.includes('g18.fail') || id.includes('g145.fail') || id.includes('g18.4') || id.includes('g145.4')) return 'color-contrast';
-  if (id.includes('landmark-one-main') || id.includes('no-main-landmark') || id.includes('landmark-main')) return 'landmark-main-missing';
-  if (id.includes('region')) return 'region';
-  if (id.includes('h91.select.value')) return 'select-value';
-  if (id.includes('h85.2')) return 'select-optgroup';
-  if (id.includes('h44.notformcontrol')) return 'label-not-form-control';
-  if (id.includes('h39.3.nocaption')) return 'table-caption-review';
-  if (id.includes('f77')) return 'duplicate-id';
-  if (id.includes('h67.2')) return 'image-ignored-review';
-  if (id.includes('bgimage') || id.includes('f24.fgcolour')) return 'contrast-image-background-undetermined';
-  if (id.includes('1_4_10') || id.includes('reflow')) return 'reflow-fixed-position';
-  if (id.includes('h42')) return 'heading-markup-review';
-  if (id.includes('h91.textarea.name')) return 'textarea-name';
-  if (id.includes('f68') || id.includes('h71.3') || id.includes('h44.2')) return 'form-field-label-missing';
-  if (id.includes('h64.1') || id.includes('iframe-title') || id.includes('h64')) return 'iframe-title';
-  // Expanded htmlcs / pa11y codes
-  if (id.includes('h30') || id.includes('e501') || id.includes('link_in_text_block')) return 'link-name';
-  if (id.includes('h37') || id.includes('h36.1') || id.includes('img.alt') || id.includes('image-alt')) return 'image-alt';
-  if (id.includes('h36.2') || id.includes('input.image')) return 'input-image-alt';
-  if (id.includes('h45')) return 'image-alt';
-  if (id.includes('h63') || id.includes('h51') || id.includes('table_headers')) return 'table-purpose-review';
-  if (id.includes('h65') || id.includes('h91.input') || id.includes('input_label')) return 'input-name-missing';
-  if (id.includes('h71') || id.includes('h32') || id.includes('fieldset')) return 'form-field-label-missing';
-  if (id.includes('h48') || id.includes('list_markup')) return 'empty-list-item';
-  if (id.includes('g1.1') || id.includes('skip_link') || id.includes('bypass')) return 'bypass-missing';
-  if (id.includes('h69') || id.includes('heading_markup') || id.includes('heading-order')) return 'heading-markup-review';
-  if (id.includes('aria.documentlanguage') || id.includes('rpt_elem_lang_empty') || id.includes('html_lang')) return 'html-lang-missing';
-  if (id.includes('f55') || id.includes('keyboard') || id.includes('rpt_elem_href')) return 'link-href-missing';
   if (id.includes('duplicate-id') || id.includes('f77') || id.includes('duplicate_id')) return 'duplicate-id';
-  if (id.includes('aria.banner') || id.includes('landmark_banner')) return 'landmark-main-missing';
-  if (id.includes('landmark') && id.includes('nav')) return 'landmark-nav-missing';
-  if (id.includes('target-size') || id.includes('target_size')) return 'target-size';
-  if (id.includes('focus-visible') || id.includes('focus_visible')) return 'focus-visible';
-  if (id.includes('document-title') || id.includes('doc_title')) return 'document-title';
-  if (id.includes('select-name') || id.includes('h91.select.name')) return 'input-name-missing';
-  if (id.includes('button-name') || id.includes('h91.button')) return 'button-name';
-  if (id.includes('label-content-name') || id.includes('label_in_name')) return 'button-name';
-  if (id.includes('autocomplete-valid') || id.includes('autocomplete')) return 'autocomplete-missing';
+  if (id.includes('scrollable-region-focusable') || id.includes('element_scrollable_tabbable')) return 'scrollable-region-focusable';
   if (id.includes('aria-allowed-attr') || id.includes('aria-prohibited-attr')) return 'aria-allowed-attr';
+  if (id.includes('aria-required-owned-element')) return 'aria-required-owned-element';
+  if (id.includes('aria-valid-attr-value')) return 'aria-valid-attr-value';
   if (id.includes('aria-roles') || id.includes('aria-required-attr') || id.includes('aria-conditional-attr')) return 'aria-roles';
+  if (id.includes('autocomplete-valid') || id.includes('autocomplete-missing')) return 'autocomplete-missing';
+  if (id.includes('button-name')) return 'button-name';
+  if (id.includes('link-name')) return id.includes('missing') ? 'link-name-missing' : 'link-name';
+  if (id.includes('link-href')) return 'link-href-missing';
+  if (id.includes('image-alt') || id.includes('img.alt') || id.includes('img_alt')) return 'image-alt';
+  if (id.includes('input-image-alt') || id.includes('h36.2') || id.includes('input.image')) return 'input-image-alt';
+  if (id.includes('iframe-title') || id.includes('h64')) return 'iframe-title';
+  if (id.includes('heading-order') || id.includes('heading_markup') || id.includes('h42') || id.includes('h69')) return 'heading-markup-review';
+  if (id.includes('document-title') || id.includes('doc_title')) return 'document-title';
+  if (id.includes('focus-visible') || id.includes('focus_visible')) return 'focus-visible';
+  if (id.includes('target-size') || id.includes('target_size')) return 'target-size';
+  if (id.includes('label-content-name') || id.includes('label_in_name')) return 'button-name';
+  if (id.includes('reflow') || id.includes('1_4_10')) return 'reflow-fixed-position';
+
+  // Códigos HTMLCS / Pa11y exactos (prefijos cortos, sin ambigüedad)
+  if (id === 'h30' || id.startsWith('h30.') || id.includes('e501') || id.includes('link_in_text_block')) return 'link-name';
+  if (id === 'h37' || id === 'h36.1' || id === 'h45') return 'image-alt';
+  if (id === 'h36.2') return 'input-image-alt';
+  if (id === 'h48' || id.includes('list_markup')) return 'empty-list-item';
+  if (id === 'h63' || id === 'h51' || id.includes('table_headers')) return 'table-purpose-review';
+  if (id === 'h65' || id === 'h91.input' || id.includes('input_label')) return 'input-name-missing';
+  if (id === 'h71' || id === 'h32' || (id.includes('fieldset') && !id.includes('aria'))) return 'form-field-label-missing';
+  if (id === 'h91.select.value') return 'select-value';
+  if (id === 'h91.select.name') return 'input-name-missing';
+  if (id === 'h91.textarea.name') return 'textarea-name';
+  if (id === 'h91.button' || id.startsWith('h91.button')) return 'button-name';
+  if (id === 'h85.2') return 'select-optgroup';
+  if (id === 'h44.notformcontrol' || id === 'h44.2') return id === 'h44.2' ? 'form-field-label-missing' : 'label-not-form-control';
+  if (id === 'h39.3.nocaption') return 'table-caption-review';
+  if (id === 'h67.2') return 'image-ignored-review';
+  if (id === 'h64.1') return 'iframe-title';
+  if (id === 'f55') return 'link-href-missing';
+  if (id === 'f68' || id === 'h71.3') return 'form-field-label-missing';
+  if (id === 'f77') return 'duplicate-id';
+  if (id === 'g1.1' || id.includes('skip_link') || id === 'bypass') return 'bypass-missing';
+
+  // IBM Equal Access — prefijos exactos conocidos (rpt_, aria_, wcag_)
+  if (id.includes('rpt_elem_lang_empty') || id.includes('aria.documentlanguage') || id.includes('html_lang')) return 'html-lang-missing';
+  if (id.includes('rpt_elem_href') || id === 'f55') return 'link-href-missing';
+  if (id.includes('rpt_img_alt') || id.includes('wcag20_img_hasalt')) return 'image-alt';
+  if (id.includes('landmark_banner') || id.includes('aria.banner')) return 'landmark-main-missing';
+  if (id.includes('bgimage') || id.includes('f24.fgcolour')) return 'contrast-image-background-undetermined';
+  if (id.includes('duplicate_id')) return 'duplicate-id';
+  if (id.includes('landmark') && id.includes('nav')) return 'landmark-nav-missing';
+  if (id.includes('landmark-one-main') || id.includes('no-main-landmark') || id.includes('landmark-main')) return 'landmark-main-missing';
+  if (id.includes('autocomplete')) return 'autocomplete-missing';
+  if (id.includes('region') && !id.includes('scrollable')) return 'region';
+
+  // Cualquier ruleId no reconocido: devolver tal cual para no clasificar mal
   return id;
 }
 

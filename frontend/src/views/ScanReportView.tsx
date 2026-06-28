@@ -1339,9 +1339,9 @@ export function ScanReportView({
                                           <span className="report-finding-group-title">
                                             <strong>
                                               {getFindingDescriptionSummary([item]) || item.nameEs || row.nombre}
-                                              {item.pageStateLabel && (
-                                                <span className="report-finding-group-state-tag">{item.pageStateLabel}</span>
-                                              )}
+                                              {(item.pageStateLabels?.length > 1 ? item.pageStateLabels : item.pageStateLabel ? [item.pageStateLabel] : []).map((lbl: string) => (
+                                                <span key={lbl} className="report-finding-group-state-tag">{lbl}</span>
+                                              ))}
                                             </strong>
                                             <small>{item.ruleId || item.wcagCriterion || item.criterion || row.id}</small>
                                           </span>
@@ -1354,9 +1354,9 @@ export function ScanReportView({
                                               <p className="report-finding-detail-kicker">Grupo {itemIndex + 1} de {findingCount}</p>
                                               <h4>
                                                 {item.nameEs || row.nombre}
-                                                {item.pageStateLabel && (
-                                                  <span className="report-finding-group-state-tag">{item.pageStateLabel}</span>
-                                                )}
+                                                {(item.pageStateLabels?.length > 1 ? item.pageStateLabels : item.pageStateLabel ? [item.pageStateLabel] : []).map((lbl: string) => (
+                                                  <span key={lbl} className="report-finding-group-state-tag">{lbl}</span>
+                                                ))}
                                               </h4>
                                             </div>
                                             <div className="report-finding-detail-badges">
@@ -1400,7 +1400,11 @@ export function ScanReportView({
 
                                           <div className="report-finding-detail-grid">
                                             <div><span>Fuente</span><strong>{getFindingSourceLabel(item)}</strong></div>
-                                            <div><span>Vista evaluada</span><strong>{getPageStateLabel(item)}</strong></div>
+                                            <div><span>Vista evaluada</span><strong>
+                                              {item.pageStateLabels?.length > 0
+                                                ? item.pageStateLabels.join(' · ')
+                                                : getPageStateLabel(item)}
+                                            </strong></div>
                                             <div><span>Rol responsable</span><strong>{item.role || 'Por asignar'}</strong></div>
                                             <div><span>Impacto</span><strong>{getFindingImpact(item)}</strong></div>
                                             <div><span>Criterio WCAG</span><strong>{item.wcagCriterion || item.criterion || row.id}</strong></div>

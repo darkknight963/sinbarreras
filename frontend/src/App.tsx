@@ -1568,7 +1568,45 @@ export default function App() {
         );
       });
       const checklistManualVerifications = manualVerifications.filter((verification: any) => !extensionReviewFindings.includes(verification));
-      const displayFindings = [...findings, ...(extensionReviewFindings as any[])];
+
+      // Fusionar findings con mismo ruleId+selector detectados en vistas distintas
+      // (Desktop/Tablet/Mobile o initial/interactive). Se conserva el finding de mayor
+      // severidad y se acumulan los pageStateLabel de todas las vistas como array.
+      const mergeByRuleAndSelector = (rawFindings: any[]): any[] => {
+        const mergeMap = new Map<string, any>();
+        for (const f of rawFindings) {
+          const key = `${f.ruleId || f.normalizedRuleId || ''}::${(f.selector || f.affectedElements?.[0] || '').slice(0, 120)}`;
+          const existing = mergeMap.get(key);
+          if (!existing) {
+            mergeMap.set(key, {
+              ...f,
+              pageStateLabels: f.pageStateLabel ? [f.pageStateLabel] : [],
+            });
+          } else {
+            const label = f.pageStateLabel;
+            if (label && !existing.pageStateLabels.includes(label)) {
+              existing.pageStateLabels.push(label);
+            }
+            // Conservar el finding de mayor severidad o estado confirmado
+            const severityRank: Record<string, number> = { critico: 4, alto: 3, medio: 2, bajo: 1 };
+            const existingRank = severityRank[(existing.severity || '').normalize('NFD').replace(/[̀-ͯ]/g, '')] || 0;
+            const currentRank = severityRank[(f.severity || '').normalize('NFD').replace(/[̀-ͯ]/g, '')] || 0;
+            const currentConfirmed = (f.findingStatus === 'confirmed' || f.status === 'confirmed') ? 1 : 0;
+            const existingConfirmed = (existing.findingStatus === 'confirmed' || existing.status === 'confirmed') ? 1 : 0;
+            if (currentConfirmed > existingConfirmed || (currentConfirmed === existingConfirmed && currentRank > existingRank)) {
+              mergeMap.set(key, { ...f, pageStateLabels: existing.pageStateLabels });
+            }
+            // Acumular elementos afectados únicos
+            const extraSelectors = (f.affectedElements || []).filter((s: string) => !(existing.affectedElements || []).includes(s));
+            const extraHtmls = (f.affectedHtmlSamples || []).filter((s: string) => !(existing.affectedHtmlSamples || []).includes(s));
+            if (extraSelectors.length) existing.affectedElements = [...(existing.affectedElements || []), ...extraSelectors];
+            if (extraHtmls.length) existing.affectedHtmlSamples = [...(existing.affectedHtmlSamples || []), ...extraHtmls];
+          }
+        }
+        return Array.from(mergeMap.values());
+      };
+
+      const displayFindings = mergeByRuleAndSelector([...findings, ...(extensionReviewFindings as any[])]);
       const confirmedFindings = displayFindings.filter((v: any) => {
         const status = v.findingStatus || v.status || 'confirmed';
         return status === 'confirmed' || status === 'failed';
