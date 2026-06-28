@@ -73,11 +73,14 @@ async function bootstrap() {
     }
   };
 
-  // WORKER_CONCURRENCY controla cuántos scans corren en paralelo.
-  // Cada scan lanza hasta 2 navegadores (Playwright + IBM). Con 2GB de RAM:
-  // 3 scans × ~600MB/scan = ~1.8GB — margen seguro.
-  // En producción con más RAM, aumentar WORKER_CONCURRENCY en docker-compose.
-  const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 3);
+  // WORKER_CONCURRENCY controla cuántos scans (jobs) corren en paralelo.
+  // Desde que los 3 viewports (desktop+tablet+móvil) corren en paralelo dentro de cada job,
+  // el pico de RAM por job subió de ~250MB a ~600-700MB.
+  // Con concurrencia 1: 1 job × 3 viewports = ~700MB — seguro en Railway con 512MB-1GB.
+  // Con concurrencia 2: 2 jobs × 3 viewports = ~1.4GB — requiere plan Railway con 2GB+.
+  // Con concurrencia 3: 3 jobs × 3 viewports = ~2.1GB — solo con 4GB+ dedicados.
+  // Default conservador: 1. Aumentar via WORKER_CONCURRENCY solo con RAM confirmada.
+  const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 1);
 
   // lockDuration: tiempo máximo que un job puede tener el lock antes de ser
   // marcado como stalled. Un scan "profundo" de 50 URLs puede tardar 30+ minutos.
