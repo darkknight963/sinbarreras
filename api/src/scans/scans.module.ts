@@ -7,15 +7,16 @@ import { UrlResult } from '../url-results/entities/url-result.entity';
 import { ScansService } from './scans.service';
 import { ScansController } from './scans.controller';
 import { RequestRateLimitService } from '../security/request-rate-limit.service';
+import { ScanEventsListener } from './scan-events.listener';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Scan, Project, UrlResult]),
-    BullModule.registerQueue({
-      name: 'scans',
-    }),
+    BullModule.registerQueue({ name: 'scans' }),
+    EventsModule,
   ],
-  providers: [ScansService, RequestRateLimitService],
+  providers: [ScansService, RequestRateLimitService, ScanEventsListener],
   controllers: [ScansController],
   exports: [ScansService],
 })

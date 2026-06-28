@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, useCallback } from 'react';
+import { io as socketIo, Socket } from 'socket.io-client';
 import {
   CheckCircle,
   X,
@@ -117,6 +118,37 @@ const readApiErrorMessage = async (res: Response) => {
   }
 };
 
+const normalizeApiErrorDetail = (message: string) => {
+  const trimmed = message.trim();
+  if (!trimmed) return '';
+
+  try {
+    const body = JSON.parse(trimmed) as {
+      message?: string | string[];
+      error?: string;
+      detail?: string;
+      remainingAttempts?: number;
+      retryAfterMs?: number;
+    };
+    const primaryMessage = Array.isArray(body?.message) ? body.message.join(' ') : body?.message;
+    const detail = primaryMessage || body?.error || body?.detail || trimmed;
+    const metadata: string[] = [];
+
+    if (typeof body?.remainingAttempts === 'number') {
+      metadata.push(`Intentos restantes: ${body.remainingAttempts}.`);
+    }
+
+    if (typeof body?.retryAfterMs === 'number' && body.retryAfterMs > 0) {
+      const retryAfterMinutes = Math.ceil(body.retryAfterMs / 60000);
+      metadata.push(`Reintenta en ${retryAfterMinutes} min.`);
+    }
+
+    return [detail, ...metadata].join(' ').trim();
+  } catch {
+    return trimmed;
+  }
+};
+
 const readApiJson = async <T,>(res: Response): Promise<T | null> => {
   const text = await res.text();
   if (!text.trim()) return null;
@@ -218,10 +250,50 @@ export default function App() {
   const [scanProgress, setScanProgress] = useState<Record<string, number>>({});
   const scanStartRef = useRef<Record<string, number>>({});
   const [appError, setAppError] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const watchedScanIdsRef = useRef<Set<string>>(new Set());
+  const fetchScanDetailsRef = useRef<((id: string) => void) | null>(null);
+  const fetchProjectDetailsRef = useRef<((id: string) => void) | null>(null);
 
   useEffect(() => {
     currentProjectRef.current = currentProject;
   }, [currentProject]);
+
+  // WebSocket connection — replaces polling for active scans.
+  // The socket connects once and stays alive; individual scans are subscribed by UUID room.
+  useEffect(() => {
+    const wsBase = runtimeApiBaseUrl === '/api'
+      ? window.location.origin
+      : runtimeApiBaseUrl.replace('/api', '').replace(/\/$/, '');
+
+    const socket = socketIo(wsBase, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+    });
+    socketRef.current = socket;
+
+    socket.on('scan-completed', ({ scanId }: { scanId: string }) => {
+      // One targeted fetch instead of continuous polling — uses refs to get latest functions
+      fetchScanDetailsRef.current?.(scanId);
+      const projectId = currentProjectRef.current?.id;
+      if (projectId) fetchProjectDetailsRef.current?.(projectId);
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+      watchedScanIdsRef.current.clear();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const watchScan = useCallback((scanId: string) => {
+    if (!scanId || watchedScanIdsRef.current.has(scanId)) return;
+    watchedScanIdsRef.current.add(scanId);
+    socketRef.current?.emit('watch-scan', scanId);
+  }, []);
 
   useEffect(() => {
     if (!showAccountMenu) return;
@@ -251,7 +323,7 @@ export default function App() {
     console.error(context, err);
     const message = err instanceof Error ? err.message.trim() : '';
     const detail = message && !/^HTTP\s+\d+$/i.test(message)
-      ? message
+      ? normalizeApiErrorDetail(message)
       : 'Verifique la conexión con la API e intente nuevamente.';
     setAppError(`${context}. ${detail}`);
   };
@@ -283,8 +355,7 @@ export default function App() {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
+        throw new Error(await readApiErrorMessage(res));
       }
 
       const data = await res.json();
@@ -612,16 +683,16 @@ export default function App() {
     if (authLoading || authMode !== 'session' || view !== 'project') return;
     if (!currentProject) return;
 
-    const hasInProgressScans = (currentProject.scans || []).some(isScanInProgress);
-    if (!hasInProgressScans) return;
+    const inProgressScans = (currentProject.scans || []).filter(isScanInProgress);
+    if (inProgressScans.length === 0) return;
 
-    const refreshProject = () => {
-      void fetchProjectDetails(currentProject.id);
-    };
+    // Subscribe each active scan to WebSocket room for push notification
+    inProgressScans.forEach((scan) => watchScan(scan.id));
 
+    // Fallback poll every 30s in case WebSocket misses an event
+    const refreshProject = () => { void fetchProjectDetails(currentProject.id); };
     refreshProject();
-    const intervalId = window.setInterval(refreshProject, 15000);
-
+    const intervalId = window.setInterval(refreshProject, 30000);
     return () => window.clearInterval(intervalId);
   }, [
     authLoading,
@@ -629,12 +700,15 @@ export default function App() {
     view,
     currentProject?.id,
     currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
+    watchScan,
   ]);
 
   useEffect(() => {
     if (authLoading || view !== 'scan') return;
     if (!currentScan || !isScanInProgress(currentScan)) return;
 
+    // Subscribe via WebSocket; fallback poll every 30s
+    watchScan(currentScan.id);
     const refreshScan = () => {
       if (authMode === 'public') {
         void fetchPublicScanDetails(currentScan.id);
@@ -642,12 +716,10 @@ export default function App() {
         void fetchScanDetails(currentScan.id);
       }
     };
-
     refreshScan();
-    const intervalId = window.setInterval(refreshScan, 15000);
-
+    const intervalId = window.setInterval(refreshScan, 30000);
     return () => window.clearInterval(intervalId);
-  }, [authLoading, authMode, view, currentScan?.id, currentScan?.status]);
+  }, [authLoading, authMode, view, currentScan?.id, currentScan?.status, watchScan]);
 
   useEffect(() => {
     if (authLoading || authMode === 'none' || view !== 'billing') return;
@@ -667,13 +739,11 @@ export default function App() {
     const runningScan = currentProject?.scans?.find(isScanInProgress);
     if (!runningScan) return;
 
-    const refreshPublicScan = () => {
-      void fetchPublicScanDetails(runningScan.id);
-    };
-
+    // Public scans: subscribe via WebSocket + fallback poll every 15s (public users can't auth socket)
+    watchScan(runningScan.id);
+    const refreshPublicScan = () => { void fetchPublicScanDetails(runningScan.id); };
     refreshPublicScan();
-    const intervalId = window.setInterval(refreshPublicScan, 5000);
-
+    const intervalId = window.setInterval(refreshPublicScan, 15000);
     return () => window.clearInterval(intervalId);
   }, [
     authLoading,
@@ -681,6 +751,7 @@ export default function App() {
     view,
     currentProject?.id,
     currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
+    watchScan,
   ]);
 
   useEffect(() => {
@@ -774,6 +845,10 @@ export default function App() {
       handleApiError('No se pudo cargar el detalle del escaneo', err);
     }
   };
+
+  // Keep refs up-to-date so the socket handler always calls the latest version
+  fetchScanDetailsRef.current = fetchScanDetails;
+  fetchProjectDetailsRef.current = fetchProjectDetails;
 
   const fetchPublicScanDetails = async (id: string) => {
     try {
