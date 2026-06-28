@@ -15535,14 +15535,24 @@ html body .scan-launch-history-back:hover {
   color: var(--sb-text, #0f172a);
 }
 
-.finding-plain-action {
+.finding-plain-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--sb-text-muted, #475569);
 }
 
-.finding-plain-action strong {
+.finding-plain-meta strong {
   color: var(--sb-text, #0f172a);
+}
+
+.finding-technical-hint {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: var(--sb-text-muted, #475569);
+  font-style: italic;
 }
 
 /* Bloque nivel 2 — detalles técnicos colapsados */
