@@ -351,7 +351,9 @@ export class PdfService {
     const stateText = `Vista: ${finding.pageStateLabel || (finding.pageState === 'initial' ? 'Estado inicial' : 'Después de cerrar modales')}`;
     const rawDesc = finding.nameEs || this.cleanDescription(finding.description);
     const descText = rawDesc ? `Descripción: ${rawDesc.slice(0, 400)}` : null;
-    const selectorText = `Selector: ${finding.selector ?? '-'}`;
+    const selectorText = `Selector CSS: ${finding.selector ?? '-'}`;
+    const htmlSample = finding.elementHtml ? String(finding.elementHtml).slice(0, 300) : null;
+    const htmlText = htmlSample ? `HTML afectado: ${htmlSample}` : null;
     const fixText = `Solución: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`;
     const refText = `Referencia: ${finding.resolutionArticle ?? '-'}`;
 
@@ -363,11 +365,12 @@ export class PdfService {
     const hState = doc.heightOfString(stateText, { width: tw, lineGap: lg });
     const hDesc = descText ? doc.heightOfString(descText, { width: tw, lineGap: lg }) : 0;
     const hSel = doc.heightOfString(selectorText, { width: tw, lineGap: lg });
+    const hHtml = htmlText ? doc.heightOfString(htmlText, { width: tw, lineGap: lg }) : 0;
     doc.font('Helvetica-Bold');
     const hFix = doc.heightOfString(fixText, { width: tw, lineGap: lg });
     doc.font('Helvetica');
     const hRef = doc.heightOfString(refText, { width: tw, lineGap: lg });
-    const cardH = 14 + hTitle + 4 + hUrl + 3 + hMeta + 3 + hState + 3 + (descText ? hDesc + 3 : 0) + hSel + 3 + hFix + 3 + hRef + 10;
+    const cardH = 14 + hTitle + 4 + hUrl + 3 + hMeta + 3 + hState + 3 + (descText ? hDesc + 3 : 0) + hSel + 3 + (htmlText ? hHtml + 3 : 0) + hFix + 3 + hRef + 10;
 
     this.ensureSpace(doc, cardH + 10);
 
@@ -396,6 +399,11 @@ export class PdfService {
     }
     doc.fillColor(COLORS.slate600).text(selectorText, x + 14, cy, { width: tw, lineGap: lg });
     cy = doc.y + 3;
+    if (htmlText) {
+      doc.font('Helvetica').fillColor(COLORS.slate600).fontSize(fs)
+        .text(htmlText, x + 14, cy, { width: tw, lineGap: lg });
+      cy = doc.y + 3;
+    }
     doc.fillColor(COLORS.slate900).font('Helvetica-Bold').fontSize(fs)
       .text(fixText, x + 14, cy, { width: tw, lineGap: lg });
     cy = doc.y + 3;

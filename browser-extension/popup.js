@@ -150,9 +150,14 @@ const runAudit = async () => {
       }
     }
     await clearScanSession();
+    const engineStatuses = audit.engineStatuses || [];
+    const ibmEngine = engineStatuses.find((e) => e.engine === 'ibm-equal-access-extension');
+    const ibmWarning = ibmEngine && (ibmEngine.status === 'not_available' || ibmEngine.status === 'failed')
+      ? ' (Motor IBM Equal Access no disponible — algunos hallazgos de teclado y ARIA pueden estar incompletos.)'
+      : '';
     setStatus(
-      `Listo. Score ${audit.score}/100. La sesión de este escaneo fue cerrada y no puede reutilizarse.`,
-      'success'
+      `Listo. Score ${audit.score}/100. La sesión de este escaneo fue cerrada y no puede reutilizarse.${ibmWarning}`,
+      ibmWarning ? 'warning' : 'success'
     );
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'Ocurrio un error durante la auditoria.', 'error');

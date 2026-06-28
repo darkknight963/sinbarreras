@@ -665,6 +665,96 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'confirmed',
     suggestedFix: 'Asociar cada campo con un label visible usando for/id o envolver el control dentro del label.'
+  },
+
+  // ── axe-core: reglas frecuentes sin mapeo previo ──────────────────────────
+  'td-headers-attr': {
+    criterion: '1.3.1',
+    nameEs: 'Celda de tabla con encabezados incorrectos',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Corregir el atributo headers de cada celda td para que referencie los ids correctos de los th correspondientes. Verificar que cada th tenga un id unico y que los td usen headers="id1 id2" apuntando a ellos.'
+  },
+  'scope-attr-valid': {
+    criterion: '1.3.1',
+    nameEs: 'Atributo scope de tabla invalido',
+    level: 'A',
+    disability: ['Sensorial visual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Asignar scope="col" a encabezados de columna o scope="row" a encabezados de fila. No usar scope en celdas de datos td.'
+  },
+  'aria-input-field-name': {
+    criterion: '4.1.2',
+    nameEs: 'Campo de texto ARIA sin nombre accesible',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Agregar aria-label, aria-labelledby apuntando a un label visible, o title descriptivo al elemento con role="textbox", role="searchbox" o similar.'
+  },
+  'aria-toggle-field-name': {
+    criterion: '4.1.2',
+    nameEs: 'Control de alternancia ARIA sin nombre accesible',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Agregar un nombre accesible al control (checkbox, switch, radio) mediante label asociado, aria-label o aria-labelledby.'
+  },
+  'definition-list': {
+    criterion: '1.3.1',
+    nameEs: 'Lista de definiciones con estructura incorrecta',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Asegurarse de que dl solo contenga grupos dt/dd directamente. Cada termino dt debe ir seguido de su definicion dd. No anidar otros elementos como div directamente dentro de dl.'
+  },
+  'dlitem': {
+    criterion: '1.3.1',
+    nameEs: 'Elemento de lista de definicion fuera de contexto',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Colocar los elementos dt y dd siempre dentro de un elemento dl padre. No usar dt o dd fuera de una lista de definiciones.'
+  },
+  'p-as-heading': {
+    criterion: '1.3.1',
+    nameEs: 'Parrafo usado como encabezado visual',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Si el parrafo actua visualmente como titulo de seccion, cambiarlo a h1-h6 segun su nivel jerarquico. Mantener la secuencia de niveles sin saltar (h1 > h2 > h3).'
+  },
+  'select-name': {
+    criterion: '4.1.2',
+    nameEs: 'Lista desplegable sin nombre accesible',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    findingStatus: 'confirmed',
+    suggestedFix: 'Asociar un label[for] visible al select o agregar aria-label descriptivo. El nombre debe identificar el proposito del campo, no solo "Selecciona...".'
   }
 };
 
@@ -722,6 +812,14 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id === 'contrast-image-background-undetermined') return 'contrast-image-background-undetermined';
   if (id === 'select-value') return 'select-value';
   if (id === 'textarea-name') return 'textarea-name';
+  if (id === 'td-headers-attr') return 'td-headers-attr';
+  if (id === 'scope-attr-valid') return 'scope-attr-valid';
+  if (id === 'aria-input-field-name') return 'aria-input-field-name';
+  if (id === 'aria-toggle-field-name') return 'aria-toggle-field-name';
+  if (id === 'definition-list') return 'definition-list';
+  if (id === 'dlitem') return 'dlitem';
+  if (id === 'p-as-heading') return 'p-as-heading';
+  if (id === 'select-name') return 'select-name';
 
   // axe-core reglas con sufijos o variantes
   if (id.includes('color-contrast-enhanced')) return 'color-contrast-enhanced';

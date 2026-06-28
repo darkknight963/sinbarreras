@@ -10,7 +10,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH } from './config';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
 const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
@@ -1054,7 +1054,6 @@ export default function App() {
       if (res.ok) {
         const createdScan = await res.json() as Scan;
         if (newScanLoginMode === 'manual_assisted') {
-          const EXTENSION_ID = 'bipiiijphpkdbodephdbahlkdcnopjao';
           try {
             // Solicitar un token efímero de un solo uso al backend para pasárselo a la extensión.
             // La extensión no puede acceder a cookies httpOnly, por lo que necesita un bearer
@@ -1062,7 +1061,7 @@ export default function App() {
             const extTokenRes = await fetchWithFallback('/auth/extension-token', { method: 'POST' });
             const extToken = extTokenRes.ok ? (await extTokenRes.json() as { token: string }).token : '';
             if (extToken && typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime && (window as any).chrome.runtime.sendMessage) {
-              (window as any).chrome.runtime.sendMessage(EXTENSION_ID, {
+              (window as any).chrome.runtime.sendMessage(CHROME_EXTENSION_ID, {
                 type: 'SET_SCAN_DATA',
                 token: extToken,
                 scanId: createdScan.id,

@@ -48,3 +48,6 @@ export const CULQI_PUBLIC_KEY =
 
 export const PRO_PAYMENT_URL =
   import.meta.env.VITE_PRO_PAYMENT_URL?.trim() || '';
+
+export const CHROME_EXTENSION_ID =
+  import.meta.env.VITE_EXTENSION_ID?.trim() || 'bipiiijphpkdbodephdbahlkdcnopjao';
