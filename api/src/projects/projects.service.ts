@@ -26,13 +26,19 @@ export class ProjectsService {
     // de exponer todos los proyectos de todos los clientes.
     if (!ownerId) return [];
 
+    // Solo cargamos campos ligeros de scans y urlResults para el listado.
+    // Los campos jsonb pesados (violations, visualMap, etc.) se omiten aquí
+    // y solo se cargan en findOne cuando el usuario abre un proyecto específico.
     return this.projectRepository
       .createQueryBuilder('project')
-      .leftJoinAndSelect('project.scans', 'scan')
-      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .leftJoin('project.scans', 'scan')
+      .leftJoin('scan.urlResults', 'urlResult')
       .leftJoinAndSelect('project.owner', 'owner')
+      .addSelect(['scan.id', 'scan.status', 'scan.globalScore', 'scan.scanMode', 'scan.createdAt', 'scan.scanUrls'])
+      .addSelect(['urlResult.id', 'urlResult.url', 'urlResult.score', 'urlResult.status', 'urlResult.createdAt'])
       .where('owner.id = :ownerId', { ownerId })
       .orderBy('project.createdAt', 'DESC')
+      .addOrderBy('scan.createdAt', 'DESC')
       .getMany();
   }
 
@@ -42,7 +48,8 @@ export class ProjectsService {
       .leftJoinAndSelect('project.scans', 'scan')
       .leftJoinAndSelect('scan.urlResults', 'urlResult')
       .leftJoinAndSelect('project.owner', 'owner')
-      .where('project.id = :id', { id });
+      .where('project.id = :id', { id })
+      .orderBy('scan.createdAt', 'DESC');
 
     if (ownerId) {
       query.andWhere('owner.id = :ownerId', { ownerId });

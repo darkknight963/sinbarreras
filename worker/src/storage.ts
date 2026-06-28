@@ -154,7 +154,7 @@ export async function uploadEvidence(
     ContentType: contentType,
   });
 
-  await s3Client.send(command);
+  await s3Client.send(command, { requestTimeout: 30_000 });
 
   const publicEvidenceBaseUrl =
     process.env.STORAGE_PUBLIC_BASE_URL ||

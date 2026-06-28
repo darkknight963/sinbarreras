@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, In
 import { Scan } from '../../scans/entities/scan.entity';
 
 @Index('IDX_url_results_scan_created_at', ['scan', 'createdAt'])
+@Index('IDX_url_results_url', ['url'])
 @Entity('url_results')
 export class UrlResult {
   @PrimaryGeneratedColumn('uuid')

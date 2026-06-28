@@ -24,7 +24,7 @@ export class ScansController {
 
   @Public()
   @Post('public')
-  @RateLimit({ scope: 'scan', limit: 20, windowMs: 15 * 60 * 1000 })
+  @RateLimit({ scope: 'scan', limit: 5, windowMs: 60 * 60 * 1000 })
   triggerPublicScan(@Body() createScanDto: { urls?: string[]; url?: string; scanMode?: string; ux?: number; entityType?: string }) {
     return this.scansService.triggerPublicScan(createScanDto);
   }

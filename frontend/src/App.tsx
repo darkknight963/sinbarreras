@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, useCallback, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { io as socketIo, Socket } from 'socket.io-client';
 import {
   CheckCircle,
@@ -10,13 +11,40 @@ import {
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
 import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH } from './config';
-import { BillingView } from './BillingView';
 import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
 import { AuthView } from './views/AuthView';
-import { ProjectsView } from './views/ProjectsView';
-import { ProjectDetailView } from './views/ProjectDetailView';
+const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
+const ProjectsView = lazy(() => import('./views/ProjectsView').then(m => ({ default: m.ProjectsView })));
+const ProjectDetailView = lazy(() => import('./views/ProjectDetailView').then(m => ({ default: m.ProjectDetailView })));
 const ScanReportView = lazy(() => import('./views/ScanReportView').then(m => ({ default: m.ScanReportView })));
 const AdminView = lazy(() => import('./views/AdminView').then(m => ({ default: m.AdminView })));
+
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; message: string }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error?.message || 'Error inesperado' };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[AppErrorBoundary]', error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 16, padding: 32 }}>
+          <p style={{ fontWeight: 600, fontSize: 18 }}>Algo salió mal</p>
+          <p style={{ color: '#64748b', textAlign: 'center', maxWidth: 400 }}>{this.state.message}</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '8px 20px', background: '#2563eb', color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer' }}>
+            Recargar página
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 let runtimeApiBaseUrl = API_BASE_URL;
 const BRAND_NAME = 'Sin Barreras';
@@ -1722,6 +1750,7 @@ export default function App() {
   }
 
   return (
+    <AppErrorBoundary>
     <div className="min-h-screen text-slate-900 font-sans">
       <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
       <header className="sticky top-0 z-50 px-8 py-5 min-h-20 flex items-center justify-between">
@@ -1849,6 +1878,7 @@ export default function App() {
         )}
 
         {view === 'projects' && (
+          <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando proyectos...</div>}>
           <ProjectsView
             projects={projects}
             averageScore={averageScore}
@@ -1879,9 +1909,11 @@ export default function App() {
             onEditProjectEntityTypeChange={setEditProjectEntityType}
             getScoreMeta={getScoreMeta}
           />
+          </Suspense>
         )}
 
         {view === 'project' && currentProject && (
+          <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando proyecto...</div>}>
           <ProjectDetailView
             currentProject={currentProject}
             backLabel={authMode === 'public' ? 'Volver' : 'Volver a proyectos'}
@@ -1918,6 +1950,7 @@ export default function App() {
             getVpCategory={getVpCategory}
             openInspectionUrl={openInspectionUrl}
           />
+          </Suspense>
         )}
 
         {view === 'scan' && currentScan && (
@@ -1971,6 +2004,7 @@ export default function App() {
         )}
 
         {view === 'billing' && (
+          <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando planes...</div>}>
           <BillingView
             plans={billingPlans}
             billingState={billingState}
@@ -1984,6 +2018,7 @@ export default function App() {
             onReload={loadBillingData}
             onBack={handleBackFromBilling}
           />
+          </Suspense>
         )}
 
         {view === 'admin' && currentUser && isMasterAccount && (
@@ -2086,5 +2121,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </AppErrorBoundary>
   );
 }

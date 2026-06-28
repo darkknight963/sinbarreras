@@ -9,9 +9,19 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   // rawBody: true es necesario para verificar firmas HMAC de webhooks (Culqi)
   // antes de que el body sea parseado y modificado por express.json().
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule, { rawBody: true, logger: ['error', 'warn', 'log'] });
   app.use(compression());
   app.use(cookieParser());
+
+  // En Railway/Vercel siempre hay un proxy inverso delante del API.
+  // Sin trust proxy, el rate limiter usa la IP del proxy (compartida por todos los usuarios).
+  const trustProxy = process.env.TRUST_PROXY ?? 'true';
+  if (trustProxy === 'true' || trustProxy === '1') {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+  if (process.env.RAILWAY_ENVIRONMENT_ID && trustProxy !== 'true' && trustProxy !== '1') {
+    console.warn('[SECURITY] Railway environment detected but TRUST_PROXY is not enabled — rate limiting will use proxy IP instead of real client IP');
+  }
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
