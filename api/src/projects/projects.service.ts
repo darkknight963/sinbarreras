@@ -63,10 +63,12 @@ export class ProjectsService {
     const project = await projectQuery.getOne();
     if (!project) return null;
 
-    // Load scans paginated (limit+1 to detect hasMore)
+    // Load scans paginated (limit+1 to detect hasMore) — only lightweight fields,
+    // no jsonb columns (violations, visualMap, etc.) which are only needed in the report view.
     const scanRows = await this.scanRepository
       .createQueryBuilder('scan')
-      .leftJoinAndSelect('scan.urlResults', 'urlResult')
+      .leftJoin('scan.urlResults', 'urlResult')
+      .addSelect(['urlResult.id', 'urlResult.url', 'urlResult.score', 'urlResult.status', 'urlResult.createdAt'])
       .where('scan.project = :projectId', { projectId: id })
       .orderBy('scan.createdAt', 'DESC')
       .take(safeLimit + 1)
