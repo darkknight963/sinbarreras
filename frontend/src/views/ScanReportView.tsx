@@ -476,10 +476,11 @@ const getFindingMessageGroups = (rows: any[] = []) => {
       const statusType = getFindingGroupType(finding);
       const wcagRef = String(finding?.wcagCriterion || finding?.criterion || row?.id || '').trim();
       const ruleId = String(finding?.ruleId || '').trim();
+      // Agrupamos por título amigable + ruleId + statusType para fusionar instancias
+      // del mismo problema (ej: duplicate-id genera un mensaje distinto por cada elemento).
       const key = [
         statusType,
-        normalizeText(message),
-        normalizeText(wcagRef),
+        normalizeText(title),
         normalizeText(ruleId),
       ].join('|');
 
