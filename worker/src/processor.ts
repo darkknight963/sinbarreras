@@ -189,6 +189,31 @@ async function _processScanBody(
 
   const MAX_URL_RETRIES = 2;
 
+  // Delay mínimo entre requests al mismo dominio para no triggear anti-bot
+  // ni sobrecargar el servidor objetivo. Siteimprove usa 200ms + pausa de 20s
+  // si detecta impacto. Aquí usamos un valor conservador configurable.
+  const INTER_DOMAIN_DELAY_MS = Number(process.env.SCAN_INTER_DOMAIN_DELAY_MS || 1500);
+  const lastRequestByDomain = new Map<string, number>();
+
+  const applyDomainRateLimit = async (targetUrl: string) => {
+    let hostname: string;
+    try {
+      hostname = new URL(targetUrl).hostname;
+    } catch {
+      return;
+    }
+    const last = lastRequestByDomain.get(hostname);
+    if (last !== undefined) {
+      const elapsed = Date.now() - last;
+      if (elapsed < INTER_DOMAIN_DELAY_MS) {
+        const wait = INTER_DOMAIN_DELAY_MS - elapsed;
+        log.info('Rate limiting: esperando antes del siguiente request al mismo dominio', { hostname, waitMs: wait });
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    lastRequestByDomain.set(hostname, Date.now());
+  };
+
   for (let i = 0; i < totalUrls; i++) {
     const cancelCheck = await pool.query(`SELECT status FROM scans WHERE id = $1`, [scanId]);
     if (cancelCheck.rows[0]?.status === 'cancelled') {
@@ -199,6 +224,7 @@ async function _processScanBody(
     }
 
     const url = validatedUrls[i];
+    await applyDomainRateLimit(url);
 
     let lastUrlError: unknown;
     let succeeded = false;

@@ -112,8 +112,43 @@ export async function scanUrl(url: string, options: {
     await page.addInitScript(browserHelperScript);
     await page.evaluate(browserHelperScript).catch(() => {});
 
+    // Recursos bloqueados: no aportan a ninguna regla WCAG y ralentizan la carga.
+    // - media (video/audio): WCAG 1.2.x se evalúa por presencia en DOM, no por reproducción
+    // - font de terceros: las fuentes ya cargadas via CSS afectan el DOM; bloquear
+    //   solo las que llegan de dominios externos de tipografía no altera el layout accesible
+    // - tracking/analytics: no modifican el DOM relevante para accesibilidad
+    // NUNCA bloquear: document, script, stylesheet, xhr, fetch, image, iframe
+    // (los cuatro últimos afectan criterios WCAG 1.1, 1.4, 2.1, 4.1)
+    const BLOCKED_RESOURCE_TYPES = new Set(['media', 'websocket', 'eventsource', 'other']);
+    const BLOCKED_URL_PATTERNS = [
+      /google-analytics\.com/,
+      /googletagmanager\.com/,
+      /doubleclick\.net/,
+      /facebook\.net\/en_US\/fbevents/,
+      /hotjar\.com/,
+      /clarity\.ms/,
+      /cdn\.segment\.com/,
+      /sentry\.io\/api/,
+      /newrelic\.com/,
+    ];
+
     await context.route('**/*', async (route) => {
-      const requestUrl = route.request().url();
+      const req = route.request();
+      const requestUrl = req.url();
+      const resourceType = req.resourceType();
+
+      // Bloquear tipos de recurso irrelevantes para WCAG
+      if (BLOCKED_RESOURCE_TYPES.has(resourceType)) {
+        await route.abort('blockedbyclient');
+        return;
+      }
+
+      // Bloquear dominios de tracking/analytics
+      if (BLOCKED_URL_PATTERNS.some((p) => p.test(requestUrl))) {
+        await route.abort('blockedbyclient');
+        return;
+      }
+
       try {
         if (requestUrl.startsWith('http://') || requestUrl.startsWith('https://')) {
           await validateScanTargetUrl(requestUrl);
