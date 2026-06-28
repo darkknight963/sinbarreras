@@ -4,6 +4,7 @@ import { CreateScanDto } from './dto/create-scan.dto';
 import { RateLimit } from '../security/rate-limit.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Public } from '../auth/public.decorator';
+import { resolveAccessScope } from '../auth/access-scope';
 
 type BillingAwareUser = {
   id: string;
@@ -53,20 +54,20 @@ export class ScansController {
 
   @Get()
   findAll(
-    @CurrentUser() user: BillingAwareUser | null,
+    @CurrentUser() user: (BillingAwareUser & { role?: string | null }) | null,
     @Req() request: { authMode?: string },
     @Query('limit') limit?: string,
     @Query('before') before?: string,
     @Query('projectId') projectId?: string,
   ) {
-    const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.scansService.findAll(ownerId, limit ? parseInt(limit, 10) : 20, before, projectId);
+    const scope = resolveAccessScope(request, user);
+    return this.scansService.findAll(scope.ownerId, limit ? parseInt(limit, 10) : 20, before, projectId, scope);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: BillingAwareUser | null, @Req() request: { authMode?: string }) {
-    const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.scansService.findOne(id, ownerId);
+  findOne(@Param('id') id: string, @CurrentUser() user: (BillingAwareUser & { role?: string | null }) | null, @Req() request: { authMode?: string }) {
+    const scope = resolveAccessScope(request, user);
+    return this.scansService.findOne(id, scope.ownerId, scope);
   }
 
   @Post(':id/extension-result')
@@ -74,24 +75,24 @@ export class ScansController {
   submitExtensionResult(
     @Param('id') id: string,
     @Body() result: unknown,
-    @CurrentUser() user: BillingAwareUser | null,
+    @CurrentUser() user: (BillingAwareUser & { role?: string | null }) | null,
     @Req() request: { authMode?: string },
   ) {
-    const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.scansService.submitExtensionResult(id, ownerId, result as any);
+    const scope = resolveAccessScope(request, user);
+    return this.scansService.submitExtensionResult(id, scope.ownerId, result as any, scope);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: BillingAwareUser | null, @Req() request: { authMode?: string }) {
-    const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.scansService.remove(id, ownerId);
+  remove(@Param('id') id: string, @CurrentUser() user: (BillingAwareUser & { role?: string | null }) | null, @Req() request: { authMode?: string }) {
+    const scope = resolveAccessScope(request, user);
+    return this.scansService.remove(id, scope.ownerId, scope);
   }
 
   @Public()
   @Patch(':id/cancel')
   @RateLimit({ scope: 'scan', limit: 20, windowMs: 15 * 60 * 1000 })
-  cancel(@Param('id') id: string, @CurrentUser() user: BillingAwareUser | null, @Req() request: { authMode?: string }) {
-    const ownerId = request.authMode === 'service' ? null : user?.id ?? null;
-    return this.scansService.cancelScan(id, ownerId);
+  cancel(@Param('id') id: string, @CurrentUser() user: (BillingAwareUser & { role?: string | null }) | null, @Req() request: { authMode?: string }) {
+    const scope = resolveAccessScope(request, user);
+    return this.scansService.cancelScan(id, scope.ownerId, scope);
   }
 }

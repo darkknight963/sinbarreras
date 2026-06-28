@@ -24,8 +24,8 @@ export class ExcelService {
     private readonly scanRepository: Repository<Scan>,
   ) {}
 
-  async generateExcel(scanId: string, ownerId: string | null = null): Promise<Buffer> {
-    const scan = await this.findScanForReport(scanId, ownerId);
+  async generateExcel(scanId: string, ownerId: string | null = null, includeAll = false): Promise<Buffer> {
+    const scan = await this.findScanForReport(scanId, ownerId, includeAll);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Peru Accessibility Analyzer';
@@ -90,8 +90,12 @@ export class ExcelService {
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
   }
 
-  private async findScanForReport(scanId: string, ownerId: string | null) {
-    if (!ownerId && typeof (this.scanRepository as any).findOne === 'function') {
+  private async findScanForReport(scanId: string, ownerId: string | null, includeAll = false) {
+    if (!includeAll && !ownerId) {
+      throw new NotFoundException('Scan not found');
+    }
+
+    if (includeAll && typeof (this.scanRepository as any).findOne === 'function') {
       const scan = await this.scanRepository.findOne({
         where: { id: scanId },
         relations: { project: true, urlResults: true },
@@ -111,7 +115,7 @@ export class ExcelService {
       .leftJoinAndSelect('project.owner', 'owner')
       .where('scan.id = :scanId', { scanId });
 
-    if (ownerId) {
+    if (!includeAll && ownerId) {
       query.andWhere('owner.id = :ownerId', { ownerId });
     }
 

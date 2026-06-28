@@ -27,6 +27,7 @@ describe('ReportsController', () => {
 
   const freeUser = {
     id: 'user-1',
+    role: 'free',
     billingPlan: null,
     billingStatus: 'inactive',
   };
@@ -122,5 +123,35 @@ describe('ReportsController', () => {
 
     await expect(call).rejects.toBeInstanceOf(ForbiddenException);
     expect(res.send).not.toHaveBeenCalled();
+  });
+
+  it('lets superadmin export json for any scan without owner filter', async () => {
+    queryChain.getOne.mockResolvedValue({
+      id: 'scan-1',
+      project: { name: 'Proyecto global', domain: 'demo.pe', entityType: 'Sector privado' },
+      urlResults: [],
+      scanMode: 'estandar',
+      createdAt: new Date('2026-06-01T00:00:00.000Z'),
+      normativeVersion: 'Resolucion',
+      wcagVersion: 'WCAG 2.2',
+      ruleSetVersion: '1.0.0',
+    });
+
+    const subject = controller as unknown as {
+      exportJson: (scanId: string, user?: any, request?: any) => Promise<unknown>;
+    };
+
+    await expect(
+      subject.exportJson('scan-1', {
+        id: 'super-1',
+        role: 'superadmin',
+        billingPlan: null,
+        billingStatus: 'inactive',
+      }),
+    ).resolves.toMatchObject({
+      metadata: expect.objectContaining({ scanId: 'scan-1' }),
+    });
+
+    expect(queryChain.andWhere).not.toHaveBeenCalledWith('owner.id = :ownerId', expect.anything());
   });
 });

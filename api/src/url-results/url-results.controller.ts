@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Put, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UrlResultsService } from './url-results.service';
+import { resolveAccessScope } from '../auth/access-scope';
 
 type AuthRequest = Request & {
   authMode?: 'service' | 'session';
@@ -14,9 +15,9 @@ export class UrlResultsController {
   constructor(private readonly urlResultsService: UrlResultsService) {}
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: { id: string } | null, @Req() request?: AuthRequest) {
-    const ownerId = this.resolveOwnerId(request, user);
-    return this.urlResultsService.findOne(id, ownerId);
+  findOne(@Param('id') id: string, @CurrentUser() user: { id: string; role?: string | null } | null, @Req() request?: AuthRequest) {
+    const scope = resolveAccessScope(request, user);
+    return this.urlResultsService.findOne(id, scope.ownerId, scope.includeAll);
   }
 
   @Put(':id/manual-verification')
@@ -24,11 +25,11 @@ export class UrlResultsController {
     @Param('id') resultId: string,
     @Body('verificationId') verificationId: string,
     @Body('status') status: 'pending' | 'approved' | 'failed' | 'not_applicable',
-    @CurrentUser() user: { id: string } | null,
+    @CurrentUser() user: { id: string; role?: string | null } | null,
     @Req() request?: AuthRequest,
   ) {
-    const ownerId = this.resolveOwnerId(request, user);
-    return this.urlResultsService.updateManualVerification(resultId, verificationId, status, ownerId);
+    const scope = resolveAccessScope(request, user);
+    return this.urlResultsService.updateManualVerification(resultId, verificationId, status, scope.ownerId, scope.includeAll);
   }
 
   @Patch(':id/applicability')
@@ -36,11 +37,11 @@ export class UrlResultsController {
     @Param('id') resultId: string,
     @Body('criterionId') criterionId: string,
     @Body('estado') estado: 'aplica' | 'no_aplica',
-    @CurrentUser() user: { id: string } | null,
+    @CurrentUser() user: { id: string; role?: string | null } | null,
     @Req() request?: AuthRequest,
   ) {
-    const ownerId = this.resolveOwnerId(request, user);
-    return this.urlResultsService.updateApplicability(resultId, criterionId, estado, ownerId);
+    const scope = resolveAccessScope(request, user);
+    return this.urlResultsService.updateApplicability(resultId, criterionId, estado, scope.ownerId, scope.includeAll);
   }
 
   @Patch(':id/finding-status')
@@ -51,19 +52,16 @@ export class UrlResultsController {
     @Body('selector') selector: string,
     @Body('pageState') pageState: string | undefined,
     @Body('status') status: FindingReviewStatus,
-    @CurrentUser() user: { id: string } | null,
+    @CurrentUser() user: { id: string; role?: string | null } | null,
     @Req() request?: AuthRequest,
   ) {
-    const ownerId = this.resolveOwnerId(request, user);
+    const scope = resolveAccessScope(request, user);
     return this.urlResultsService.updateFindingStatus(
       resultId,
       { criterion, ruleId, selector, pageState },
       status,
-      ownerId,
+      scope.ownerId,
+      scope.includeAll,
     );
-  }
-
-  private resolveOwnerId(request: AuthRequest | undefined, user: { id: string } | null) {
-    return request?.authMode === 'service' ? null : user?.id ?? null;
   }
 }

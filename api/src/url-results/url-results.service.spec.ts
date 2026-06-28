@@ -46,4 +46,19 @@ describe('UrlResultsService', () => {
 
     await expect(service.findOne('result-1', 'user-1')).resolves.toBeNull();
   });
+
+  it('allows global lookup for superadmin scope without owner filter', async () => {
+    queryChain.getOne.mockResolvedValue({
+      id: 'result-1',
+      scan: { id: 'scan-1', project: { owner: { id: 'user-2' } } },
+    });
+
+    const service = new UrlResultsService(urlResultRepository, scanRepository);
+
+    await expect(service.findOne('result-1', null, true)).resolves.toMatchObject({
+      id: 'result-1',
+    });
+
+    expect(queryChain.andWhere).not.toHaveBeenCalledWith('owner.id = :ownerId', expect.anything());
+  });
 });

@@ -8,9 +8,11 @@ import { ExcelService } from './excel.service';
 import { PdfService } from './pdf.service';
 import { RateLimit } from '../security/rate-limit.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { resolveAccessScope } from '../auth/access-scope';
 
 type BillingAwareUser = {
   id: string;
+  role?: string | null;
   billingPlan?: string | null;
   billingStatus?: string | null;
 };
@@ -20,6 +22,7 @@ type AuthRequest = Request & {
 };
 
 const hasPaidBillingAccess = (user: BillingAwareUser | null | undefined) =>
+  ['admin', 'superadmin'].includes(user?.role?.toLowerCase() || '') ||
   Boolean(user?.billingPlan && user.billingStatus === 'active');
 
 /**
@@ -49,8 +52,8 @@ export class ReportsController {
     @Req() request?: AuthRequest,
   ) {
     this.assertExportAccess(user);
-    const ownerId = this.resolveOwnerId(request, user);
-    const scan = await this.findScanForExport(scanId, ownerId);
+    const scope = resolveAccessScope(request, user);
+    const scan = await this.findScanForExport(scanId, scope.ownerId, scope.includeAll);
 
     if (!scan) {
       throw new NotFoundException('Scan not found');
@@ -113,8 +116,8 @@ export class ReportsController {
     @Req() request?: AuthRequest,
   ) {
     this.assertExportAccess(user);
-    const ownerId = this.resolveOwnerId(request, user);
-    const buffer = await this.excelService.generateExcel(scanId, ownerId);
+    const scope = resolveAccessScope(request, user);
+    const buffer = await this.excelService.generateExcel(scanId, scope.ownerId, scope.includeAll);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="reporte-accesibilidad-${scanId}.xlsx"`,
@@ -137,8 +140,8 @@ export class ReportsController {
   ) {
     this.assertExportAccess(user);
     const reportType = type === 'executive' ? 'executive' : 'technical';
-    const ownerId = this.resolveOwnerId(request, user);
-    const buffer = await this.pdfService.generatePdf(scanId, reportType, ownerId);
+    const scope = resolveAccessScope(request, user);
+    const buffer = await this.pdfService.generatePdf(scanId, reportType, scope.ownerId, scope.includeAll);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="reporte-${reportType}-${scanId}.pdf"`,
@@ -175,11 +178,11 @@ export class ReportsController {
     }
   }
 
-  private resolveOwnerId(request: AuthRequest | undefined, user: BillingAwareUser | null) {
-    return request?.authMode === 'service' ? null : user?.id ?? null;
-  }
+  private async findScanForExport(scanId: string, ownerId: string | null, includeAll = false) {
+    if (!includeAll && !ownerId) {
+      throw new NotFoundException('Scan not found');
+    }
 
-  private async findScanForExport(scanId: string, ownerId: string | null) {
     const query = this.scanRepository
       .createQueryBuilder('scan')
       .leftJoinAndSelect('scan.project', 'project')
@@ -187,7 +190,7 @@ export class ReportsController {
       .leftJoinAndSelect('project.owner', 'owner')
       .where('scan.id = :scanId', { scanId });
 
-    if (ownerId) {
+    if (!includeAll && ownerId) {
       query.andWhere('owner.id = :ownerId', { ownerId });
     }
 

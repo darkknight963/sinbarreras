@@ -85,8 +85,8 @@ export class PdfService {
     private readonly scanRepository: Repository<Scan>,
   ) {}
 
-  async generatePdf(scanId: string, type: ReportType, ownerId: string | null = null): Promise<Buffer> {
-    const scan = await this.findScanForReport(scanId, ownerId);
+  async generatePdf(scanId: string, type: ReportType, ownerId: string | null = null, includeAll = false): Promise<Buffer> {
+    const scan = await this.findScanForReport(scanId, ownerId, includeAll);
 
     const model = this.buildReportModel(scan);
 
@@ -100,8 +100,12 @@ export class PdfService {
     });
   }
 
-  private async findScanForReport(scanId: string, ownerId: string | null) {
-    if (!ownerId && typeof (this.scanRepository as any).findOne === 'function') {
+  private async findScanForReport(scanId: string, ownerId: string | null, includeAll = false) {
+    if (!includeAll && !ownerId) {
+      throw new NotFoundException('Scan not found');
+    }
+
+    if (includeAll && typeof (this.scanRepository as any).findOne === 'function') {
       const scan = await this.scanRepository.findOne({
         where: { id: scanId },
         relations: { project: true, urlResults: true },
@@ -121,7 +125,7 @@ export class PdfService {
       .leftJoinAndSelect('project.owner', 'owner')
       .where('scan.id = :scanId', { scanId });
 
-    if (ownerId) {
+    if (!includeAll && ownerId) {
       query.andWhere('owner.id = :ownerId', { ownerId });
     }
 

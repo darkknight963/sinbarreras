@@ -4,6 +4,7 @@ import { ProjectsController } from './projects.controller';
 describe('ProjectsController', () => {
   const projectsService = {
     create: jest.fn(async () => ({ id: 'project-1' })),
+    findAll: jest.fn(async () => []),
   } as any;
 
   beforeEach(() => {
@@ -74,5 +75,19 @@ describe('ProjectsController', () => {
         { authMode: 'session' },
       ),
     ).resolves.toEqual({ id: 'project-1' });
+  });
+
+  it('lets superadmin list every project without forcing owner scope', async () => {
+    const controller = new ProjectsController(projectsService);
+
+    await controller.findAll(
+      { id: 'super-1', role: 'superadmin' },
+      { authMode: 'session' },
+    );
+
+    expect(projectsService.findAll).toHaveBeenCalledWith(null, {
+      ownerId: null,
+      includeAll: true,
+    });
   });
 });

@@ -92,4 +92,26 @@ describe('ScansController', () => {
       ).toThrow(ForbiddenException);
     },
   );
+
+  it('lets superadmin query scans globally without owner scoping', async () => {
+    scansService.findAll.mockResolvedValueOnce({ scans: [], hasMore: false });
+
+    await expect(
+      controller.findAll(
+        {
+          id: 'super-1',
+          role: 'superadmin',
+          billingPlan: null,
+          billingStatus: 'inactive',
+        },
+        { authMode: 'session' },
+        '20',
+      ),
+    ).resolves.toEqual({ scans: [], hasMore: false });
+
+    expect(scansService.findAll).toHaveBeenCalledWith(null, 20, undefined, undefined, {
+      ownerId: null,
+      includeAll: true,
+    });
+  });
 });

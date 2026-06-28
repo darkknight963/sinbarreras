@@ -28,7 +28,11 @@ export class UrlResultsService {
     private readonly scanRepository: Repository<Scan>,
   ) {}
 
-  async findOne(id: string, ownerId: string | null = null): Promise<UrlResult | null> {
+  async findOne(id: string, ownerId: string | null = null, includeAll = false): Promise<UrlResult | null> {
+    if (!includeAll && !ownerId) {
+      return null;
+    }
+
     const query = this.urlResultRepository
       .createQueryBuilder('urlResult')
       .leftJoinAndSelect('urlResult.scan', 'scan')
@@ -36,7 +40,7 @@ export class UrlResultsService {
       .leftJoinAndSelect('project.owner', 'owner')
       .where('urlResult.id = :id', { id });
 
-    if (ownerId) {
+    if (!includeAll && ownerId) {
       query.andWhere('owner.id = :ownerId', { ownerId });
     }
 
@@ -48,12 +52,13 @@ export class UrlResultsService {
     verificationId: string,
     status: ManualStatus,
     ownerId: string | null = null,
+    includeAll = false,
   ): Promise<UrlResult> {
     if (!['pending', 'approved', 'failed', 'not_applicable'].includes(status)) {
       throw new BadRequestException('Invalid manual verification status');
     }
 
-    const result = await this.findOne(resultId, ownerId);
+    const result = await this.findOne(resultId, ownerId, includeAll);
     if (!result) throw new NotFoundException('URL result not found');
 
     const verifications = result.manualVerifications || [];
@@ -76,7 +81,7 @@ export class UrlResultsService {
     const saved = await this.urlResultRepository.save(result);
     await this.recalculateScanScore(result.scan?.id);
 
-    return this.findOne(saved.id, ownerId) as Promise<UrlResult>;
+    return this.findOne(saved.id, ownerId, includeAll) as Promise<UrlResult>;
   }
 
   async updateApplicability(
@@ -84,6 +89,7 @@ export class UrlResultsService {
     criterionId: string,
     estado: ApplicabilityState,
     ownerId: string | null = null,
+    includeAll = false,
   ): Promise<UrlResult> {
     if (!criterionId || !isSpecificCriterion(criterionId)) {
       throw new BadRequestException('criterionId must be a WCAG criterion id');
@@ -93,7 +99,7 @@ export class UrlResultsService {
       throw new BadRequestException('estado must be aplica or no_aplica');
     }
 
-    const result = await this.findOne(resultId, ownerId);
+    const result = await this.findOne(resultId, ownerId, includeAll);
 
     if (!result) throw new NotFoundException('URL result not found');
     if (!result.applicability?.criteria?.length) {
@@ -127,7 +133,7 @@ export class UrlResultsService {
     const saved = await this.urlResultRepository.save(result);
     await this.recalculateScanScore(result.scan?.id);
 
-    return this.findOne(saved.id, ownerId) as Promise<UrlResult>;
+    return this.findOne(saved.id, ownerId, includeAll) as Promise<UrlResult>;
   }
 
   async updateFindingStatus(
@@ -135,6 +141,7 @@ export class UrlResultsService {
     locator: FindingLocator,
     status: FindingReviewStatus,
     ownerId: string | null = null,
+    includeAll = false,
   ): Promise<UrlResult> {
     if (!['confirmed', 'needs_review', 'not_applicable'].includes(status)) {
       throw new BadRequestException('Invalid finding status');
@@ -144,7 +151,7 @@ export class UrlResultsService {
       throw new BadRequestException('criterion, ruleId and selector are required');
     }
 
-    const result = await this.findOne(resultId, ownerId);
+    const result = await this.findOne(resultId, ownerId, includeAll);
     if (!result) throw new NotFoundException('URL result not found');
 
     let findingFound = false;
@@ -200,7 +207,7 @@ export class UrlResultsService {
     const saved = await this.urlResultRepository.save(result);
     await this.recalculateScanScore(result.scan?.id);
 
-    return this.findOne(saved.id, ownerId) as Promise<UrlResult>;
+    return this.findOne(saved.id, ownerId, includeAll) as Promise<UrlResult>;
   }
 
   private recalculateUrlResultScore(result: UrlResult): void {

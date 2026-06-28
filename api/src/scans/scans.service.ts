@@ -12,6 +12,7 @@ import { CreateScanDto } from './dto/create-scan.dto';
 import { flattenWcagChecklist } from '../compliance/wcag-checklist.data';
 import { RequestRateLimitService } from '../security/request-rate-limit.service';
 import { EvidenceService } from '../evidence/evidence.service';
+import type { AccessScope } from '../auth/access-scope';
 
 type TriggerScanOptions = {
   enforceSingleFreeUrl?: boolean;
@@ -144,7 +145,11 @@ export class ScansService {
     return reservedUrls;
   }
 
-  async cancelScan(id: string, ownerId: string | null): Promise<Scan> {
+  async cancelScan(
+    id: string,
+    ownerId: string | null,
+    scope: AccessScope = { ownerId: null, includeAll: false },
+  ): Promise<Scan> {
     const scan = await this.scanRepository
       .createQueryBuilder('scan')
       .leftJoinAndSelect('scan.project', 'project')
@@ -159,7 +164,7 @@ export class ScansService {
     const projectOwnerId = scan.project?.owner?.id ?? null;
     const isPublic = !projectOwnerId;
 
-    if (!isPublic && projectOwnerId !== ownerId) {
+    if (!scope.includeAll && !isPublic && projectOwnerId !== ownerId) {
       throw new ForbiddenException('No tienes permiso para cancelar este escaneo.');
     }
 
@@ -631,7 +636,12 @@ export class ScansService {
     limit = 20,
     before?: string,
     projectId?: string,
+    scope: AccessScope = { ownerId: null, includeAll: false },
   ): Promise<{ scans: Scan[]; hasMore: boolean }> {
+    if (!ownerId && !scope.includeAll) {
+      return { scans: [], hasMore: false };
+    }
+
     const safeLimit = Math.min(Math.max(1, limit), 100);
     const query = this.scanRepository
       .createQueryBuilder('scan')
@@ -642,7 +652,7 @@ export class ScansService {
       .orderBy('scan.createdAt', 'DESC')
       .take(safeLimit + 1);
 
-    if (ownerId) {
+    if (!scope.includeAll && ownerId) {
       query.where('owner.id = :ownerId', { ownerId });
     }
 
@@ -713,26 +723,38 @@ export class ScansService {
     return query;
   }
 
-  async findOne(id: string, ownerId: string | null): Promise<ScanWithProgress | null> {
+  async findOne(
+    id: string,
+    ownerId: string | null,
+    scope: AccessScope = { ownerId: null, includeAll: false },
+  ): Promise<ScanWithProgress | null> {
+    if (!ownerId && !scope.includeAll) {
+      return null;
+    }
+
     const cacheKey = this.scanCacheKey(id, ownerId);
     const cached = await this.rateLimitService.getJson<ScanWithProgress>(cacheKey);
     if (cached !== null) return cached;
 
     // Primera pasada ligera para saber el status sin cargar jsonb
-    const statusCheck = await this.scanRepository
+    const statusCheckQuery = this.scanRepository
       .createQueryBuilder('scan')
       .leftJoin('scan.project', 'project')
       .leftJoin('project.owner', 'owner')
       .select(['scan.id', 'scan.status'])
-      .where('scan.id = :id', { id })
-      .andWhere(ownerId ? 'owner.id = :ownerId' : '1=1', ownerId ? { ownerId } : {})
-      .getOne();
+      .where('scan.id = :id', { id });
+
+    if (!scope.includeAll && ownerId) {
+      statusCheckQuery.andWhere('owner.id = :ownerId', { ownerId });
+    }
+
+    const statusCheck = await statusCheckQuery.getOne();
 
     if (!statusCheck) return null;
     const heavy = this.isTerminalStatus(statusCheck.status);
 
     const query = this.buildScanQuery(id, heavy);
-    if (ownerId) query.andWhere('owner.id = :ownerId', { ownerId });
+    if (!scope.includeAll && ownerId) query.andWhere('owner.id = :ownerId', { ownerId });
 
     const result = await this.attachQueueProgress(await this.repairExtensionApplicability(await query.getOne()));
     if (result) {
@@ -775,8 +797,13 @@ export class ScansService {
     return result;
   }
 
-  async submitExtensionResult(id: string, ownerId: string | null, payload: ExtensionAuditResult): Promise<ScanWithProgress> {
-    const scan = await this.findOne(id, ownerId);
+  async submitExtensionResult(
+    id: string,
+    ownerId: string | null,
+    payload: ExtensionAuditResult,
+    scope: AccessScope = { ownerId: null, includeAll: false },
+  ): Promise<ScanWithProgress> {
+    const scan = await this.findOne(id, ownerId, scope);
     if (!scan) {
       throw new NotFoundException('Scan not found');
     }
@@ -843,7 +870,7 @@ export class ScansService {
     }
 
     await this.invalidateScanCache(scan.id);
-    const updated = await this.findOne(scan.id, ownerId);
+    const updated = await this.findOne(scan.id, ownerId, scope);
     if (!updated) {
       throw new NotFoundException('Scan not found');
     }
@@ -851,18 +878,27 @@ export class ScansService {
     return updated;
   }
 
-  async update(id: string, updateData: Partial<Scan>, ownerId: string | null): Promise<Scan> {
-    const existing = await this.findOne(id, ownerId);
+  async update(
+    id: string,
+    updateData: Partial<Scan>,
+    ownerId: string | null,
+    scope: AccessScope = { ownerId: null, includeAll: false },
+  ): Promise<Scan> {
+    const existing = await this.findOne(id, ownerId, scope);
     if (!existing) throw new Error('Scan not found');
     await this.scanRepository.update(id, updateData);
     await this.invalidateScanCache(id);
-    const updated = await this.findOne(id, ownerId);
+    const updated = await this.findOne(id, ownerId, scope);
     if (!updated) throw new Error('Scan not found');
     return updated;
   }
 
-  async remove(id: string, ownerId: string | null): Promise<void> {
-    const scan = await this.findOne(id, ownerId);
+  async remove(
+    id: string,
+    ownerId: string | null,
+    scope: AccessScope = { ownerId: null, includeAll: false },
+  ): Promise<void> {
+    const scan = await this.findOne(id, ownerId, scope);
     if (!scan) throw new Error('Scan not found');
 
     // Load full urlResults to extract R2 evidence URLs before row deletion
