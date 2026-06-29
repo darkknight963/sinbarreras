@@ -62,14 +62,16 @@ export class CulqiClient {
   }
 
   private encryptWithRsa(plaintext: string): string {
-    // Replica exacta del SDK oficial de Culqi (culqi-go encoder.go):
-    // 1. AES-256-GCM con key de 32 bytes y nonce/IV de 12 bytes.
-    // 2. Del ciphertext GCM se DESCARTAN los últimos 16 bytes (el auth tag);
-    //    Culqi NO espera el tag — solo el ciphertext puro va en encrypted_data.
+    // Replica exacta del SDK oficial de Culqi (culqi-php encoder.php, que usa
+    // openssl AES-256-GCM con IV de 16 bytes):
+    // 1. AES-256-GCM con key de 32 bytes y IV de 16 bytes.
+    // 2. El auth tag de GCM se DESCARTA (openssl lo entrega aparte y PHP no lo
+    //    envía); solo el ciphertext puro va en encrypted_data. En node-forge
+    //    cipher.output ya excluye el tag, equivalente al comportamiento de PHP.
     // 3. La AES key y el IV se encriptan por separado con RSA-OAEP+SHA256.
     // 4. Body: { encrypted_data, encrypted_key, encrypted_iv }.
     const aesKey = forge.random.getBytesSync(32);
-    const iv = forge.random.getBytesSync(12);
+    const iv = forge.random.getBytesSync(16);
 
     const cipher = forge.cipher.createCipher('AES-GCM', aesKey);
     cipher.start({ iv });
