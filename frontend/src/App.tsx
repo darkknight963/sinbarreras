@@ -538,6 +538,11 @@ export default function App() {
       setConfirmPassword('');
       setPasswordMessage(null);
       setAppError(null);
+      setAuthEmail('');
+      setAuthPassword('');
+      setAuthFullName('');
+      setAuthCompanyName('');
+      setAuthFormMode('login');
       setAuthMode('none');
     }
   };
