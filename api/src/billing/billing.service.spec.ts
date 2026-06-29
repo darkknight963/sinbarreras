@@ -223,4 +223,24 @@ describe('BillingService', () => {
       } as any),
     ).resolves.toEqual({ ok: true, matched: true });
   });
+
+  it('accepts Mercado Pago webhook test payloads with fake payment ids', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Payment not found' }),
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
+
+    await expect(
+      service.handleWebhook({
+        action: 'payment.updated',
+        type: 'payment',
+        data: { id: '123456' },
+        id: '123456',
+        live_mode: false,
+      } as any),
+    ).resolves.toEqual({ ok: true, matched: false, ignored: true });
+  });
 });

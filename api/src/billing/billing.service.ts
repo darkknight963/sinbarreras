@@ -178,7 +178,10 @@ export class BillingService {
     }
 
     if (this.isPreapprovalWebhook(eventType, payload, resourceId)) {
-      const preapproval = await this.getMercadoPagoPreapproval(resourceId);
+      const preapproval = await this.safeGetMercadoPagoPreapproval(resourceId);
+      if (!preapproval) {
+        return { ok: true, matched: false, ignored: true };
+      }
       const externalReference = String(preapproval.external_reference || '');
       const parsedReference = this.parseExternalReference(externalReference);
       if (!parsedReference) {
@@ -202,7 +205,10 @@ export class BillingService {
       return { ok: true, matched: true };
     }
 
-    const payment = await this.getMercadoPagoPayment(resourceId);
+    const payment = await this.safeGetMercadoPagoPayment(resourceId);
+    if (!payment) {
+      return { ok: true, matched: false, ignored: true };
+    }
     const paymentStatus = String(payment.status || '').toLowerCase();
     const externalReference = String(payment.external_reference || '');
     const parsedReference = this.parseExternalReference(externalReference);
@@ -335,6 +341,24 @@ export class BillingService {
     }
 
     return await response.json() as Record<string, unknown>;
+  }
+
+  private async safeGetMercadoPagoPayment(paymentId: string) {
+    try {
+      return await this.getMercadoPagoPayment(paymentId);
+    } catch (error) {
+      console.warn('[BillingService] Ignorando webhook payment sin recurso recuperable', { paymentId, error });
+      return null;
+    }
+  }
+
+  private async safeGetMercadoPagoPreapproval(preapprovalId: string) {
+    try {
+      return await this.getMercadoPagoPreapproval(preapprovalId);
+    } catch (error) {
+      console.warn('[BillingService] Ignorando webhook preapproval sin recurso recuperable', { preapprovalId, error });
+      return null;
+    }
   }
 
   private async readMercadoPagoError(response: Response) {
