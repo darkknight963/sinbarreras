@@ -21,7 +21,7 @@ export class CulqiClient {
     );
     this.secretKey = configService.get<string>('CULQI_SECRET_KEY', '').trim();
     this.publicKey = configService.get<string>('CULQI_PUBLIC_KEY', '').trim();
-    this.rsaPublicKey = configService.get<string>('CULQI_RSA_PUBLIC_KEY', '').trim();
+    this.rsaPublicKey = (configService.get<string>('CULQI_RSA_PUBLIC_KEY', '') || '').trim().replace(/\\n/g, '\n');
     this.rsaKeyId = configService.get<string>('CULQI_RSA_KEY_ID', '').trim();
   }
 
