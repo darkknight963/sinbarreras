@@ -4,8 +4,9 @@ import * as forge from 'node-forge';
 
 type CulqiRequestInit = RequestInit & { body?: string };
 
-// El SDK oficial de Culqi v2 no usa RSA para ningún endpoint de servidor a servidor.
-// La RSA Backend Key aplica solo al flujo de checkout frontend (tokenización).
+// /plans y /subscriptions requieren public key como Bearer token en Culqi v2.
+// /customers y /cards usan la secret key.
+const PUBLIC_KEY_PATHS = ['/plans', '/subscriptions'];
 const RSA_REQUIRED_PATHS: string[] = [];
 
 @Injectable()
@@ -106,7 +107,8 @@ export class CulqiClient {
 
     const method = init.method || 'GET';
     const headers = new Headers(init.headers);
-    headers.set('Authorization', `Bearer ${this.secretKey}`);
+    const usePublicKey = PUBLIC_KEY_PATHS.some((p) => path.startsWith(p));
+    headers.set('Authorization', `Bearer ${usePublicKey ? this.publicKey : this.secretKey}`);
 
     let body = init.body;
 
