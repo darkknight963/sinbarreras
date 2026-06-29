@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common';
+﻿import { BadRequestException, ConflictException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
@@ -72,7 +72,7 @@ export class AuthService {
       return;
     }
 
-    // Sin ADMIN_PASSWORD en entornos de producción el servidor no levanta.
+    // Sin ADMIN_PASSWORD en entornos de producciÃ³n el servidor no levanta.
     // En desarrollo se usa la password hardcodeada solo si NODE_ENV no es 'production'.
     if (process.env.NODE_ENV === 'production') {
       throw new Error(
@@ -89,7 +89,7 @@ export class AuthService {
   async resetAdminBruteForce(providedPassword: string, clientIp: string): Promise<{ ok: boolean; message: string }> {
     const configuredPassword = this.configService.get<string>('ADMIN_PASSWORD')?.trim();
     if (!configuredPassword || providedPassword !== configuredPassword) {
-      throw new UnauthorizedException('Contraseña incorrecta');
+      throw new UnauthorizedException('ContraseÃ±a incorrecta');
     }
     const adminEmail = (this.configService.get<string>('ADMIN_EMAIL') || 'administrador@gzakgroup.com').trim().toLowerCase();
     const { createHash } = await import('crypto');
@@ -101,7 +101,7 @@ export class AuthService {
     await this.rateLimitService.resetAttempts(identifierNoIp).catch(() => {});
     // Re-seed admin to ensure password hash is fresh
     await this.ensureAdminUser(adminEmail, configuredPassword);
-    return { ok: true, message: 'Brute-force reset y contraseña re-aplicada. Puedes iniciar sesión ahora.' };
+    return { ok: true, message: 'Brute-force reset y contraseÃ±a re-aplicada. Puedes iniciar sesiÃ³n ahora.' };
   }
 
   private async ensureAdminUser(email: string, password: string, legacyEmails: string[] = []) {
@@ -121,7 +121,7 @@ export class AuthService {
       isActive: true,
       billingStatus: 'active',
       billingPlan: 'annual',
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: 'PEN',
       billingPeriodEnd: new Date('2099-12-31T23:59:59.000Z'),
       billingCustomerId: 'master-account',
@@ -195,7 +195,7 @@ export class AuthService {
         isActive: true,
         billingStatus: 'inactive',
         billingPlan: null,
-        billingProvider: 'culqi',
+        billingProvider: 'mercadopago',
         billingCurrency: null,
         billingPeriodEnd: null,
         billingCustomerId: null,
@@ -264,7 +264,7 @@ export class AuthService {
       isActive: true,
       billingStatus: 'inactive',
       billingPlan: null,
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: null,
       billingPeriodEnd: null,
       billingCustomerId: null,
@@ -332,7 +332,7 @@ export class AuthService {
       isActive: true,
       billingStatus: 'inactive',
       billingPlan: null,
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: null,
       billingPeriodEnd: null,
       billingCustomerId: null,
@@ -379,7 +379,7 @@ export class AuthService {
         user: { id: userId },
         // TypeORM no tiene "NOT" directo en delete shorthand; usamos QueryBuilder.
       });
-      // Recrear la sesión actual para que el usuario no pierda su acceso.
+      // Recrear la sesiÃ³n actual para que el usuario no pierda su acceso.
       const token = randomBytes(32).toString('hex');
       const ttlDays = this.getSessionTtlDays();
       const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
@@ -471,7 +471,7 @@ export class AuthService {
       billingCurrency: user.billingCurrency,
       billingPeriodEnd: user.billingPeriodEnd ? user.billingPeriodEnd.toISOString() : null,
       // billingCustomerId y billingSubscriptionId son IDs internos del proveedor de pagos;
-      // no tienen uso en el frontend y reducen la superficie de exposición de metadatos.
+      // no tienen uso en el frontend y reducen la superficie de exposiciÃ³n de metadatos.
     };
   }
 
@@ -562,7 +562,7 @@ export class AuthService {
 
   private async verifyAndConsumeOAuthState(provider: OAuthProvider, state: string): Promise<void> {
     const payload = this.verifyOAuthState(provider, state);
-    // Consume the nonce atomically — SET NX returns false if already used.
+    // Consume the nonce atomically â€” SET NX returns false if already used.
     const nonceKey = `oauth:nonce:${payload.nonce}`;
     const remainingTtlMs = OAUTH_STATE_TTL_MS - (Date.now() - payload.issuedAt);
     const consumed = await this.rateLimitService.setOnce(nonceKey, Math.max(remainingTtlMs, 1000));
@@ -628,8 +628,8 @@ export class AuthService {
 
   private getOAuthStateSecret() {
     // OAUTH_STATE_SECRET debe ser una variable dedicada: no reutilizar API_AUTH_TOKEN
-    // ya que ese token tiene un propósito diferente (autenticación de API interna)
-    // y su compromiso afectaría adicionalmente la seguridad OAuth.
+    // ya que ese token tiene un propÃ³sito diferente (autenticaciÃ³n de API interna)
+    // y su compromiso afectarÃ­a adicionalmente la seguridad OAuth.
     const secret = this.configService.get<string>('OAUTH_STATE_SECRET')?.trim();
 
     if (!secret) {
@@ -659,7 +659,7 @@ export class AuthService {
     if (trustProxy && request?.headers) {
       const forwarded = request.headers['x-forwarded-for'];
       const forwardedStr = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-      // X-Forwarded-For: client, proxy1, proxy2 — el primer IP es el cliente real.
+      // X-Forwarded-For: client, proxy1, proxy2 â€” el primer IP es el cliente real.
       const clientIp = forwardedStr?.split(',')[0]?.trim();
       if (clientIp && clientIp !== '::1' && clientIp !== '127.0.0.1') {
         return clientIp;
@@ -678,3 +678,4 @@ export class AuthService {
     return `guest:ip:${ip}`;
   }
 }
+

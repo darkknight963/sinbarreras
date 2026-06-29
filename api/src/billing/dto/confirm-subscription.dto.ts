@@ -1,4 +1,4 @@
-import { IsIn, IsString, MinLength } from 'class-validator';
+import { IsIn, IsString } from 'class-validator';
 import type { BillingCurrency, BillingPlanCode } from '../billing.types';
 
 export class ConfirmSubscriptionDto {
@@ -11,6 +11,5 @@ export class ConfirmSubscriptionDto {
   currency!: BillingCurrency;
 
   @IsString()
-  @MinLength(3)
-  tokenId!: string;
+  paymentId!: string;
 }

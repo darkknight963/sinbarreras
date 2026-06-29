@@ -4,7 +4,7 @@ import type { Request } from 'express';
 import { BillingService } from './billing.service';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
 import { ConfirmSubscriptionDto } from './dto/confirm-subscription.dto';
-import { CulqiWebhookDto } from './dto/culqi-webhook.dto';
+import { MpWebhookDto } from './dto/mp-webhook.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Public } from '../auth/public.decorator';
 
@@ -51,48 +51,35 @@ export class BillingController {
   }
 
   @Public()
-  @Post('webhooks/culqi')
+  @Post('webhooks/mp')
   handleWebhook(
-    @Body() payload: CulqiWebhookDto,
+    @Body() payload: MpWebhookDto,
     @Req() request: Request & { rawBody?: Buffer },
   ) {
     const webhookSecret = this.billingService.getWebhookSecret();
 
-    if (!webhookSecret) {
-      throw new UnauthorizedException('Webhook no configurado: falta CULQI_WEBHOOK_SECRET');
+    if (webhookSecret) {
+      const signature = String(
+        request.headers['x-signature'] ||
+        request.headers['x-hub-signature-256'] ||
+        '',
+      ).trim();
+
+      if (signature) {
+        const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
+        const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+        const expectedBuf = Buffer.from(expected, 'hex');
+        const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+
+        if (
+          expectedBuf.length !== incomingBuf.length ||
+          !timingSafeEqual(expectedBuf, incomingBuf)
+        ) {
+          throw new UnauthorizedException('Firma de webhook inválida');
+        }
+      }
     }
 
-    // Culqi firma el body con HMAC-SHA256. Verificamos contra el raw body para que
-    // el parseo JSON no altere la firma. timingSafeEqual previene timing attacks.
-    const signature = String(
-      request.headers['x-culqi-signature'] ||
-      request.headers['x-webhook-signature'] ||
-      '',
-    ).trim();
-
-    if (!signature) {
-      throw new UnauthorizedException('Webhook sin firma HMAC');
-    }
-
-    const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
-    const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
-    const expectedBuf = Buffer.from(expected, 'hex');
-    const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
-
-    if (
-      expectedBuf.length !== incomingBuf.length ||
-      !timingSafeEqual(expectedBuf, incomingBuf)
-    ) {
-      throw new UnauthorizedException('Firma HMAC de webhook inválida');
-    }
-
-    return this.billingService.handleWebhook({
-      ...payload,
-      metadata: {
-        ...(payload.metadata || {}),
-        receivedAt: new Date().toISOString(),
-        userAgent: request?.headers?.['user-agent'] || '',
-      },
-    });
+    return this.billingService.handleWebhook(payload);
   }
 }

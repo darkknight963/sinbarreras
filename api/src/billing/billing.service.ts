@@ -13,10 +13,9 @@ import {
   BillingState,
   BillingStatus,
 } from './billing.types';
-import { CulqiClient } from './culqi.client';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
 import { ConfirmSubscriptionDto } from './dto/confirm-subscription.dto';
-import { CulqiWebhookDto } from './dto/culqi-webhook.dto';
+import { MpWebhookDto } from './dto/mp-webhook.dto';
 
 @Injectable()
 export class BillingService {
@@ -26,12 +25,11 @@ export class BillingService {
     @InjectRepository(BillingSubscription)
     private readonly subscriptionRepository: Repository<BillingSubscription>,
     private readonly configService: ConfigService,
-    private readonly culqiClient: CulqiClient,
     private readonly dataSource: DataSource,
   ) {}
 
   async listPlans(): Promise<BillingPlan[]> {
-    return Promise.all(BILLING_PLAN_CONFIGS.map((plan) => this.resolveBillingPlan(plan)));
+    return BILLING_PLAN_CONFIGS.map((plan) => this.resolveBillingPlan(plan));
   }
 
   async getBillingState(userId: string): Promise<BillingState> {
@@ -46,8 +44,8 @@ export class BillingService {
       throw new BadRequestException(`No existe el monto configurado para ${plan.label} en ${plan.currency}`);
     }
 
+    // TODO: crear preferencia en Mercado Pago y devolver init_point o preference_id
     return {
-      publicKey: this.culqiClient.getPublicKey(),
       plan,
       amount: plan.amount,
       user: {
@@ -62,9 +60,6 @@ export class BillingService {
   async confirmSubscription(userId: string, dto: ConfirmSubscriptionDto) {
     const user = await this.getUserOrThrow(userId);
     const plan = await this.resolvePlan(dto.planCode, dto.currency);
-    if (!plan.providerPlanId) {
-      throw new BadRequestException(`No existe el plan Culqi configurado para ${plan.label} en ${plan.currency}`);
-    }
 
     const existingActive = await this.subscriptionRepository.findOne({
       where: {
@@ -87,58 +82,22 @@ export class BillingService {
       return this.serializeBillingState(user);
     }
 
-    const customerPayload = this.buildCustomerPayload(user);
-    const existingCustomer = await this.runCulqiStep('findCustomerByEmail', () =>
-      this.culqiClient.findCustomerByEmail(user.email),
-    );
-    const customer = existingCustomer ?? await this.runCulqiStep('createCustomer', () =>
-      this.culqiClient.createCustomer(customerPayload),
-    );
-    if (!customer?.id) {
-      throw new BadRequestException('No se pudo obtener o crear el cliente en Culqi');
-    }
-    const card = await this.runCulqiStep('createCard', () =>
-      this.culqiClient.createCard({
-        customer_id: customer.id,
-        token_id: dto.tokenId,
-      }),
-    );
-    if (!card?.id) {
-      throw new BadRequestException('No se pudo crear la tarjeta en Culqi');
-    }
-    const subscription = await this.runCulqiStep('createSubscription', () =>
-      this.culqiClient.createSubscription({
-        card_id: card.id,
-        plan_id: plan.providerPlanId,
-        tyc: true,
-        metadata: {
-          user_id: user.id,
-          email: user.email,
-          company_name: user.companyName || '',
-          plan_code: plan.code,
-          currency: plan.currency,
-        },
-      }),
-    );
-
-    const billingStatus = this.mapStatusFromCulqi(subscription?.status ?? 'pending');
+    // TODO: verificar pago en Mercado Pago con dto.paymentId antes de activar
     const billingRecord = this.subscriptionRepository.create({
       user,
       provider: BILLING_PROVIDER,
       plan: plan.code,
       currency: plan.currency,
-      status: billingStatus,
-      providerPlanId: plan.providerPlanId,
-      providerCustomerId: customer?.id || null,
-      providerSubscriptionId: subscription?.id || null,
-      providerCardId: card?.id || null,
-      providerTokenId: dto.tokenId,
-      currentPeriodEnd: this.mapPeriodEnd(subscription?.next_billing_date),
-      metadata: { customer, card, subscription },
+      status: 'pending',
+      providerPlanId: null,
+      providerCustomerId: null,
+      providerSubscriptionId: dto.paymentId || null,
+      providerCardId: null,
+      providerTokenId: null,
+      currentPeriodEnd: null,
+      metadata: { paymentId: dto.paymentId },
     });
 
-    // Transacción: subscription + user billing se guardan juntos o ninguno.
-    // Evita el caso donde la subscription se guarda pero el usuario no queda en plan activo.
     await this.dataSource.transaction(async (manager) => {
       const saved = await manager.save(BillingSubscription, billingRecord);
       const userUpdate = {
@@ -149,7 +108,6 @@ export class BillingService {
         billingCustomerId: saved.providerCustomerId,
         billingSubscriptionId: saved.providerSubscriptionId,
       };
-      // Keep the in-memory user in sync so the return value reflects the committed state.
       Object.assign(user, userUpdate);
       await manager.update(User, user.id, userUpdate);
     });
@@ -164,11 +122,6 @@ export class BillingService {
       order: { createdAt: 'DESC' },
     });
 
-    // Primero escribimos en DB — la DB es la fuente de verdad para acceso del usuario.
-    // Si Culqi falla después, el usuario pierde acceso localmente (correcto: no debe
-    // seguir con servicio activo si quiso cancelar) y el equipo puede reintentar la
-    // cancelación en Culqi manualmente. Esto evita que Culqi siga cobrando si la
-    // BD ya marcó cancelled pero Culqi no fue notificado.
     await this.dataSource.transaction(async (manager) => {
       if (activeSubscription) {
         activeSubscription.status = 'canceled';
@@ -184,52 +137,36 @@ export class BillingService {
       });
     });
 
-    // Luego notificamos a Culqi. Si falla, queda registrado para seguimiento manual.
-    if (activeSubscription?.providerSubscriptionId) {
-      try {
-        await this.culqiClient.cancelSubscription(activeSubscription.providerSubscriptionId);
-      } catch (culqiErr) {
-        // Log crítico: la subscripción debe cancelarse en Culqi para evitar cobros futuros.
-        // El equipo debe revisar y cancelar manualmente en el panel de Culqi.
-        console.error(
-          `[BILLING CRITICAL] cancelSubscription en Culqi falló para usuario ${userId} ` +
-          `(subscriptionId: ${activeSubscription.providerSubscriptionId}). ` +
-          `Cancelar manualmente en el panel de Culqi para evitar cobros. Error:`,
-          culqiErr,
-        );
-      }
-    }
+    // TODO: cancelar suscripción en Mercado Pago si providerSubscriptionId existe
 
     return this.serializeBillingState(await this.getUserOrThrow(userId));
   }
 
-  async handleWebhook(payload: CulqiWebhookDto | Record<string, unknown>) {
-    const eventName = String(payload.event || payload.type || '');
-    const subscriptionId = this.extractSubscriptionId(payload);
-    const customerEmail = this.extractCustomerEmail(payload);
+  async handleWebhook(payload: MpWebhookDto | Record<string, unknown>) {
+    const eventType = String(payload.type || payload.action || '');
+    const data = (payload.data as Record<string, unknown> | undefined) || {};
+    const paymentId = String(data.id || payload.id || '');
 
-    const supportedEvents = [
-      'subscription.creation.succeeded',
-      'subscription.creation.failed',
-      'subscription.charge.succeeded',
-      'subscription.charge.failed',
-      'subscription.cancel.succeeded',
-      'subscription.cancel.failed',
-      'charge.succeeded',
-      'charge.failed',
-    ];
+    // TODO: implementar procesamiento de webhooks de Mercado Pago
+    // Los eventos principales son: payment, subscription_authorized_payment, subscription_preapproval
+    console.log('[BillingService] MP webhook recibido:', { eventType, paymentId });
 
-    if (!supportedEvents.some((supportedEvent) => eventName === supportedEvent || eventName.startsWith('subscription.'))) {
+    if (!eventType) {
       return { ok: true, ignored: true };
     }
 
-    const billingRecord = await this.findBillingRecord(subscriptionId, customerEmail);
+    const billingRecord = paymentId
+      ? await this.subscriptionRepository.findOne({
+          where: { providerSubscriptionId: paymentId },
+          relations: { user: true },
+        })
+      : null;
+
     if (!billingRecord) {
       return { ok: true, matched: false };
     }
 
-    billingRecord.status = this.mapStatusFromEvent(eventName, billingRecord.status);
-    billingRecord.currentPeriodEnd = this.mapPeriodEnd(this.extractPeriodEnd(payload));
+    billingRecord.status = this.mapStatusFromEvent(eventType, billingRecord.status);
 
     const userUpdate = {
       billingStatus: billingRecord.status,
@@ -240,7 +177,6 @@ export class BillingService {
       billingSubscriptionId: billingRecord.providerSubscriptionId,
     };
 
-    // Keep the eager-loaded user in sync so callers see the updated state.
     Object.assign(billingRecord.user, userUpdate);
 
     await this.dataSource.transaction(async (manager) => {
@@ -252,11 +188,12 @@ export class BillingService {
   }
 
   getWebhookSecret(): string {
-    return this.configService.get<string>('CULQI_WEBHOOK_SECRET', '').trim();
+    return this.configService.get<string>('MP_WEBHOOK_SECRET', '').trim();
   }
 
   private async resolvePlan(planCode: BillingPlanCode, currency: BillingCurrency) {
-    const plan = (await this.listPlans()).find((item) => item.code === planCode && item.currency === currency);
+    const plans = await this.listPlans();
+    const plan = plans.find((item) => item.code === planCode && item.currency === currency);
     if (!plan) {
       throw new NotFoundException(`No existe el plan ${planCode} en ${currency}`);
     }
@@ -303,76 +240,15 @@ export class BillingService {
     await this.userRepository.save(user);
   }
 
-  private buildCustomerPayload(user: User) {
-    const [firstName, ...rest] = (user.fullName || user.companyName || user.email).split(' ');
-    const lastName = rest.length > 0 ? rest.join(' ') : user.companyName || 'Cliente';
-    return {
-      first_name: firstName || 'Cliente',
-      last_name: lastName,
-      email: user.email,
-      address: user.companyName || 'Lima',
-      address_city: 'Lima',
-      country_code: 'PE',
-      phone_number: '999999999',
-      metadata: {
-        user_id: user.id,
-        company_name: user.companyName || '',
-      },
-    };
-  }
-
-  private async resolveBillingPlan(plan: (typeof BILLING_PLAN_CONFIGS)[number]): Promise<BillingPlan> {
-    const providerPlanId = this.getConfigValue([plan.providerPlanIdEnv, ...this.getPlanIdAliases(plan)]) || null;
-    const configuredAmount = this.resolveAmountFromConfig(plan);
-    const amount = configuredAmount ?? (providerPlanId ? await this.resolveAmountFromCulqi(providerPlanId) : null);
-
+  private resolveBillingPlan(plan: (typeof BILLING_PLAN_CONFIGS)[number]): BillingPlan {
+    const rawAmount = this.configService.get<string>(plan.amountEnv, '')?.trim();
+    const amount = this.parseAmount(rawAmount);
     return {
       ...plan,
       provider: BILLING_PROVIDER,
-      providerPlanId,
       amount,
-      available: Boolean(providerPlanId && amount),
+      available: Boolean(amount),
     };
-  }
-
-  private getConfigValue(keys: string[]) {
-    for (const key of keys) {
-      const value = this.configService.get<string>(key, '')?.trim();
-      if (value) return value;
-    }
-    return '';
-  }
-
-  private getPlanIdAliases(plan: (typeof BILLING_PLAN_CONFIGS)[number]) {
-    if (plan.currency === 'PEN') {
-      return plan.code === 'monthly'
-        ? ['CULQI_MONTHLY_PLAN_ID']
-        : ['CULQI_ANNUAL_PLAN_ID'];
-    }
-    return [];
-  }
-
-  private getAmountAliases(plan: (typeof BILLING_PLAN_CONFIGS)[number]) {
-    if (plan.currency === 'PEN') {
-      return plan.code === 'monthly'
-        ? ['CULQI_MONTHLY_AMOUNT']
-        : ['CULQI_ANNUAL_AMOUNT'];
-    }
-    return [];
-  }
-
-  private resolveAmountFromConfig(plan: (typeof BILLING_PLAN_CONFIGS)[number]) {
-    const rawValue = this.getConfigValue([plan.amountEnv, ...this.getAmountAliases(plan)]);
-    return this.parseAmount(rawValue);
-  }
-
-  private async resolveAmountFromCulqi(providerPlanId: string) {
-    try {
-      const plan = await this.culqiClient.getPlan(providerPlanId);
-      return this.parseAmount((plan as { amount?: unknown })?.amount);
-    } catch {
-      return null;
-    }
   }
 
   private parseAmount(value: unknown) {
@@ -381,82 +257,10 @@ export class BillingService {
     return Number.isFinite(numeric) && numeric > 0 ? Math.round(numeric) : null;
   }
 
-  private mapStatusFromCulqi(status: unknown): BillingStatus {
-    if (status === 'active' || status === 3 || status === '1') return 'active';
-    if (status === 'canceled' || status === 6) return 'canceled';
-    if (status === 'past_due' || status === 5) return 'past_due';
-    return 'pending';
-  }
-
-  private mapStatusFromEvent(eventName: string, current: BillingStatus): BillingStatus {
-    if (eventName.includes('cancel.succeeded')) return 'canceled';
-    if (eventName.includes('charge.failed')) return 'past_due';
-    if (eventName.includes('creation.succeeded') || eventName.includes('charge.succeeded')) return 'active';
-    if (current === 'active') return current;
+  private mapStatusFromEvent(eventType: string, current: BillingStatus): BillingStatus {
+    if (eventType.includes('cancel') || eventType.includes('refund')) return 'canceled';
+    if (eventType.includes('payment') && eventType.includes('approved')) return 'active';
+    if (eventType.includes('payment') && eventType.includes('failed')) return 'past_due';
     return current;
-  }
-
-  private mapPeriodEnd(value: unknown) {
-    if (!value) return null;
-    const numeric = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value : NaN;
-    if (!Number.isFinite(numeric)) return null;
-    return new Date(numeric > 1_000_000_000_000 ? numeric : numeric * 1000);
-  }
-
-  private extractSubscriptionId(payload: CulqiWebhookDto | Record<string, unknown>) {
-    const data = (payload.data as Record<string, unknown> | undefined) || payload;
-    const webhookData = data as Record<string, any>;
-    const candidates = [payload.id, webhookData.id, webhookData.subscription_id, webhookData.subscriptionId, webhookData.object];
-    const found = candidates.find((value) => typeof value === 'string' && value.startsWith('sxn_'));
-    return typeof found === 'string' ? found : null;
-  }
-
-  private extractCustomerEmail(payload: CulqiWebhookDto | Record<string, unknown>) {
-    const data = (payload.data as Record<string, unknown> | undefined) || payload;
-    const webhookData = data as Record<string, any>;
-    const customer = (webhookData.customer as Record<string, unknown> | undefined) || payload.customer;
-    const email = customer && typeof (customer as Record<string, any>).email === 'string'
-      ? (customer as Record<string, any>).email
-      : null;
-    return email;
-  }
-
-  private extractPeriodEnd(payload: CulqiWebhookDto | Record<string, unknown>) {
-    const data = (payload.data as Record<string, unknown> | undefined) || payload;
-    const webhookData = data as Record<string, any>;
-    return webhookData.next_billing_date || webhookData.period_end || webhookData.current_period_end || null;
-  }
-
-  private async findBillingRecord(subscriptionId: string | null, customerEmail: string | null) {
-    if (subscriptionId) {
-      const bySubscription = await this.subscriptionRepository.findOne({
-        where: { providerSubscriptionId: subscriptionId },
-        relations: { user: true },
-      });
-      if (bySubscription) return bySubscription;
-    }
-
-    if (customerEmail) {
-      return this.subscriptionRepository
-        .createQueryBuilder('subscription')
-        .leftJoinAndSelect('subscription.user', 'user')
-        .where('LOWER(user.email) = LOWER(:email)', { email: customerEmail })
-        .orderBy('subscription.createdAt', 'DESC')
-        .getOne();
-    }
-
-    return null;
-  }
-
-  private async runCulqiStep<T>(
-    step: 'findCustomerByEmail' | 'createCustomer' | 'createCard' | 'createSubscription',
-    action: () => Promise<T>,
-  ) {
-    try {
-      return await action();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new BadRequestException(`Culqi ${step} failed: ${message}`);
-    }
   }
 }

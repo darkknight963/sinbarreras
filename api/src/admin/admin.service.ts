@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
@@ -79,7 +79,7 @@ export class AdminService {
       isActive: true,
       billingStatus: dto.billingStatus || 'inactive',
       billingPlan: dto.billingPlan || null,
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: null,
       billingPeriodEnd: null,
       billingCustomerId: null,
@@ -171,7 +171,7 @@ export class AdminService {
 
   async deleteUser(actor: { id: string; email: string }, id: string) {
     if (actor.id === id) {
-      throw new BadRequestException('No puedes eliminar tu propio usuario mientras estás autenticado');
+      throw new BadRequestException('No puedes eliminar tu propio usuario mientras estÃ¡s autenticado');
     }
 
     const user = await this.userRepository.findOne({ where: { id } });
@@ -247,3 +247,4 @@ export class AdminService {
     };
   }
 }
+

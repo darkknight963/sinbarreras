@@ -10,8 +10,8 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, CULQI_PUBLIC_KEY, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
-import type { BillingCurrency, BillingPlan, BillingState, CulqiCheckoutInstance } from './billing';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
+import type { BillingCurrency, BillingPlan, BillingState } from './billing';
 import { AuthView } from './views/AuthView';
 const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
 const ProjectsView = lazy(() => import('./views/ProjectsView').then(m => ({ default: m.ProjectsView })));
@@ -49,8 +49,6 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 let runtimeApiBaseUrl = API_BASE_URL;
 const BRAND_NAME = 'Sin Barreras';
 const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
-const CULQI_CHECKOUT_SRC = 'https://js.culqi.com/checkout-js';
-let culqiCheckoutLoader: Promise<void> | null = null;
 
 type AuthMode = 'session' | 'none' | 'public';
 
@@ -183,39 +181,6 @@ const readApiJson = async <T,>(res: Response): Promise<T | null> => {
   return JSON.parse(text) as T;
 };
 
-const loadCulqiCheckoutScript = async () => {
-  if (typeof window === 'undefined') return;
-  if (window.CulqiCheckout) return;
-  if (culqiCheckoutLoader) return culqiCheckoutLoader;
-
-  culqiCheckoutLoader = new Promise<void>((resolve, reject) => {
-    const existingScript = window.document.querySelector(`script[src="${CULQI_CHECKOUT_SRC}"]`) as HTMLScriptElement | null;
-
-    if (existingScript) {
-      if (window.CulqiCheckout) {
-        resolve();
-        return;
-      }
-
-      existingScript.addEventListener('load', () => resolve(), { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('No se pudo cargar Culqi Checkout')), { once: true });
-      return;
-    }
-
-    const script = window.document.createElement('script');
-    script.src = CULQI_CHECKOUT_SRC;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('No se pudo cargar Culqi Checkout'));
-    window.document.head.appendChild(script);
-  }).catch((error) => {
-    culqiCheckoutLoader = null;
-    throw error;
-  });
-
-  return culqiCheckoutLoader;
-};
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -753,12 +718,6 @@ export default function App() {
     loadBillingData();
   }, [authLoading, authMode, view]);
 
-  useEffect(() => {
-    if (view !== 'billing') return;
-    void loadCulqiCheckoutScript().catch((err) => {
-      console.warn('Culqi preload failed', err);
-    });
-  }, [view]);
 
   useEffect(() => {
     if (authLoading || authMode !== 'public' || view !== 'project') return;
@@ -1380,7 +1339,6 @@ export default function App() {
     }
 
     const key = `${plan.code}:${plan.currency}`;
-
     setBillingSubmitting(key);
     setBillingNote(null);
 
@@ -1388,10 +1346,7 @@ export default function App() {
       const checkoutResponse = await fetchWithFallback('/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planCode: plan.code,
-          currency: plan.currency,
-        }),
+        body: JSON.stringify({ planCode: plan.code, currency: plan.currency }),
       });
 
       if (!checkoutResponse.ok) {
@@ -1399,87 +1354,13 @@ export default function App() {
         throw new Error(text || `HTTP ${checkoutResponse.status}`);
       }
 
+      // TODO: usar checkoutData.initPoint (URL de Mercado Pago) para redirigir al usuario
       const checkoutData = await checkoutResponse.json();
-      const publicKey = checkoutData.publicKey || CULQI_PUBLIC_KEY;
-      const amount = checkoutData.amount ?? plan.amount;
-
-      if (!publicKey) {
-        throw new Error('Falta configurar VITE_CULQI_PUBLIC_KEY para abrir Culqi Checkout');
-      }
-
-      if (!amount) {
-        throw new Error(`Falta configurar el monto para ${plan.label} en ${plan.currency}`);
-      }
-
-      await loadCulqiCheckoutScript();
-
-      const CheckoutCtor = window.CulqiCheckout;
-      if (!CheckoutCtor) {
-        throw new Error('No se cargó el script de Culqi Checkout');
-      }
-
-      const checkoutConfig = {
-        settings: {
-          title: BRAND_NAME,
-          currency: plan.currency,
-          amount,
-        },
-        client: {
-          email: currentUser?.email || '',
-        }
-      };
-
-      console.log('Iniciando Culqi Checkout con:', checkoutConfig);
-
-      const checkout: CulqiCheckoutInstance = new CheckoutCtor(publicKey, checkoutConfig);
-
-      checkout.culqi = async () => {
-        try {
-          if (!checkout.token?.id) {
-            console.error('Culqi error (no token):', (checkout as any).error);
-            setBillingNote(`Error Culqi: ${(checkout as any).error?.user_message || 'No se generó token'}`);
-            return;
-          }
-
-          checkout.close();
-
-          const confirmResponse = await fetchWithFallback('/billing/confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              planCode: plan.code,
-              currency: plan.currency,
-              tokenId: checkout.token.id,
-            }),
-          });
-
-          if (!confirmResponse.ok) {
-            const text = await confirmResponse.text();
-            throw new Error(text || `HTTP ${confirmResponse.status}`);
-          }
-
-          const state = await confirmResponse.json();
-          setBillingState(state);
-          const userResponse = await fetchWithFallback('/auth/me');
-          if (!userResponse.ok) {
-            throw new Error(`HTTP ${userResponse.status}`);
-          }
-          setCurrentUser(await userResponse.json());
-          setBillingNote(`Tu plan ${plan.label} ya quedó registrado.`);
-          await loadBillingData();
-        } catch (err) {
-          console.error('Error al confirmar suscripción:', err);
-          handleApiError('No se pudo confirmar la suscripción', err);
-        } finally {
-          setBillingSubmitting(null);
-        }
-      };
-
-      checkout.open();
-      setBillingNote('Completa el pago en la ventana de Culqi.');
+      console.log('[Billing] checkout data:', checkoutData);
+      setBillingNote('Integración con Mercado Pago próximamente.');
     } catch (err: any) {
-      console.error('Error al abrir Culqi:', err);
-      handleApiError('No se pudo abrir Culqi Checkout', err);
+      handleApiError('No se pudo iniciar el pago', err);
+    } finally {
       setBillingSubmitting(null);
     }
   };

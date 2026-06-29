@@ -105,7 +105,7 @@ export function BillingView({
   const selectedPlanKey = selectedPlan ? `${selectedPlan.code}:${selectedPlan.currency}` : '';
   const selectedPlanUnavailable = !selectedPlan || (!selectedPlan.available && !hasExternalProPaymentLink);
   const proButtonLabel = submittingKey === selectedPlanKey
-    ? 'Abriendo Culqi...'
+    ? 'Procesando...'
     : activeSelectedPlan
       ? 'Plan activo'
       : selectedPlanUnavailable
@@ -142,8 +142,8 @@ export function BillingView({
       {!loading && !hasPlansForCurrency && (
         <div className="billing-warning">
           {unavailablePlans.length > 0
-            ? 'Hay planes configurados para esta moneda, pero Culqi aun no devolvio un monto o id valido.'
-            : 'No hay planes configurados para esta moneda. Revisa las variables de Culqi del backend.'}
+            ? 'Hay planes configurados para esta moneda, pero aún no se configuró un monto válido.'
+            : 'No hay planes configurados para esta moneda. Revisa las variables de entorno del backend.'}
         </div>
       )}
 

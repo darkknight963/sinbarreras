@@ -1,4 +1,4 @@
-import { BillingService } from './billing.service';
+﻿import { BillingService } from './billing.service';
 
 describe('BillingService', () => {
   const userRepository = {
@@ -56,7 +56,7 @@ describe('BillingService', () => {
       createdAt: new Date('2026-05-31T12:00:00.000Z'),
       billingStatus: 'inactive',
       billingPlan: null,
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: null,
       billingPeriodEnd: null,
       billingCustomerId: null,
@@ -170,7 +170,7 @@ describe('BillingService', () => {
       companyName: 'Demo SAC',
       billingStatus: 'active',
       billingPlan: 'monthly',
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: 'PEN',
       billingPeriodEnd: null,
       billingCustomerId: 'cus_existing',
@@ -233,7 +233,7 @@ describe('BillingService', () => {
       id: 'user-1',
       billingStatus: 'pending',
       billingPlan: 'monthly',
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: 'PEN',
       billingPeriodEnd: null,
       billingCustomerId: 'cus_test_123',
@@ -276,3 +276,4 @@ describe('BillingService', () => {
     expect(userRepository.save).not.toHaveBeenCalled();
   });
 });
+

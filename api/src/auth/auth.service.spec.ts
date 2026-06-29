@@ -1,4 +1,4 @@
-import { AuthService } from './auth.service';
+﻿import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   it('includes billing state in the serialized me response', async () => {
@@ -14,7 +14,7 @@ describe('AuthService', () => {
         createdAt: new Date('2026-05-31T12:00:00.000Z'),
         billingStatus: 'active',
         billingPlan: 'monthly',
-        billingProvider: 'culqi',
+        billingProvider: 'mercadopago',
         billingCurrency: 'PEN',
         billingPeriodEnd: new Date('2026-06-30T12:00:00.000Z'),
         billingCustomerId: 'cus_test_123',
@@ -32,7 +32,7 @@ describe('AuthService', () => {
       email: 'cliente@demo.pe',
       billingStatus: 'active',
       billingPlan: 'monthly',
-      billingProvider: 'culqi',
+      billingProvider: 'mercadopago',
       billingCurrency: 'PEN',
     });
     // Los IDs internos del proveedor de pagos no se exponen al cliente.
@@ -83,7 +83,7 @@ describe('AuthService', () => {
         createdAt: new Date('2026-05-31T12:00:00.000Z'),
         billingStatus: 'active',
         billingPlan: 'monthly',
-        billingProvider: 'culqi',
+        billingProvider: 'mercadopago',
         billingCurrency: 'PEN',
         billingPeriodEnd: new Date('2026-06-30T12:00:00.000Z'),
         billingCustomerId: 'cus_test_123',
@@ -111,3 +111,4 @@ describe('AuthService', () => {
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ passwordHash: 'new-salt:new-hash' }));
   });
 });
+
