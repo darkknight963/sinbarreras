@@ -50,6 +50,87 @@ export class BillingService {
     const accessToken = this.getMercadoPagoAccessToken();
     const externalReference = this.buildExternalReference(user.id, plan.code, plan.currency);
     const frontendUrl = this.getFrontendUrl(dto.returnUrl);
+    const checkoutMode = this.getMercadoPagoCheckoutMode();
+
+    if (checkoutMode === 'payment') {
+      return this.createPaymentCheckoutSession(user, plan, accessToken, externalReference, frontendUrl);
+    }
+
+    return this.createPreapprovalCheckoutSession(user, plan, accessToken, externalReference, frontendUrl);
+  }
+
+  private async createPaymentCheckoutSession(
+    user: User,
+    plan: BillingPlan,
+    accessToken: string,
+    externalReference: string,
+    frontendUrl: string,
+  ) {
+    const apiBaseUrl = this.getPublicApiBaseUrl();
+    const response = await this.fetchMercadoPagoWithRetry('/checkout/preferences', {
+      method: 'POST',
+      headers: this.buildMercadoPagoHeaders(accessToken, true),
+      body: JSON.stringify({
+        external_reference: externalReference,
+        back_urls: {
+          success: this.buildReturnUrl(frontendUrl, plan, 'success'),
+          pending: this.buildReturnUrl(frontendUrl, plan, 'pending'),
+          failure: this.buildReturnUrl(frontendUrl, plan, 'failure'),
+        },
+        auto_return: 'approved',
+        notification_url: `${apiBaseUrl}/billing/webhooks/mp`,
+        payer: {
+          email: user.email,
+          name: user.fullName || user.companyName || user.email,
+        },
+        metadata: {
+          userId: user.id,
+          planCode: plan.code,
+          currency: plan.currency,
+          checkoutMode: 'payment',
+        },
+        items: [
+          {
+            id: `${plan.code}-${plan.currency}`,
+            title: `${plan.label} - ${plan.description}`,
+            quantity: 1,
+            currency_id: plan.currency,
+            unit_price: this.toMercadoPagoAmount(plan.amount || 0),
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException(await this.readMercadoPagoError(response));
+    }
+
+    const payload = await response.json() as Record<string, unknown>;
+
+    return {
+      plan,
+      amount: plan.amount,
+      initPoint: String(payload.init_point || ''),
+      sandboxInitPoint: String(payload.sandbox_init_point || ''),
+      checkoutUrl: String(payload.init_point || payload.sandbox_init_point || ''),
+      preferenceId: payload.id ? String(payload.id) : null,
+      preapprovalId: null,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        companyName: user.companyName,
+      },
+    };
+  }
+
+  private async createPreapprovalCheckoutSession(
+    user: User,
+    plan: BillingPlan,
+    accessToken: string,
+    externalReference: string,
+    frontendUrl: string,
+  ) {
     const requestPayload = {
       reason: `${plan.label} - ${plan.description}`,
       external_reference: externalReference,
@@ -59,7 +140,7 @@ export class BillingService {
       auto_recurring: {
         frequency: plan.code === 'annual' ? 12 : 1,
         frequency_type: 'months',
-        transaction_amount: this.toMercadoPagoAmount(plan.amount),
+        transaction_amount: this.toMercadoPagoAmount(plan.amount || 0),
         currency_id: plan.currency,
       },
     };
@@ -244,6 +325,11 @@ export class BillingService {
       throw new BadRequestException('Falta configurar MP_ACCESS_TOKEN');
     }
     return token;
+  }
+
+  private getMercadoPagoCheckoutMode() {
+    const mode = this.configService.get<string>('MP_CHECKOUT_MODE', '').trim().toLowerCase();
+    return mode === 'subscription' ? 'subscription' : 'payment';
   }
 
   private resolveMercadoPagoPayerEmail(accessToken: string, userEmail: string) {

@@ -62,13 +62,13 @@ describe('BillingService', () => {
     ]);
   });
 
-  it('creates a Mercado Pago preapproval checkout session', async () => {
+  it('creates a Mercado Pago payment checkout session by default', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({
-        id: 'preapproval-123',
-        init_point: 'https://www.mercadopago.com/checkout/v1/redirect?preapproval_id=preapproval-123',
-        sandbox_init_point: 'https://sandbox.mercadopago.com/checkout/v1/redirect?preapproval_id=preapproval-123',
+        id: 'preference-123',
+        init_point: 'https://www.mercadopago.com/checkout/v1/redirect?preference_id=preference-123',
+        sandbox_init_point: 'https://sandbox.mercadopago.com/checkout/v1/redirect?preference_id=preference-123',
       }),
     });
 
@@ -78,11 +78,12 @@ describe('BillingService', () => {
       service.createCheckoutSession('user-1', { planCode: 'monthly', currency: 'PEN' }),
     ).resolves.toMatchObject({
       amount: 7900,
-      preapprovalId: 'preapproval-123',
+      preferenceId: 'preference-123',
+      preapprovalId: null,
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://api.mercadopago.com/preapproval',
+      'https://api.mercadopago.com/checkout/preferences',
       expect.objectContaining({
         method: 'POST',
         body: expect.any(String),
@@ -92,16 +93,51 @@ describe('BillingService', () => {
     const [, request] = (global.fetch as jest.Mock).mock.calls[0];
     const payload = JSON.parse(request.body as string);
     expect(payload).toMatchObject({
-      payer_email: 'cliente@demo.pe',
-      status: 'pending',
-      auto_recurring: {
-        frequency: 1,
-        frequency_type: 'months',
-        transaction_amount: 79,
-        currency_id: 'PEN',
-      },
+      notification_url: 'https://sinbarreras-production.up.railway.app/billing/webhooks/mp',
+      payer: { email: 'cliente@demo.pe' },
+      items: [
+        expect.objectContaining({
+          quantity: 1,
+          currency_id: 'PEN',
+          unit_price: 79,
+        }),
+      ],
     });
     expect(payload.external_reference).toMatch(/^sb\|user-1\|monthly\|PEN\|[0-9a-f-]{36}$/);
+  });
+
+  it('creates a Mercado Pago preapproval checkout session when subscription mode is enabled', async () => {
+    const subscriptionConfigService = {
+      get: jest.fn((key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          MP_ACCESS_TOKEN: 'TEST-access-token',
+          MP_CHECKOUT_MODE: 'subscription',
+          MP_MONTHLY_PEN_AMOUNT: '7900',
+          FRONTEND_URL: 'https://sinbarreras.gzakgroup.com',
+        };
+        return values[key] ?? fallback ?? '';
+      }),
+    } as any;
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'preapproval-123',
+        init_point: 'https://www.mercadopago.com/checkout/v1/redirect?preapproval_id=preapproval-123',
+      }),
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, subscriptionConfigService, dataSource);
+    await expect(
+      service.createCheckoutSession('user-1', { planCode: 'monthly', currency: 'PEN' }),
+    ).resolves.toMatchObject({
+      preapprovalId: 'preapproval-123',
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.mercadopago.com/preapproval',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   it('uses MP_TEST_PAYER_EMAIL in sandbox subscriptions when configured', async () => {
@@ -109,6 +145,7 @@ describe('BillingService', () => {
       get: jest.fn((key: string, fallback?: string) => {
         const values: Record<string, string> = {
           MP_ACCESS_TOKEN: 'TEST-access-token',
+          MP_CHECKOUT_MODE: 'subscription',
           MP_MONTHLY_PEN_AMOUNT: '7900',
           FRONTEND_URL: 'https://sinbarreras.gzakgroup.com',
           MP_TEST_PAYER_EMAIL: 'buyer.test.user@mp-example.com',
@@ -142,6 +179,7 @@ describe('BillingService', () => {
           MP_ACCESS_TOKEN: 'APP_USR-real-token',
           MP_MONTHLY_PEN_AMOUNT: '7900',
           FRONTEND_URL: 'https://sinbarreras.gzakgroup.com',
+          PUBLIC_API_BASE_URL: 'https://sinbarreras-production.up.railway.app',
           MP_TIMEOUT_MS: '3000',
         };
         return values[key] ?? fallback ?? '';
