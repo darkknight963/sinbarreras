@@ -60,12 +60,36 @@ export class CulqiClient {
   }
 
   private encryptWithRsa(plaintext: string): string {
+    // Culqi uses AES-256-GCM hybrid encryption:
+    // 1. Generate random AES-256 key + IV
+    // 2. Encrypt payload with AES-GCM
+    // 3. Encrypt AES key with RSA-OAEP (fits within 1024-bit key limit)
+    // 4. Send: { encryptedData, encryptedKey, iv, authTag }
+    const aesKey = forge.random.getBytesSync(32); // 256-bit AES key
+    const iv = forge.random.getBytesSync(16);     // 128-bit IV
+
+    const cipher = forge.cipher.createCipher('AES-GCM', aesKey);
+    cipher.start({ iv });
+    cipher.update(forge.util.createBuffer(plaintext, 'utf8'));
+    cipher.finish();
+
+    const encryptedData = forge.util.encode64(cipher.output.getBytes());
+    const authTag = forge.util.encode64((cipher.mode as any).tag.getBytes());
+
     const publicKey = forge.pki.publicKeyFromPem(this.rsaPublicKey);
-    const encrypted = publicKey.encrypt(plaintext, 'RSA-OAEP', {
-      md: forge.md.sha256.create(),
-      mgf1: { md: forge.md.sha256.create() },
+    const encryptedKey = forge.util.encode64(
+      publicKey.encrypt(aesKey, 'RSA-OAEP', {
+        md: forge.md.sha256.create(),
+        mgf1: { md: forge.md.sha256.create() },
+      }),
+    );
+
+    return JSON.stringify({
+      encryptedData,
+      encryptedKey,
+      iv: forge.util.encode64(iv),
+      authTag,
     });
-    return forge.util.encode64(encrypted);
   }
 
   private needsRsa(path: string, method: string): boolean {
@@ -87,8 +111,7 @@ export class CulqiClient {
 
     if (body && this.needsRsa(path, method)) {
       try {
-        const encrypted = this.encryptWithRsa(body);
-        body = JSON.stringify({ encrypted_data: encrypted });
+        body = this.encryptWithRsa(body);
         headers.set('Content-Type', 'application/json');
         headers.set('x-culqi-rsa-id', this.rsaKeyId);
       } catch (err) {
