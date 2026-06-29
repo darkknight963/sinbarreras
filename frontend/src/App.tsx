@@ -539,6 +539,7 @@ export default function App() {
       setNextPassword('');
       setConfirmPassword('');
       setPasswordMessage(null);
+      setAppError(null);
       setAuthMode('none');
     }
   };
