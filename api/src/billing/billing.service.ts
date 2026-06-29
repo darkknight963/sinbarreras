@@ -82,6 +82,7 @@ export class BillingService {
         payer: {
           email: user.email,
           name: user.fullName || user.companyName || user.email,
+          last_name: this.extractLastName(user.fullName || user.companyName || user.email),
         },
         metadata: {
           userId: user.id,
@@ -93,6 +94,7 @@ export class BillingService {
           {
             id: `${plan.code}-${plan.currency}`,
             title: `${plan.label} - ${plan.description}`,
+            description: plan.description,
             quantity: 1,
             currency_id: plan.currency,
             unit_price: this.toMercadoPagoAmount(plan.amount || 0),
@@ -417,6 +419,11 @@ export class BillingService {
   private getMercadoPagoCheckoutMode() {
     const mode = this.configService.get<string>('MP_CHECKOUT_MODE', '').trim().toLowerCase();
     return mode === 'preapproval' || mode === 'subscription' ? 'preapproval' : 'payment';
+  }
+
+  private extractLastName(fullName: string): string {
+    const parts = fullName.trim().split(/\s+/);
+    return parts.length > 1 ? parts[parts.length - 1] : fullName.trim();
   }
 
   private resolveMercadoPagoPayerEmail(accessToken: string, userEmail: string) {
