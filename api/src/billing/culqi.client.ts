@@ -87,11 +87,10 @@ export class CulqiClient {
     const encryptedKey = crypto.publicEncrypt(oaepOptions, aesKey);
     const encryptedIv = crypto.publicEncrypt(oaepOptions, iv);
 
-    // Diagnóstico: tamaño de los componentes (sin exponer secretos).
-    // encrypted_key/iv en bytes revela el tamaño de la RSA key (128=1024bit, 256=2048bit).
     console.log('[CulqiClient] RSA debug:', {
       rsaKeyHeader: this.rsaPublicKey.split('\n')[0],
       rsaKeyLines: this.rsaPublicKey.split('\n').length,
+      rsaKeyFooter: this.rsaPublicKey.split('\n').at(-1),
       rsaKeyId: this.rsaKeyId,
       encDataBytes: dataWithTag.length,
       encKeyBytes: encryptedKey.length,
@@ -163,16 +162,30 @@ export class CulqiClient {
     return normalized || 'https://api.culqi.com/v2';
   }
 
-  // Normaliza la public key RSA tolerando: comillas envolventes (Railway a veces
-  // las incluye), `\n` literales, y CRLF. Reconstruye el PEM con saltos reales.
+  // Reconstruye el PEM desde cero extrayendo el contenido base64 puro.
+  // Tolera: comillas envolventes, \n literales, CRLF, espacios extra.
+  // Garantiza que crypto.publicEncrypt reciba un PEM bien formado sin importar
+  // cómo Railway almacene la variable de entorno.
   private normalizeRsaKey(raw: string): string {
     let key = raw.trim();
-    // Quitar comillas simples o dobles que envuelvan todo el valor.
+    // Quitar comillas envolventes (Railway a veces las incluye).
     if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
       key = key.slice(1, -1);
     }
-    // Convertir `\n` literales y CRLF a saltos de línea reales.
+    // Expandir \n literales y normalizar CRLF.
     key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').trim();
-    return key;
+
+    // Extraer el bloque base64 puro y reconstruir el PEM.
+    // Esto protege contra cualquier variante de formato que Railway entregue.
+    const b64 = key
+      .replace(/-----BEGIN PUBLIC KEY-----/, '')
+      .replace(/-----END PUBLIC KEY-----/, '')
+      .replace(/\s+/g, '');
+
+    if (!b64) return key;
+
+    // Partir en líneas de 64 chars (formato PEM estándar).
+    const lines = b64.match(/.{1,64}/g) ?? [];
+    return `-----BEGIN PUBLIC KEY-----\n${lines.join('\n')}\n-----END PUBLIC KEY-----`;
   }
 }
