@@ -197,6 +197,8 @@ const readCheckoutReturn = () => {
   const paymentId =
     params.get('payment_id') ||
     params.get('collection_id') ||
+    '';
+  const preapprovalId =
     params.get('preapproval_id') ||
     '';
   const planCode = params.get('plan') === 'annual' ? 'annual' : 'monthly';
@@ -206,7 +208,7 @@ const readCheckoutReturn = () => {
   if (['approved', 'success', 'authorized'].includes(normalizedStatus)) status = 'success';
   if (['failure', 'failed', 'rejected', 'cancelled', 'canceled'].includes(normalizedStatus)) status = 'failure';
 
-  return { status, paymentId, planCode, currency };
+  return { status, paymentId, preapprovalId, planCode, currency };
 };
 
 const clearCheckoutReturnFromUrl = () => {
@@ -696,7 +698,9 @@ export default function App() {
       return;
     }
 
-    if (checkoutReturn.status === 'pending' || !checkoutReturn.paymentId) {
+    const referenceId = checkoutReturn.preapprovalId || checkoutReturn.paymentId;
+
+    if (checkoutReturn.status === 'pending' || !referenceId) {
       setCheckoutConfirmationStatus('pending');
       setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
       setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
@@ -710,7 +714,7 @@ export default function App() {
       setCheckoutConfirmationStatus('processing');
       setCheckoutConfirmationTitle('Confirmando suscripcion');
       setCheckoutConfirmationDescription('Estamos validando tu regreso desde Mercado Pago para dejar tu plan registrado.');
-      setCheckoutConfirmationDetail(`Operacion recibida: ${checkoutReturn.paymentId}`);
+      setCheckoutConfirmationDetail(`Operacion recibida: ${referenceId}`);
 
       try {
         const confirmResponse = await fetchWithFallback('/billing/confirm', {
@@ -720,6 +724,7 @@ export default function App() {
             planCode: checkoutReturn.planCode,
             currency: checkoutReturn.currency,
             paymentId: checkoutReturn.paymentId,
+            preapprovalId: checkoutReturn.preapprovalId,
           }),
         });
 
@@ -741,13 +746,13 @@ export default function App() {
           setCheckoutConfirmationStatus('success');
           setCheckoutConfirmationTitle('Suscripcion confirmada');
           setCheckoutConfirmationDescription('Tu compra fue recibida y tu acceso ya quedo asociado a la cuenta.');
-          setCheckoutConfirmationDetail(`Referencia de pago: ${checkoutReturn.paymentId}`);
+          setCheckoutConfirmationDetail(`Referencia de suscripcion: ${referenceId}`);
         } else {
           setBillingNote('Mercado Pago devolvio la operacion, pero el pago aun no figura como aprobado.');
           setCheckoutConfirmationStatus('pending');
           setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
           setCheckoutConfirmationDescription('La suscripcion aun no aparece como activa. En cuanto Mercado Pago confirme el cobro, el acceso quedara habilitado.');
-          setCheckoutConfirmationDetail(`Referencia de pago: ${checkoutReturn.paymentId}`);
+          setCheckoutConfirmationDetail(`Referencia de suscripcion: ${referenceId}`);
         }
       } catch (err) {
         console.error('Error al confirmar retorno de Mercado Pago:', err);

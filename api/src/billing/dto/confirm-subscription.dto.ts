@@ -1,4 +1,4 @@
-import { IsIn, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 import type { BillingCurrency, BillingPlanCode } from '../billing.types';
 
 export class ConfirmSubscriptionDto {
@@ -10,6 +10,11 @@ export class ConfirmSubscriptionDto {
   @IsIn(['PEN', 'USD'])
   currency!: BillingCurrency;
 
+  @IsOptional()
   @IsString()
-  paymentId!: string;
+  paymentId?: string;
+
+  @IsOptional()
+  @IsString()
+  preapprovalId?: string;
 }

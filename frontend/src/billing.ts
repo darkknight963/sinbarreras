@@ -28,5 +28,6 @@ export interface BillingCheckoutSession {
   initPoint?: string | null;
   sandboxInitPoint?: string | null;
   checkoutUrl?: string | null;
+  preapprovalId?: string | null;
   plan?: BillingPlan;
 }

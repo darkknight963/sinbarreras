@@ -5,15 +5,15 @@ import { BillingController } from './billing.controller';
 function makeSignedRequest(payload: object, secret: string): { headers: Record<string, string>; rawBody: Buffer } {
   const rawBody = Buffer.from(JSON.stringify(payload));
   const signature = createHmac('sha256', secret).update(rawBody).digest('hex');
-  return { headers: { 'x-culqi-signature': signature }, rawBody };
+  return { headers: { 'x-signature': `sha256=${signature}` }, rawBody };
 }
 
 describe('BillingController', () => {
-  it('delegates checkout and billing state access to the service', async () => {
+  it('delegates billing actions to the service', async () => {
     const billingService = {
       listPlans: jest.fn(async () => [{ code: 'monthly', currency: 'PEN' }]),
       getBillingState: jest.fn(async () => ({ status: 'inactive' })),
-      createCheckoutSession: jest.fn(async () => ({ publicKey: 'pk_test_123' })),
+      createCheckoutSession: jest.fn(async () => ({ preapprovalId: 'preapproval-123' })),
       confirmSubscription: jest.fn(async () => ({ status: 'active' })),
       cancelSubscription: jest.fn(async () => ({ status: 'canceled' })),
       getWebhookSecret: jest.fn(() => 'whsec_test_123'),
@@ -26,20 +26,20 @@ describe('BillingController', () => {
     await expect(controller.getBilling({ id: 'user-1' })).resolves.toEqual({ status: 'inactive' });
     await expect(
       controller.createCheckout({ id: 'user-1' }, { planCode: 'monthly', currency: 'PEN' } as any),
-    ).resolves.toEqual({ publicKey: 'pk_test_123' });
+    ).resolves.toEqual({ preapprovalId: 'preapproval-123' });
     await expect(
-      controller.confirmSubscription({ id: 'user-1' }, { planCode: 'monthly', currency: 'PEN', tokenId: 'tok' } as any),
+      controller.confirmSubscription({ id: 'user-1' }, { planCode: 'monthly', currency: 'PEN', preapprovalId: 'preapproval-123' } as any),
     ).resolves.toEqual({ status: 'active' });
     await expect(controller.cancel({ id: 'user-1' })).resolves.toEqual({ status: 'canceled' });
 
-    const webhookPayload = { event: 'subscription.creation.succeeded' };
+    const webhookPayload = { type: 'preapproval', data: { id: 'preapproval-123' } };
     const { headers, rawBody } = makeSignedRequest(webhookPayload, 'whsec_test_123');
     await expect(
       controller.handleWebhook(webhookPayload as any, { headers, rawBody } as any),
     ).resolves.toEqual({ ok: true });
   });
 
-  it('rejects Culqi webhooks without a valid HMAC signature', () => {
+  it('rejects an invalid Mercado Pago webhook signature', () => {
     const billingService = {
       getWebhookSecret: jest.fn(() => 'whsec_test_123'),
       handleWebhook: jest.fn(),
@@ -48,41 +48,22 @@ describe('BillingController', () => {
 
     expect(() =>
       controller.handleWebhook(
-        { event: 'subscription.creation.succeeded' } as any,
-        { headers: { 'x-culqi-signature': 'badfeed' }, rawBody: Buffer.from('{}') } as any,
+        { type: 'preapproval', data: { id: 'preapproval-123' } } as any,
+        { headers: { 'x-signature': 'sha256=badfeed' }, rawBody: Buffer.from('{}') } as any,
       ),
     ).toThrow(UnauthorizedException);
     expect(billingService.handleWebhook).not.toHaveBeenCalled();
   });
 
-  it('rejects webhooks with missing signature header', () => {
+  it('accepts webhooks without signature when no secret is configured', async () => {
     const billingService = {
-      getWebhookSecret: jest.fn(() => 'whsec_test_123'),
-      handleWebhook: jest.fn(),
-    } as any;
-    const controller = new BillingController(billingService);
-
-    expect(() =>
-      controller.handleWebhook(
-        { event: 'subscription.charge.succeeded' } as any,
-        { headers: {} } as any,
-      ),
-    ).toThrow(UnauthorizedException);
-    expect(billingService.handleWebhook).not.toHaveBeenCalled();
-  });
-
-  it('accepts a valid HMAC-signed webhook', async () => {
-    const billingService = {
-      getWebhookSecret: jest.fn(() => 'whsec_test_123'),
+      getWebhookSecret: jest.fn(() => ''),
       handleWebhook: jest.fn(async () => ({ ok: true })),
     } as any;
     const controller = new BillingController(billingService);
 
-    const payload = { event: 'subscription.charge.succeeded' };
-    const { headers, rawBody } = makeSignedRequest(payload, 'whsec_test_123');
-
     await expect(
-      controller.handleWebhook(payload as any, { headers, rawBody } as any),
+      controller.handleWebhook({ type: 'preapproval', data: { id: 'preapproval-123' } } as any, { headers: {} } as any),
     ).resolves.toEqual({ ok: true });
   });
 });

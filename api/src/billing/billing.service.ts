@@ -50,8 +50,7 @@ export class BillingService {
     const accessToken = this.getMercadoPagoAccessToken();
     const externalReference = this.buildExternalReference(user.id, plan.code, plan.currency);
     const frontendUrl = this.getFrontendUrl(dto.returnUrl);
-    const apiBaseUrl = this.getPublicApiBaseUrl();
-    const response = await fetch(`${BillingService.MP_API_BASE_URL}/checkout/preferences`, {
+    const response = await fetch(`${BillingService.MP_API_BASE_URL}/preapproval`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -59,32 +58,17 @@ export class BillingService {
         'X-Idempotency-Key': randomUUID(),
       },
       body: JSON.stringify({
+        reason: `${plan.label} - ${plan.description}`,
         external_reference: externalReference,
-        back_urls: {
-          success: this.buildReturnUrl(frontendUrl, plan, 'success'),
-          pending: this.buildReturnUrl(frontendUrl, plan, 'pending'),
-          failure: this.buildReturnUrl(frontendUrl, plan, 'failure'),
+        payer_email: user.email,
+        back_url: this.buildReturnUrl(frontendUrl, plan, 'success'),
+        status: 'pending',
+        auto_recurring: {
+          frequency: plan.code === 'annual' ? 12 : 1,
+          frequency_type: 'months',
+          transaction_amount: this.toMercadoPagoAmount(plan.amount),
+          currency_id: plan.currency,
         },
-        auto_return: 'approved',
-        notification_url: `${apiBaseUrl}/billing/webhooks/mp`,
-        payer: {
-          email: user.email,
-          name: user.fullName || user.companyName || user.email,
-        },
-        metadata: {
-          userId: user.id,
-          planCode: plan.code,
-          currency: plan.currency,
-        },
-        items: [
-          {
-            id: `${plan.code}-${plan.currency}`,
-            title: `${plan.label} - ${plan.description}`,
-            quantity: 1,
-            currency_id: plan.currency,
-            unit_price: this.toMercadoPagoAmount(plan.amount),
-          },
-        ],
       }),
     });
 
@@ -100,7 +84,7 @@ export class BillingService {
       initPoint: String(payload.init_point || ''),
       sandboxInitPoint: String(payload.sandbox_init_point || ''),
       checkoutUrl: String(payload.init_point || payload.sandbox_init_point || ''),
-      preferenceId: payload.id ? String(payload.id) : null,
+      preapprovalId: payload.id ? String(payload.id) : null,
       user: {
         id: user.id,
         email: user.email,
@@ -133,6 +117,18 @@ export class BillingService {
         subscriptionId: existingActive.providerSubscriptionId,
       });
       return this.serializeBillingState(user);
+    }
+
+    if (dto.preapprovalId) {
+      const preapproval = await this.getMercadoPagoPreapproval(dto.preapprovalId);
+      const subscriptionStatus = String(preapproval.status || '').toLowerCase();
+      const billingStatus = this.mapPreapprovalStatus(subscriptionStatus);
+      await this.upsertBillingFromPreapproval(user, plan.code, plan.currency, dto.preapprovalId, preapproval, billingStatus);
+      return this.serializeBillingState(await this.getUserOrThrow(user.id));
+    }
+
+    if (!dto.paymentId) {
+      throw new BadRequestException('Mercado Pago no devolvio una referencia de pago o suscripcion');
     }
 
     const payment = await this.getMercadoPagoPayment(dto.paymentId);
@@ -172,19 +168,44 @@ export class BillingService {
   async handleWebhook(payload: MpWebhookDto | Record<string, unknown>) {
     const eventType = String(payload.type || payload.action || '');
     const data = (payload.data as Record<string, unknown> | undefined) || {};
-    const paymentId = String(data.id || payload.id || '');
+    const resourceId = String(data.id || payload.id || '');
 
-    console.log('[BillingService] MP webhook recibido:', { eventType, paymentId });
+    console.log('[BillingService] MP webhook recibido:', { eventType, resourceId });
 
     if (!eventType) {
       return { ok: true, ignored: true };
     }
 
-    if (!paymentId) {
+    if (!resourceId) {
       return { ok: true, matched: false };
     }
 
-    const payment = await this.getMercadoPagoPayment(paymentId);
+    if (this.isPreapprovalWebhook(eventType, payload, resourceId)) {
+      const preapproval = await this.getMercadoPagoPreapproval(resourceId);
+      const externalReference = String(preapproval.external_reference || '');
+      const parsedReference = this.parseExternalReference(externalReference);
+      if (!parsedReference) {
+        return { ok: true, matched: false };
+      }
+
+      const user = await this.userRepository.findOne({ where: { id: parsedReference.userId } });
+      if (!user) {
+        return { ok: true, matched: false };
+      }
+
+      await this.upsertBillingFromPreapproval(
+        user,
+        parsedReference.planCode,
+        parsedReference.currency,
+        resourceId,
+        preapproval,
+        this.mapPreapprovalStatus(String(preapproval.status || '').toLowerCase()),
+      );
+
+      return { ok: true, matched: true };
+    }
+
+    const payment = await this.getMercadoPagoPayment(resourceId);
     const paymentStatus = String(payment.status || '').toLowerCase();
     const externalReference = String(payment.external_reference || '');
     const parsedReference = this.parseExternalReference(externalReference);
@@ -202,7 +223,7 @@ export class BillingService {
       user,
       parsedReference.planCode,
       parsedReference.currency,
-      paymentId,
+      resourceId,
       payment,
       this.mapPaymentStatus(paymentStatus),
     );
@@ -297,6 +318,21 @@ export class BillingService {
     return await response.json() as Record<string, unknown>;
   }
 
+  private async getMercadoPagoPreapproval(preapprovalId: string) {
+    const accessToken = this.getMercadoPagoAccessToken();
+    const response = await fetch(`${BillingService.MP_API_BASE_URL}/preapproval/${preapprovalId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException(await this.readMercadoPagoError(response));
+    }
+
+    return await response.json() as Record<string, unknown>;
+  }
+
   private async readMercadoPagoError(response: Response) {
     try {
       const body = await response.json() as Record<string, unknown>;
@@ -315,6 +351,13 @@ export class BillingService {
     return 'past_due';
   }
 
+  private mapPreapprovalStatus(status: string): BillingStatus {
+    if (status === 'authorized' || status === 'active') return 'active';
+    if (status === 'pending') return 'pending';
+    if (status === 'cancelled' || status === 'cancelled_by_user') return 'canceled';
+    return 'past_due';
+  }
+
   private resolvePeriodEnd(planCode: BillingPlanCode, payment: Record<string, unknown>) {
     const approvedAt = typeof payment.date_approved === 'string' ? payment.date_approved : null;
     const paidAt = approvedAt ? new Date(approvedAt) : new Date();
@@ -323,6 +366,30 @@ export class BillingService {
     }
 
     const currentPeriodEnd = new Date(paidAt);
+    if (planCode === 'annual') {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
+    return currentPeriodEnd;
+  }
+
+  private resolveSubscriptionPeriodEnd(planCode: BillingPlanCode, subscription: Record<string, unknown>) {
+    const nextPaymentDate = typeof subscription.next_payment_date === 'string' ? subscription.next_payment_date : null;
+    if (nextPaymentDate) {
+      const parsed = new Date(nextPaymentDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    const lastModified = typeof subscription.last_modified === 'string' ? subscription.last_modified : null;
+    const anchor = lastModified ? new Date(lastModified) : new Date();
+    if (Number.isNaN(anchor.getTime())) {
+      return null;
+    }
+
+    const currentPeriodEnd = new Date(anchor);
     if (planCode === 'annual') {
       currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
     } else {
@@ -384,6 +451,62 @@ export class BillingService {
       Object.assign(user, userUpdate);
       await manager.update(User, user.id, userUpdate);
     });
+  }
+
+  private async upsertBillingFromPreapproval(
+    user: User,
+    planCode: BillingPlanCode,
+    currency: BillingCurrency,
+    preapprovalId: string,
+    preapproval: Record<string, unknown>,
+    status: BillingStatus,
+  ) {
+    const providerCustomerId =
+      preapproval.payer_id !== null && preapproval.payer_id !== undefined
+        ? String(preapproval.payer_id)
+        : null;
+    const currentPeriodEnd = status === 'active' ? this.resolveSubscriptionPeriodEnd(planCode, preapproval) : null;
+    const existingRecord = await this.subscriptionRepository.findOne({
+      where: { providerSubscriptionId: preapprovalId },
+    });
+
+    const billingRecord = existingRecord || this.subscriptionRepository.create({
+      user,
+      provider: BILLING_PROVIDER,
+      plan: planCode,
+      currency,
+    });
+
+    billingRecord.user = user;
+    billingRecord.plan = planCode;
+    billingRecord.currency = currency;
+    billingRecord.status = status;
+    billingRecord.providerPlanId = null;
+    billingRecord.providerCustomerId = providerCustomerId;
+    billingRecord.providerSubscriptionId = preapprovalId;
+    billingRecord.providerCardId = null;
+    billingRecord.providerTokenId = null;
+    billingRecord.currentPeriodEnd = currentPeriodEnd;
+    billingRecord.metadata = preapproval;
+
+    await this.dataSource.transaction(async (manager) => {
+      const saved = await manager.save(BillingSubscription, billingRecord);
+      const userUpdate = {
+        billingStatus: saved.status,
+        billingPlan: saved.status === 'canceled' ? null : planCode,
+        billingCurrency: saved.status === 'canceled' ? null : currency,
+        billingPeriodEnd: saved.currentPeriodEnd,
+        billingCustomerId: saved.providerCustomerId,
+        billingSubscriptionId: saved.providerSubscriptionId,
+      };
+      Object.assign(user, userUpdate);
+      await manager.update(User, user.id, userUpdate);
+    });
+  }
+
+  private isPreapprovalWebhook(eventType: string, payload: MpWebhookDto | Record<string, unknown>, resourceId: string) {
+    const resource = String((payload as Record<string, unknown>).resource || '').toLowerCase();
+    return eventType.toLowerCase().includes('preapproval') || resource.includes('/preapproval/') || !/^\d+$/.test(resourceId);
   }
 
   private async resolvePlan(planCode: BillingPlanCode, currency: BillingCurrency) {

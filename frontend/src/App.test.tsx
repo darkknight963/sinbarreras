@@ -525,7 +525,7 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByRole('heading', { name: /gracias por tu compra/i })
-    expect(screen.getByText(/referencia de pago: mp_123/i)).toBeInTheDocument()
+    expect(screen.getByText(/referencia de suscripcion: mp_123/i)).toBeInTheDocument()
   })
 
   it('lets users return from billing to the main system', async () => {

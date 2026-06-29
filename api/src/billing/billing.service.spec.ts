@@ -1,4 +1,4 @@
-﻿import { BillingService } from './billing.service';
+import { BillingService } from './billing.service';
 
 describe('BillingService', () => {
   const userRepository = {
@@ -8,40 +8,27 @@ describe('BillingService', () => {
 
   const subscriptionRepository = {
     create: jest.fn((value) => value),
-    save: jest.fn(async (value) => value),
     findOne: jest.fn(),
-    createQueryBuilder: jest.fn(),
   } as any;
 
   const configService = {
     get: jest.fn((key: string, fallback?: string) => {
       const values: Record<string, string> = {
-        CULQI_PUBLIC_KEY: 'pk_test_123',
-        CULQI_SECRET_KEY: 'sk_test_123',
-        CULQI_MONTHLY_PEN_PLAN_ID: 'pln_pen_monthly',
-        CULQI_ANNUAL_PEN_PLAN_ID: 'pln_pen_annual',
-        CULQI_MONTHLY_USD_PLAN_ID: 'pln_usd_monthly',
-        CULQI_ANNUAL_USD_PLAN_ID: 'pln_usd_annual',
-        CULQI_MONTHLY_PEN_AMOUNT: '4900',
-        CULQI_ANNUAL_PEN_AMOUNT: '49000',
-        CULQI_MONTHLY_USD_AMOUNT: '15',
-        CULQI_ANNUAL_USD_AMOUNT: '150',
+        MP_ACCESS_TOKEN: 'TEST-access-token',
+        MP_MONTHLY_PEN_AMOUNT: '7900',
+        MP_ANNUAL_PEN_AMOUNT: '79000',
+        FRONTEND_URL: 'https://sinbarreras.gzakgroup.com',
+        PUBLIC_API_BASE_URL: 'https://sinbarreras-production.up.railway.app',
       };
       return values[key] ?? fallback ?? '';
     }),
   } as any;
 
-  const culqiClient = {
-    getPublicKey: jest.fn(() => 'pk_test_123'),
-    createCustomer: jest.fn(async () => ({ id: 'cus_test_123' })),
-    createCard: jest.fn(async () => ({ id: 'card_test_123' })),
-    getPlan: jest.fn(async () => ({ amount: 4900 })),
-    createSubscription: jest.fn(async () => ({
-      id: 'sxn_test_123',
-      status: 'active',
-      next_billing_date: 1767225600,
+  const dataSource = {
+    transaction: jest.fn(async (fn: any) => fn({
+      save: jest.fn(async (_entity: any, value: any) => value),
+      update: jest.fn(async () => ({})),
     })),
-    cancelSubscription: jest.fn(async () => ({})),
   } as any;
 
   beforeEach(() => {
@@ -52,8 +39,6 @@ describe('BillingService', () => {
       fullName: 'Cliente Demo',
       companyName: 'Demo SAC',
       role: 'admin',
-      isActive: true,
-      createdAt: new Date('2026-05-31T12:00:00.000Z'),
       billingStatus: 'inactive',
       billingPlan: null,
       billingProvider: 'mercadopago',
@@ -63,217 +48,111 @@ describe('BillingService', () => {
       billingSubscriptionId: null,
     });
     subscriptionRepository.findOne.mockResolvedValue(null);
+    global.fetch = jest.fn() as any;
   });
 
-  const dataSource = {
-    transaction: jest.fn(async (fn: any) => fn({
-      save: jest.fn(async (entity: any, value: any) => value ?? entity),
-      update: jest.fn(async () => ({})),
-    })),
-  } as any;
-
-  it('lists the available plans for both currencies', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
+  it('lists Mercado Pago plans from env amounts', async () => {
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
 
     await expect(service.listPlans()).resolves.toEqual([
-      expect.objectContaining({ code: 'monthly', currency: 'PEN', available: true }),
-      expect.objectContaining({ code: 'annual', currency: 'PEN', available: true }),
-      expect.objectContaining({ code: 'monthly', currency: 'USD', available: true }),
-      expect.objectContaining({ code: 'annual', currency: 'USD', available: true }),
-    ]);
-  });
-
-  it('supports legacy Culqi plan env names and fetches pricing when amount vars are missing', async () => {
-    const legacyConfigService = {
-      get: jest.fn((key: string, fallback?: string) => {
-        const values: Record<string, string> = {
-          CULQI_PUBLIC_KEY: 'pk_test_123',
-          CULQI_SECRET_KEY: 'sk_test_123',
-          CULQI_MONTHLY_PLAN_ID: 'pln_pen_monthly',
-          CULQI_ANNUAL_PLAN_ID: 'pln_pen_annual',
-        };
-        return values[key] ?? fallback ?? '';
-      }),
-    } as any;
-
-    const culqiFallbackClient = {
-      ...culqiClient,
-      getPlan: jest.fn(async (planId: string) => ({
-        amount: planId.includes('monthly') ? 4900 : 49000,
-      })),
-    } as any;
-
-    const service = new BillingService(
-      userRepository,
-      subscriptionRepository,
-      legacyConfigService,
-      culqiFallbackClient,
-      dataSource,
-    );
-
-    await expect(service.listPlans()).resolves.toEqual([
-      expect.objectContaining({ code: 'monthly', currency: 'PEN', available: true, amount: 4900 }),
-      expect.objectContaining({ code: 'annual', currency: 'PEN', available: true, amount: 49000 }),
+      expect.objectContaining({ code: 'monthly', currency: 'PEN', available: true, amount: 7900 }),
+      expect.objectContaining({ code: 'annual', currency: 'PEN', available: true, amount: 79000 }),
       expect.objectContaining({ code: 'monthly', currency: 'USD', available: false, amount: null }),
       expect.objectContaining({ code: 'annual', currency: 'USD', available: false, amount: null }),
     ]);
-
-    expect(culqiFallbackClient.getPlan).toHaveBeenCalledWith('pln_pen_monthly');
-    expect(culqiFallbackClient.getPlan).toHaveBeenCalledWith('pln_pen_annual');
   });
 
-  it('creates and confirms a subscription from a Culqi token', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
+  it('creates a Mercado Pago preapproval checkout session', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'preapproval-123',
+        init_point: 'https://www.mercadopago.com/checkout/v1/redirect?preapproval_id=preapproval-123',
+        sandbox_init_point: 'https://sandbox.mercadopago.com/checkout/v1/redirect?preapproval_id=preapproval-123',
+      }),
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
 
     await expect(
-      service.confirmSubscription('user-1', {
-        planCode: 'monthly',
-        currency: 'PEN',
-        tokenId: 'tok_test_123',
-      }),
+      service.createCheckoutSession('user-1', { planCode: 'monthly', currency: 'PEN' }),
     ).resolves.toMatchObject({
-      status: 'active',
-      plan: 'monthly',
-      currency: 'PEN',
-      customerId: 'cus_test_123',
-      subscriptionId: 'sxn_test_123',
+      amount: 7900,
+      preapprovalId: 'preapproval-123',
     });
 
-    expect(culqiClient.createCustomer).toHaveBeenCalled();
-    expect(culqiClient.createCard).toHaveBeenCalledWith({
-      customer_id: 'cus_test_123',
-      token_id: 'tok_test_123',
-    });
-    expect(culqiClient.createSubscription).toHaveBeenCalledWith(
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.mercadopago.com/preapproval',
       expect.objectContaining({
-        plan_id: 'pln_pen_monthly',
-        card_id: 'card_test_123',
-        tyc: true,
+        method: 'POST',
+        body: expect.any(String),
       }),
     );
+
+    const [, request] = (global.fetch as jest.Mock).mock.calls[0];
+    const payload = JSON.parse(request.body as string);
+    expect(payload).toMatchObject({
+      payer_email: 'cliente@demo.pe',
+      status: 'pending',
+      external_reference: 'sb|user-1|monthly|PEN',
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: 'months',
+        transaction_amount: 79,
+        currency_id: 'PEN',
+      },
+    });
   });
 
-  it('does not create a duplicate active subscription', async () => {
-    subscriptionRepository.findOne.mockResolvedValueOnce({
-      id: 'billing-1',
-      status: 'active',
-      plan: 'monthly',
-      currency: 'PEN',
-      currentPeriodEnd: null,
-      providerCustomerId: 'cus_existing',
-      providerSubscriptionId: 'sxn_existing',
+  it('confirms billing from a Mercado Pago preapproval return', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'preapproval-123',
+        status: 'authorized',
+        payer_id: 998877,
+        external_reference: 'sb|user-1|monthly|PEN',
+        next_payment_date: '2026-07-29T00:00:00.000Z',
+      }),
     });
-    userRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      email: 'cliente@demo.pe',
-      fullName: 'Cliente Demo',
-      companyName: 'Demo SAC',
-      billingStatus: 'active',
-      billingPlan: 'monthly',
-      billingProvider: 'mercadopago',
-      billingCurrency: 'PEN',
-      billingPeriodEnd: null,
-      billingCustomerId: 'cus_existing',
-      billingSubscriptionId: 'sxn_existing',
-    });
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
+
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
 
     await expect(
       service.confirmSubscription('user-1', {
         planCode: 'monthly',
         currency: 'PEN',
-        tokenId: 'tok_duplicate',
+        preapprovalId: 'preapproval-123',
       }),
     ).resolves.toMatchObject({
       status: 'active',
       plan: 'monthly',
-      subscriptionId: 'sxn_existing',
-    });
-    expect(culqiClient.createCustomer).not.toHaveBeenCalled();
-    expect(culqiClient.createSubscription).not.toHaveBeenCalled();
-  });
-
-  it('keeps billing pending when Culqi omits the subscription status', async () => {
-    culqiClient.createSubscription.mockResolvedValueOnce({
-      id: 'sxn_pending',
-      next_billing_date: 1767225600,
-    });
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
-
-    await expect(
-      service.confirmSubscription('user-1', {
-        planCode: 'monthly',
-        currency: 'PEN',
-        tokenId: 'tok_pending',
-      }),
-    ).resolves.toMatchObject({
-      status: 'pending',
-      plan: 'monthly',
-    });
-  });
-
-  it('returns the current billing state', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
-
-    await expect(service.getBillingState('user-1')).resolves.toMatchObject({
-      status: 'inactive',
-      plan: null,
-      provider: 'culqi',
-      currency: null,
-    });
-  });
-
-  it.each([
-    ['subscription.creation.succeeded', 'active'],
-    ['subscription.charge.succeeded', 'active'],
-    ['subscription.charge.failed', 'past_due'],
-    ['subscription.cancel.succeeded', 'canceled'],
-  ])('updates user access after webhook %s', async (event, expectedStatus) => {
-    const user = {
-      id: 'user-1',
-      billingStatus: 'pending',
-      billingPlan: 'monthly',
-      billingProvider: 'mercadopago',
-      billingCurrency: 'PEN',
-      billingPeriodEnd: null,
-      billingCustomerId: 'cus_test_123',
-      billingSubscriptionId: 'sxn_test_123',
-    };
-    const record = {
-      id: 'billing-1',
-      user,
-      status: 'pending',
-      plan: 'monthly',
       currency: 'PEN',
-      currentPeriodEnd: null,
-      providerCustomerId: 'cus_test_123',
-      providerSubscriptionId: 'sxn_test_123',
-    };
-    subscriptionRepository.findOne.mockResolvedValueOnce(record);
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
+      customerId: '998877',
+      subscriptionId: 'preapproval-123',
+    });
+  });
+
+  it('updates billing from a preapproval webhook', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'preapproval-123',
+        status: 'authorized',
+        payer_id: 998877,
+        external_reference: 'sb|user-1|monthly|PEN',
+        next_payment_date: '2026-07-29T00:00:00.000Z',
+      }),
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
 
     await expect(
       service.handleWebhook({
-        event,
-        data: { id: 'sxn_test_123' },
+        type: 'preapproval',
+        action: 'updated',
+        data: { id: 'preapproval-123' },
       } as any),
     ).resolves.toEqual({ ok: true, matched: true });
-
-    expect(record.status).toBe(expectedStatus);
-    // user es el objeto eager-loaded en billingRecord; handleWebhook lo actualiza in-place.
-    expect(user.billingStatus).toBe(expectedStatus);
-    // El servicio persiste mediante dataSource.transaction (manager.update), no userRepository.save directamente.
-    expect(dataSource.transaction).toHaveBeenCalled();
-  });
-
-  it('ignores unrelated webhook events without changing billing', async () => {
-    const service = new BillingService(userRepository, subscriptionRepository, configService, culqiClient, dataSource);
-
-    await expect(
-      service.handleWebhook({ event: 'refund.creation.succeeded' } as any),
-    ).resolves.toEqual({ ok: true, ignored: true });
-    expect(subscriptionRepository.save).not.toHaveBeenCalled();
-    expect(userRepository.save).not.toHaveBeenCalled();
   });
 });
-
