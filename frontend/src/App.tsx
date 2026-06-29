@@ -516,7 +516,7 @@ export default function App() {
   const currentPlanLabel = isMasterAccount || isEnterprisePlanActive
     ? 'Enterprise activo'
     : isAdminAccount
-      ? 'Admin'
+      ? 'Cuenta admin'
       : isProSubscriptionActive
         ? 'Pro activo'
         : 'Free';
@@ -530,7 +530,7 @@ export default function App() {
       : userRole === 'superadmin'
       ? 'Superadministrador'
       : userRole === 'admin'
-      ? 'Administrador'
+      ? 'Administrador de cuenta'
         : 'Usuario';
   const currentUserInitials = currentUserLabel
     .split(/\s+/)

@@ -86,7 +86,7 @@ const formatDateTime = (value: string) => {
 
 const formatRole = (role: AdminUser['role']) => {
   if (role === 'superadmin') return 'Superadministrador';
-  if (role === 'admin') return 'Administrador';
+  if (role === 'admin') return 'Administrador de cuenta';
   if (role === 'guest') return 'Invitado';
   return 'Usuario';
 };
@@ -482,7 +482,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       <div className="project-list-toolbar admin-toolbar-stack">
         <div className="min-w-0 admin-toolbar-copy-block">
           <h3>Operacion</h3>
-          <p className="admin-toolbar-copy">Revisa primero el listado y usa las acciones de gestion solo cuando sean necesarias.</p>
+          <p className="admin-toolbar-copy">Los roles administrativos son internos de plataforma o de cuenta; no equivalen al plan Pro del cliente.</p>
         </div>
         <div className="project-filter-tabs" role="group" aria-label="Secciones de administracion">
           <button type="button" className={activeTab === 'users' ? 'project-filter-active' : undefined} onClick={() => setActiveTab('users')}>
@@ -618,8 +618,8 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 Rol
                 <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value as AdminUser['role'] }))}>
-                  <option value="free">Usuario (Free)</option>
-                  <option value="admin">Administrador</option>
+                  <option value="free">Usuario (Free/Pro segun plan)</option>
+                  <option value="admin">Administrador de cuenta</option>
                   <option value="superadmin">Superadministrador</option>
                 </select>
               </label>
