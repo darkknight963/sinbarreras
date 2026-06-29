@@ -4,10 +4,10 @@ import * as forge from 'node-forge';
 
 type CulqiRequestInit = RequestInit & { body?: string };
 
-// Todos los endpoints server-to-server (customers, cards, plans, subscriptions)
-// usan la secret key. Solo /tokens usa public key + endpoint seguro (no lo usamos:
-// la tokenización ocurre en el frontend con Culqi.js).
-const RSA_REQUIRED_PATHS: string[] = [];
+// Endpoints que requieren body encriptado con RSA Backend Key en CulqiOnline.
+// La RSA Key del panel tiene habilitados: cards, plans, subscriptions, customers.
+// Customers y cards funcionan sin RSA, pero plans y subscriptions la EXIGEN.
+const RSA_REQUIRED_PATHS = ['/plans', '/subscriptions', '/cards', '/customers'];
 
 @Injectable()
 export class CulqiClient {
@@ -62,35 +62,37 @@ export class CulqiClient {
   }
 
   private encryptWithRsa(plaintext: string): string {
-    // Culqi uses AES-256-GCM hybrid encryption:
-    // 1. Generate random AES-256 key + IV
-    // 2. Encrypt payload with AES-GCM
-    // 3. Encrypt AES key with RSA-OAEP (fits within 1024-bit key limit)
-    // 4. Send: { encryptedData, encryptedKey, iv, authTag }
-    const aesKey = forge.random.getBytesSync(32); // 256-bit AES key
-    const iv = forge.random.getBytesSync(16);     // 128-bit IV
+    // Replica exacta del SDK oficial de Culqi (culqi-go encoder.go):
+    // 1. AES-256-GCM con key de 32 bytes y nonce/IV de 12 bytes.
+    // 2. Del ciphertext GCM se DESCARTAN los últimos 16 bytes (el auth tag);
+    //    Culqi NO espera el tag — solo el ciphertext puro va en encrypted_data.
+    // 3. La AES key y el IV se encriptan por separado con RSA-OAEP+SHA256.
+    // 4. Body: { encrypted_data, encrypted_key, encrypted_iv }.
+    const aesKey = forge.random.getBytesSync(32);
+    const iv = forge.random.getBytesSync(12);
 
     const cipher = forge.cipher.createCipher('AES-GCM', aesKey);
     cipher.start({ iv });
     cipher.update(forge.util.createBuffer(plaintext, 'utf8'));
     cipher.finish();
 
+    // forge entrega el ciphertext sin tag en cipher.output (el tag va aparte
+    // en cipher.mode.tag). El SDK Go corta el tag del final; en forge el
+    // ciphertext ya viene sin tag, así que usamos cipher.output directamente.
     const encryptedData = forge.util.encode64(cipher.output.getBytes());
-    const authTag = forge.util.encode64((cipher.mode as any).tag.getBytes());
 
     const publicKey = forge.pki.publicKeyFromPem(this.rsaPublicKey);
-    const encryptedKey = forge.util.encode64(
-      publicKey.encrypt(aesKey, 'RSA-OAEP', {
-        md: forge.md.sha256.create(),
-        mgf1: { md: forge.md.sha256.create() },
-      }),
-    );
+    const oaep = {
+      md: forge.md.sha256.create(),
+      mgf1: { md: forge.md.sha256.create() },
+    };
+    const encryptedKey = forge.util.encode64(publicKey.encrypt(aesKey, 'RSA-OAEP', oaep));
+    const encryptedIv = forge.util.encode64(publicKey.encrypt(iv, 'RSA-OAEP', oaep));
 
     return JSON.stringify({
       encrypted_data: encryptedData,
       encrypted_key: encryptedKey,
-      iv: forge.util.encode64(iv),
-      auth_tag: authTag,
+      encrypted_iv: encryptedIv,
     });
   }
 

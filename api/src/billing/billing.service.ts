@@ -106,12 +106,6 @@ export class BillingService {
     if (!card?.id) {
       throw new BadRequestException('No se pudo crear la tarjeta en Culqi');
     }
-    // Verificar que el plan existe en Culqi antes de crear la suscripción
-    const planCheck = await this.culqiClient.getPlan(plan.providerPlanId).catch((e) => {
-      console.error(`[BILLING] getPlan(${plan.providerPlanId}) falló:`, e?.message);
-      return null;
-    });
-    console.log(`[BILLING] plan check (${plan.providerPlanId}):`, JSON.stringify(planCheck));
     const subscription = await this.runCulqiStep('createSubscription', () =>
       this.culqiClient.createSubscription({
         card_id: card.id,
