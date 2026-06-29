@@ -4,8 +4,9 @@ import * as forge from 'node-forge';
 
 type CulqiRequestInit = RequestInit & { body?: string };
 
-// Endpoints que requieren body encriptado con RSA Backend Key
-const RSA_REQUIRED_PATHS = ['/customers', '/cards', '/subscriptions', '/plans'];
+// Solo /subscriptions requiere RSA Backend Key en Culqi v2 Online.
+// /customers y /cards usan plain JSON con la secret key normal.
+const RSA_REQUIRED_PATHS = ['/subscriptions'];
 
 @Injectable()
 export class CulqiClient {
