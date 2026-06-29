@@ -1549,6 +1549,18 @@ export default function App() {
     return [...uniqueScans.values()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
+  const handleBillingCancel = async () => {
+    if (!window.confirm('¿Seguro que deseas cancelar tu suscripción? Mantendrás el acceso hasta el final del período actual.')) return;
+    try {
+      const res = await fetchWithFallback('/billing/cancel', { method: 'POST' });
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      await loadBillingData();
+      setBillingNote('Tu suscripción fue cancelada. Mantendrás el acceso hasta el fin del período pagado.');
+    } catch (err) {
+      setBillingNote(`Error al cancelar: ${err instanceof Error ? err.message : 'Intenta de nuevo.'}`);
+    }
+  };
+
   const handleBillingSubscribe = async (plan: BillingPlan) => {
     if (authMode !== 'session') {
       setPostLoginAction('billing');
@@ -2199,6 +2211,7 @@ export default function App() {
             hasExternalProPaymentLink={false}
             onChangeCurrency={setBillingCurrency}
             onSubscribe={handleBillingSubscribe}
+            onCancel={handleBillingCancel}
             onReload={loadBillingData}
             onBack={handleBackFromBilling}
           />

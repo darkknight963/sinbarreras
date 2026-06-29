@@ -17,6 +17,7 @@ type BillingViewProps = {
   hasExternalProPaymentLink: boolean;
   onChangeCurrency: (currency: BillingCurrency) => void;
   onSubscribe: (plan: BillingPlan) => void;
+  onCancel: () => void;
   onReload: () => void;
   onBack: () => void;
 };
@@ -86,6 +87,7 @@ export function BillingView({
   hasExternalProPaymentLink,
   onBack,
   onSubscribe,
+  onCancel,
 }: BillingViewProps) {
   const [billingPeriod] = useState<BillingPlanCode>('monthly');
   const currencyPlans = plans.filter((plan) => plan.currency === billingCurrency);
@@ -152,6 +154,18 @@ export function BillingView({
           Tu suscripción fue cancelada. Mantienes acceso hasta el{' '}
           <strong>{new Date(billingState.currentPeriodEnd).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
           Después no se realizarán más cobros.
+        </div>
+      )}
+
+      {billingState?.status === 'active' && !billingState?.cancelAtPeriodEnd && (
+        <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Cancelar suscripción
+          </button>
         </div>
       )}
 
