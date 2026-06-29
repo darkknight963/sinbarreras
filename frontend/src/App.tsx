@@ -510,8 +510,6 @@ export default function App() {
 
   const useDemoCredentials = () => {
     setAuthFormMode('login');
-    setAuthEmail('administrador@gzakgroup.com');
-    setAuthPassword('12345678');
     setAppError(null);
   };
 
@@ -560,7 +558,7 @@ export default function App() {
 
   const userRole = currentUser?.role?.toLowerCase() || 'free';
   const isGuestUser = userRole === 'guest';
-  const isMasterAccount = userRole === 'superadmin' || currentUser?.email === 'administrador@gzakgroup.com';
+  const isMasterAccount = userRole === 'superadmin';
   const isAdminAccount = userRole === 'admin';
   const isProSubscriptionActive = Boolean(currentUser?.billingPlan && currentUser?.billingStatus === 'active');
   const isEnterprisePlanActive = Boolean(currentUser?.billingPlan === 'annual' && currentUser?.billingStatus === 'active');
