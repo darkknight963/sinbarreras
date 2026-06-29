@@ -87,6 +87,17 @@ export class CulqiClient {
     const encryptedKey = crypto.publicEncrypt(oaepOptions, aesKey);
     const encryptedIv = crypto.publicEncrypt(oaepOptions, iv);
 
+    // Diagnóstico: tamaño de los componentes (sin exponer secretos).
+    // encrypted_key/iv en bytes revela el tamaño de la RSA key (128=1024bit, 256=2048bit).
+    console.log('[CulqiClient] RSA debug:', {
+      rsaKeyHeader: this.rsaPublicKey.split('\n')[0],
+      rsaKeyLines: this.rsaPublicKey.split('\n').length,
+      rsaKeyId: this.rsaKeyId,
+      encDataBytes: dataWithTag.length,
+      encKeyBytes: encryptedKey.length,
+      encIvBytes: encryptedIv.length,
+    });
+
     return JSON.stringify({
       encrypted_data: dataWithTag.toString('base64'),
       encrypted_key: encryptedKey.toString('base64'),
