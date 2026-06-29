@@ -23,8 +23,17 @@ export class CulqiClient {
     );
     this.secretKey = configService.get<string>('CULQI_SECRET_KEY', '').trim();
     this.publicKey = configService.get<string>('CULQI_PUBLIC_KEY', '').trim();
-    this.rsaPublicKey = this.normalizeRsaKey(configService.get<string>('CULQI_RSA_PUBLIC_KEY', '') || '');
+    const rawRsaKey = configService.get<string>('CULQI_RSA_PUBLIC_KEY', '') || '';
+    this.rsaPublicKey = this.normalizeRsaKey(rawRsaKey);
     this.rsaKeyId = configService.get<string>('CULQI_RSA_KEY_ID', '').trim();
+    // Diagnóstico de arranque: verificar que el PEM llegue bien formado.
+    console.log('[CulqiClient] init RSA key:', {
+      rawLen: rawRsaKey.length,
+      rawFirst20: rawRsaKey.slice(0, 20),
+      normalizedLines: this.rsaPublicKey.split('\n').length,
+      normalizedHeader: this.rsaPublicKey.split('\n')[0],
+      normalizedFooter: this.rsaPublicKey.split('\n').at(-1),
+    });
   }
 
   getPublicKey() {
