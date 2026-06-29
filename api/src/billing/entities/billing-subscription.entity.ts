@@ -49,6 +49,9 @@ export class BillingSubscription {
   @Column({ nullable: true, type: 'timestamptz' })
   currentPeriodEnd!: Date | null;
 
+  @Column({ type: 'boolean', default: false })
+  cancelAtPeriodEnd!: boolean;
+
   @Column({ nullable: true, type: 'jsonb' })
   metadata!: Record<string, unknown> | null;
 

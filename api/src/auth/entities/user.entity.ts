@@ -48,6 +48,9 @@ export class User {
   @Column({ type: 'text', nullable: true })
   billingSubscriptionId!: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  billingCancelAtPeriodEnd!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

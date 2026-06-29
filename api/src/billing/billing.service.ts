@@ -239,21 +239,8 @@ export class BillingService {
       order: { createdAt: 'DESC' },
     });
 
-    await this.dataSource.transaction(async (manager) => {
-      if (activeSubscription) {
-        activeSubscription.status = 'canceled';
-        await manager.save(BillingSubscription, activeSubscription);
-      }
-      await manager.update(User, user.id, {
-        billingStatus: 'canceled',
-        billingPlan: null,
-        billingCurrency: null,
-        billingPeriodEnd: null,
-        billingCustomerId: activeSubscription?.providerCustomerId ?? user.billingCustomerId,
-        billingSubscriptionId: activeSubscription?.providerSubscriptionId ?? user.billingSubscriptionId,
-      });
-    });
-
+    // Cancelar en MP primero para detener cobros futuros.
+    // Si falla, aun marcamos cancelAtPeriodEnd en BD para que no se renueve.
     if (activeSubscription?.providerSubscriptionId) {
       try {
         const accessToken = this.getMercadoPagoAccessToken();
@@ -270,6 +257,18 @@ export class BillingService {
         );
       }
     }
+
+    // Mantener acceso activo hasta currentPeriodEnd — solo marcamos cancelAtPeriodEnd.
+    // El acceso se revoca cuando venza el período (el webhook de MP o un job lo actualiza).
+    await this.dataSource.transaction(async (manager) => {
+      if (activeSubscription) {
+        activeSubscription.cancelAtPeriodEnd = true;
+        await manager.save(BillingSubscription, activeSubscription);
+      }
+      await manager.update(User, user.id, {
+        billingCancelAtPeriodEnd: true,
+      });
+    });
 
     return this.serializeBillingState(await this.getUserOrThrow(userId));
   }
@@ -775,6 +774,7 @@ export class BillingService {
       currentPeriodEnd: user.billingPeriodEnd ? user.billingPeriodEnd.toISOString() : null,
       customerId: user.billingCustomerId,
       subscriptionId: user.billingSubscriptionId,
+      cancelAtPeriodEnd: user.billingCancelAtPeriodEnd ?? false,
     };
   }
 

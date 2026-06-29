@@ -147,6 +147,14 @@ export function BillingView({
         </div>
       )}
 
+      {billingState?.cancelAtPeriodEnd && billingState?.currentPeriodEnd && (
+        <div className="billing-note" style={{ background: '#fef9c3', borderColor: '#fde047', color: '#713f12' }}>
+          Tu suscripción fue cancelada. Mantienes acceso hasta el{' '}
+          <strong>{new Date(billingState.currentPeriodEnd).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+          Después no se realizarán más cobros.
+        </div>
+      )}
+
       {note && <div className="billing-note">{note}</div>}
 
       {loading ? (

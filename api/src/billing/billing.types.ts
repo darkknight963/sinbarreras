@@ -25,6 +25,7 @@ export interface BillingState {
   currentPeriodEnd: string | null;
   customerId: string | null;
   subscriptionId: string | null;
+  cancelAtPeriodEnd: boolean;
 }
 
 export const BILLING_PROVIDER: BillingProvider = 'mercadopago';
