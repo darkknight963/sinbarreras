@@ -296,7 +296,7 @@ export class BillingService {
   }
 
   private buildExternalReference(userId: string, planCode: BillingPlanCode, currency: BillingCurrency) {
-    return `sb|${userId}|${planCode}|${currency}`;
+    return `sb|${userId}|${planCode}|${currency}|${randomUUID()}`;
   }
 
   private parseExternalReference(value: string) {

@@ -94,7 +94,6 @@ describe('BillingService', () => {
     expect(payload).toMatchObject({
       payer_email: 'cliente@demo.pe',
       status: 'pending',
-      external_reference: 'sb|user-1|monthly|PEN',
       auto_recurring: {
         frequency: 1,
         frequency_type: 'months',
@@ -102,6 +101,7 @@ describe('BillingService', () => {
         currency_id: 'PEN',
       },
     });
+    expect(payload.external_reference).toMatch(/^sb\|user-1\|monthly\|PEN\|[0-9a-f-]{36}$/);
   });
 
   it('uses MP_TEST_PAYER_EMAIL in sandbox subscriptions when configured', async () => {
