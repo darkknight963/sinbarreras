@@ -10,7 +10,9 @@ export class CulqiClient {
   private readonly publicKey: string;
 
   constructor(configService: ConfigService) {
-    this.baseUrl = configService.get<string>('CULQI_API_BASE_URL', 'https://api.culqi.com/v2');
+    this.baseUrl = this.normalizeBaseUrl(
+      configService.get<string>('CULQI_API_BASE_URL', 'https://api.culqi.com/v2'),
+    );
     this.secretKey = configService.get<string>('CULQI_SECRET_KEY', '').trim();
     this.publicKey = configService.get<string>('CULQI_PUBLIC_KEY', '').trim();
   }
@@ -48,7 +50,9 @@ export class CulqiClient {
     headers.set('Authorization', `Bearer ${this.secretKey}`);
     headers.set('Content-Type', 'application/json');
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const requestUrl = `${this.baseUrl}${path}`;
+    console.log(`[CulqiClient] ${init.method || 'GET'} ${requestUrl}`, init.body ? JSON.parse(init.body) : '');
+    const response = await fetch(requestUrl, {
       ...init,
       headers,
     });
@@ -64,9 +68,14 @@ export class CulqiClient {
         : typeof data?.user_message === 'string'
           ? data.user_message
           : `Culqi request failed with HTTP ${response.status}`;
-      throw new Error(message);
+      throw new Error(`${message} [${init.method || 'GET'} ${path} -> ${requestUrl}]`);
     }
 
     return data;
+  }
+
+  private normalizeBaseUrl(value: string | undefined) {
+    const normalized = (value || 'https://api.culqi.com/v2').trim().replace(/\/+$/, '');
+    return normalized || 'https://api.culqi.com/v2';
   }
 }
