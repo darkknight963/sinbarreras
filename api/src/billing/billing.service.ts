@@ -52,11 +52,7 @@ export class BillingService {
     const frontendUrl = this.getFrontendUrl(dto.returnUrl);
     const response = await fetch(`${BillingService.MP_API_BASE_URL}/preapproval`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': randomUUID(),
-      },
+      headers: this.buildMercadoPagoHeaders(accessToken, true),
       body: JSON.stringify({
         reason: `${plan.label} - ${plan.description}`,
         external_reference: externalReference,
@@ -306,9 +302,7 @@ export class BillingService {
   private async getMercadoPagoPayment(paymentId: string) {
     const accessToken = this.getMercadoPagoAccessToken();
     const response = await fetch(`${BillingService.MP_API_BASE_URL}/v1/payments/${paymentId}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: this.buildMercadoPagoHeaders(accessToken),
     });
 
     if (!response.ok) {
@@ -321,9 +315,7 @@ export class BillingService {
   private async getMercadoPagoPreapproval(preapprovalId: string) {
     const accessToken = this.getMercadoPagoAccessToken();
     const response = await fetch(`${BillingService.MP_API_BASE_URL}/preapproval/${preapprovalId}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: this.buildMercadoPagoHeaders(accessToken),
     });
 
     if (!response.ok) {
@@ -336,10 +328,36 @@ export class BillingService {
   private async readMercadoPagoError(response: Response) {
     try {
       const body = await response.json() as Record<string, unknown>;
-      return String(body.message || body.error || `Mercado Pago HTTP ${response.status}`);
+      const cause = Array.isArray(body.cause)
+        ? body.cause.map((item) => {
+            if (item && typeof item === 'object') {
+              const detail = 'description' in item ? item.description : 'message' in item ? item.message : null;
+              return detail ? String(detail) : JSON.stringify(item);
+            }
+            return String(item);
+          }).join(' | ')
+        : '';
+      return String(body.message || body.error || cause || `Mercado Pago HTTP ${response.status}`);
     } catch {
       return `Mercado Pago HTTP ${response.status}`;
     }
+  }
+
+  private buildMercadoPagoHeaders(accessToken: string, includeJsonHeaders = false) {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+    };
+
+    if (includeJsonHeaders) {
+      headers['Content-Type'] = 'application/json';
+      headers['X-Idempotency-Key'] = randomUUID();
+    }
+
+    if (accessToken.startsWith('TEST-')) {
+      headers['X-scope'] = 'stage';
+    }
+
+    return headers;
   }
 
   private mapPaymentStatus(status: string): BillingStatus {
