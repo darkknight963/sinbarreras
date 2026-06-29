@@ -217,8 +217,16 @@ const readCheckoutReturn = () => {
   const preapprovalId =
     params.get('preapproval_id') ||
     '';
-  const planCode = params.get('plan') === 'annual' ? 'annual' : 'monthly';
-  const currency = params.get('currency') === 'USD' ? 'USD' : 'PEN';
+
+  // MP puede no preservar nuestros params (plan, currency) en el back_url.
+  // Intentamos extraerlos del external_reference que siempre incluye MP: sb|userId|planCode|currency|uuid
+  const externalRef = params.get('external_reference') || '';
+  const externalRefParts = externalRef.startsWith('sb|') ? externalRef.split('|') : [];
+  const planFromRef = externalRefParts[2] === 'annual' ? 'annual' : null;
+  const currencyFromRef = externalRefParts[3] === 'USD' ? 'USD' : externalRefParts[3] === 'PEN' ? 'PEN' : null;
+
+  const planCode = (params.get('plan') === 'annual' ? 'annual' : params.get('plan') === 'monthly' ? 'monthly' : null) ?? planFromRef ?? 'monthly';
+  const currency = (params.get('currency') === 'USD' ? 'USD' : params.get('currency') === 'PEN' ? 'PEN' : null) ?? currencyFromRef ?? 'PEN';
 
   let status: CheckoutReturnStatus = 'pending';
   if (['approved', 'success', 'authorized'].includes(normalizedStatus)) status = 'success';

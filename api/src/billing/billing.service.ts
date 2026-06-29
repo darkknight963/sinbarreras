@@ -217,7 +217,12 @@ export class BillingService {
       const preapproval = await this.getMercadoPagoPreapproval(dto.preapprovalId);
       const subscriptionStatus = String(preapproval.status || '').toLowerCase();
       const billingStatus = this.mapPreapprovalStatus(subscriptionStatus);
-      await this.upsertBillingFromPreapproval(user, plan.code, plan.currency, dto.preapprovalId, preapproval, billingStatus);
+      // Intentar extraer planCode/currency del external_reference del preapproval
+      const preapprovalRef = String(preapproval.external_reference || '');
+      const parsedPreapprovalRef = preapprovalRef ? this.parseExternalReference(preapprovalRef) : null;
+      const resolvedPlanCode = parsedPreapprovalRef?.planCode ?? plan.code;
+      const resolvedCurrency = parsedPreapprovalRef?.currency ?? plan.currency;
+      await this.upsertBillingFromPreapproval(user, resolvedPlanCode, resolvedCurrency, dto.preapprovalId, preapproval, billingStatus);
       return this.serializeBillingState(await this.getUserOrThrow(user.id));
     }
 
@@ -228,9 +233,15 @@ export class BillingService {
     const payment = await this.getMercadoPagoPayment(dto.paymentId);
     const paymentStatus = String(payment.status || '').toLowerCase();
 
-    // En modo preapproval, el collection_id que MP devuelve en el back_url es el ID
-    // del pago recurrente, no del preapproval. Buscamos el preapproval via
-    // external_reference del pago para obtener el ID real de la suscripción.
+    // Intentar extraer planCode/currency del external_reference del pago (formato sb|userId|planCode|currency|uuid).
+    // Esto es más confiable que los params del back_url que MP puede no preservar.
+    const externalRef = String(payment.external_reference || '');
+    const parsedRef = externalRef ? this.parseExternalReference(externalRef) : null;
+    const resolvedPlanCode = parsedRef?.planCode ?? plan.code;
+    const resolvedCurrency = parsedRef?.currency ?? plan.currency;
+
+    // En modo preapproval, collection_id es el ID del pago recurrente, no del preapproval.
+    // El pago tiene preapproval_id en su respuesta — lo usamos para activar la suscripción.
     const preapprovalIdFromPayment = payment.preapproval_id
       ? String(payment.preapproval_id)
       : null;
@@ -239,12 +250,12 @@ export class BillingService {
       const preapproval = await this.getMercadoPagoPreapproval(preapprovalIdFromPayment);
       const subscriptionStatus = String(preapproval.status || '').toLowerCase();
       const billingStatus = this.mapPreapprovalStatus(subscriptionStatus);
-      await this.upsertBillingFromPreapproval(user, plan.code, plan.currency, preapprovalIdFromPayment, preapproval, billingStatus);
+      await this.upsertBillingFromPreapproval(user, resolvedPlanCode, resolvedCurrency, preapprovalIdFromPayment, preapproval, billingStatus);
       return this.serializeBillingState(await this.getUserOrThrow(user.id));
     }
 
     const billingStatus = this.mapPaymentStatus(paymentStatus);
-    await this.upsertBillingFromPayment(user, plan.code, plan.currency, dto.paymentId, payment, billingStatus);
+    await this.upsertBillingFromPayment(user, resolvedPlanCode, resolvedCurrency, dto.paymentId, payment, billingStatus);
     return this.serializeBillingState(await this.getUserOrThrow(user.id));
   }
 
