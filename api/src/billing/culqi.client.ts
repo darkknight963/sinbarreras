@@ -25,6 +25,16 @@ export class CulqiClient {
     return this.request('/customers', { method: 'POST', body: JSON.stringify(payload) });
   }
 
+  async findCustomerByEmail(email: string): Promise<{ id: string } | null> {
+    try {
+      const data = await this.request(`/customers?email=${encodeURIComponent(email)}`, { method: 'GET' });
+      const items: Array<{ id: string }> = data?.data ?? data?.items ?? [];
+      return items.length > 0 ? items[0] : null;
+    } catch {
+      return null;
+    }
+  }
+
   async createCard(payload: Record<string, unknown>) {
     return this.request('/cards', { method: 'POST', body: JSON.stringify(payload) });
   }

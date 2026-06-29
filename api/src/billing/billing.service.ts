@@ -88,7 +88,8 @@ export class BillingService {
     }
 
     const customerPayload = this.buildCustomerPayload(user);
-    const customer = await this.culqiClient.createCustomer(customerPayload);
+    const existingCustomer = await this.culqiClient.findCustomerByEmail(user.email);
+    const customer = existingCustomer ?? await this.culqiClient.createCustomer(customerPayload);
     const card = await this.culqiClient.createCard({
       customer_id: customer?.id,
       token_id: dto.tokenId,
