@@ -259,6 +259,36 @@ export class BillingService {
     return this.serializeBillingState(await this.getUserOrThrow(user.id));
   }
 
+  async adminActivate(userId: string, dto: { planCode: BillingPlanCode; currency: BillingCurrency; paymentId?: string; preapprovalId?: string }) {
+    const user = await this.getUserOrThrow(userId);
+    const plan = await this.resolvePlan(dto.planCode, dto.currency);
+
+    if (dto.preapprovalId) {
+      const preapproval = await this.getMercadoPagoPreapproval(dto.preapprovalId);
+      const billingStatus = this.mapPreapprovalStatus(String(preapproval.status || '').toLowerCase());
+      await this.upsertBillingFromPreapproval(user, plan.code, plan.currency, dto.preapprovalId, preapproval, billingStatus);
+      // Limpiar cancelAtPeriodEnd si fue cancelado por error
+      await this.userRepository.update(user.id, { billingCancelAtPeriodEnd: false });
+      await this.subscriptionRepository.update({ providerSubscriptionId: dto.preapprovalId }, { cancelAtPeriodEnd: false });
+      return this.serializeBillingState(await this.getUserOrThrow(userId));
+    }
+
+    if (dto.paymentId) {
+      const payment = await this.getMercadoPagoPayment(dto.paymentId);
+      const preapprovalIdFromPayment = payment.preapproval_id ? String(payment.preapproval_id) : null;
+      if (preapprovalIdFromPayment) {
+        const preapproval = await this.getMercadoPagoPreapproval(preapprovalIdFromPayment);
+        const billingStatus = this.mapPreapprovalStatus(String(preapproval.status || '').toLowerCase());
+        await this.upsertBillingFromPreapproval(user, plan.code, plan.currency, preapprovalIdFromPayment, preapproval, billingStatus);
+        await this.userRepository.update(user.id, { billingCancelAtPeriodEnd: false });
+        await this.subscriptionRepository.update({ providerSubscriptionId: preapprovalIdFromPayment }, { cancelAtPeriodEnd: false });
+        return this.serializeBillingState(await this.getUserOrThrow(userId));
+      }
+    }
+
+    throw new BadRequestException('Se requiere preapprovalId o paymentId valido');
+  }
+
   async cancelSubscription(userId: string) {
     const user = await this.getUserOrThrow(userId);
     const activeSubscription = await this.subscriptionRepository.findOne({

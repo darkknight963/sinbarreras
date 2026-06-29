@@ -58,15 +58,16 @@ export class BillingController {
 
   @Public()
   @Post('admin/activate-by-payment')
-  adminActivateByPayment(@Body() body: { adminSecret: string; userId: string; paymentId: string; planCode: string; currency: string }) {
+  adminActivateByPayment(@Body() body: { adminSecret: string; userId: string; paymentId?: string; preapprovalId?: string; planCode: string; currency: string }) {
     const expectedSecret = process.env.ADMIN_PASSWORD;
     if (!expectedSecret || body.adminSecret !== expectedSecret) {
       throw new UnauthorizedException('Secreto de admin inválido');
     }
-    return this.billingService.confirmSubscription(body.userId, {
+    return this.billingService.adminActivate(body.userId, {
       planCode: body.planCode as 'monthly' | 'annual',
       currency: body.currency as 'PEN' | 'USD',
       paymentId: body.paymentId,
+      preapprovalId: body.preapprovalId,
     });
   }
 
