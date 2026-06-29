@@ -4,9 +4,9 @@ import * as forge from 'node-forge';
 
 type CulqiRequestInit = RequestInit & { body?: string };
 
-// /plans y /subscriptions requieren public key como Bearer token en Culqi v2.
-// /customers y /cards usan la secret key.
-const PUBLIC_KEY_PATHS = ['/plans', '/subscriptions'];
+// Todos los endpoints server-to-server (customers, cards, plans, subscriptions)
+// usan la secret key. Solo /tokens usa public key + endpoint seguro (no lo usamos:
+// la tokenización ocurre en el frontend con Culqi.js).
 const RSA_REQUIRED_PATHS: string[] = [];
 
 @Injectable()
@@ -107,8 +107,7 @@ export class CulqiClient {
 
     const method = init.method || 'GET';
     const headers = new Headers(init.headers);
-    const usePublicKey = PUBLIC_KEY_PATHS.some((p) => path.startsWith(p));
-    headers.set('Authorization', `Bearer ${usePublicKey ? this.publicKey : this.secretKey}`);
+    headers.set('Authorization', `Bearer ${this.secretKey}`);
 
     let body = init.body;
 
