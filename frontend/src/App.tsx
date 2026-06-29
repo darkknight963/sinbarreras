@@ -755,7 +755,8 @@ export default function App() {
 
     const referenceId = checkoutReturn.preapprovalId || checkoutReturn.paymentId;
 
-    if (checkoutReturn.status === 'pending' || !referenceId) {
+    // Sin referencia de pago o suscripción no podemos confirmar nada
+    if (!referenceId) {
       setCheckoutConfirmationStatus('pending');
       setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
       setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
