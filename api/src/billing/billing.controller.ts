@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
@@ -48,6 +48,14 @@ export class BillingController {
       throw new UnauthorizedException('Sesión inválida');
     }
     return this.billingService.cancelSubscription(user.id);
+  }
+
+  @Get('debug/payment/:paymentId')
+  debugPayment(@CurrentUser() user: { id: string } | null, @Param('paymentId') paymentId: string) {
+    if (!user) {
+      throw new UnauthorizedException('Sesión inválida');
+    }
+    return this.billingService.debugPayment(paymentId);
   }
 
   @Public()

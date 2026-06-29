@@ -403,6 +403,24 @@ export class BillingService {
     };
   }
 
+  async debugPayment(paymentId: string) {
+    const payment = await this.getMercadoPagoPayment(paymentId);
+    return {
+      id: payment.id,
+      status: payment.status,
+      status_detail: payment.status_detail,
+      payment_method_id: payment.payment_method_id,
+      payment_type_id: payment.payment_type_id,
+      date_created: payment.date_created,
+      date_last_updated: payment.date_last_updated,
+      payer: payment.payer,
+      transaction_amount: payment.transaction_amount,
+      currency_id: payment.currency_id,
+      description: payment.description,
+      error_codes: (payment as any).error_codes,
+    };
+  }
+
   private async getMercadoPagoPayment(paymentId: string) {
     const accessToken = this.getMercadoPagoAccessToken();
     const response = await this.fetchMercadoPagoWithRetry(`/v1/payments/${paymentId}`, {
