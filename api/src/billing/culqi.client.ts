@@ -23,7 +23,7 @@ export class CulqiClient {
     );
     this.secretKey = configService.get<string>('CULQI_SECRET_KEY', '').trim();
     this.publicKey = configService.get<string>('CULQI_PUBLIC_KEY', '').trim();
-    this.rsaPublicKey = (configService.get<string>('CULQI_RSA_PUBLIC_KEY', '') || '').trim().replace(/\\n/g, '\n');
+    this.rsaPublicKey = this.normalizeRsaKey(configService.get<string>('CULQI_RSA_PUBLIC_KEY', '') || '');
     this.rsaKeyId = configService.get<string>('CULQI_RSA_KEY_ID', '').trim();
   }
 
@@ -161,5 +161,18 @@ export class CulqiClient {
   private normalizeBaseUrl(value: string | undefined) {
     const normalized = (value || 'https://api.culqi.com/v2').trim().replace(/\/+$/, '');
     return normalized || 'https://api.culqi.com/v2';
+  }
+
+  // Normaliza la public key RSA tolerando: comillas envolventes (Railway a veces
+  // las incluye), `\n` literales, y CRLF. Reconstruye el PEM con saltos reales.
+  private normalizeRsaKey(raw: string): string {
+    let key = raw.trim();
+    // Quitar comillas simples o dobles que envuelvan todo el valor.
+    if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+      key = key.slice(1, -1);
+    }
+    // Convertir `\n` literales y CRLF a saltos de línea reales.
+    key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').trim();
+    return key;
   }
 }
