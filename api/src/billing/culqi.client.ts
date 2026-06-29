@@ -4,9 +4,9 @@ import * as forge from 'node-forge';
 
 type CulqiRequestInit = RequestInit & { body?: string };
 
-// Solo /subscriptions requiere RSA Backend Key en Culqi v2 Online.
-// /customers y /cards usan plain JSON con la secret key normal.
-const RSA_REQUIRED_PATHS = ['/subscriptions'];
+// El SDK oficial de Culqi v2 no usa RSA para ningún endpoint de servidor a servidor.
+// La RSA Backend Key aplica solo al flujo de checkout frontend (tokenización).
+const RSA_REQUIRED_PATHS: string[] = [];
 
 @Injectable()
 export class CulqiClient {
