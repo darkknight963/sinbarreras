@@ -22,3 +22,11 @@ export interface BillingState {
   customerId: string | null;
   subscriptionId: string | null;
 }
+
+export interface BillingCheckoutSession {
+  amount?: number | null;
+  initPoint?: string | null;
+  sandboxInitPoint?: string | null;
+  checkoutUrl?: string | null;
+  plan?: BillingPlan;
+}

@@ -10,10 +10,11 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
-import type { BillingCurrency, BillingPlan, BillingState } from './billing';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, PRO_PAYMENT_URL, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
+import type { BillingCheckoutSession, BillingCurrency, BillingPlan, BillingState } from './billing';
 import { AuthView } from './views/AuthView';
 const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
+const PaymentConfirmationView = lazy(() => import('./PaymentConfirmationView').then(m => ({ default: m.PaymentConfirmationView })));
 const ProjectsView = lazy(() => import('./views/ProjectsView').then(m => ({ default: m.ProjectsView })));
 const ProjectDetailView = lazy(() => import('./views/ProjectDetailView').then(m => ({ default: m.ProjectDetailView })));
 const ScanReportView = lazy(() => import('./views/ScanReportView').then(m => ({ default: m.ScanReportView })));
@@ -51,6 +52,8 @@ const BRAND_NAME = 'Sin Barreras';
 const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
 
 type AuthMode = 'session' | 'none' | 'public';
+type AppView = 'projects' | 'project' | 'scan' | 'billing' | 'billing-success' | 'admin';
+type CheckoutReturnStatus = 'success' | 'pending' | 'failure';
 
 type AuthUser = {
   id: string;
@@ -181,6 +184,60 @@ const readApiJson = async <T,>(res: Response): Promise<T | null> => {
   return JSON.parse(text) as T;
 };
 
+const readCheckoutReturn = () => {
+  if (typeof window === 'undefined') return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const checkout = params.get('checkout');
+  if (!checkout) return null;
+
+  const statusParam = (params.get('status') || '').toLowerCase();
+  const collectionStatus = (params.get('collection_status') || '').toLowerCase();
+  const normalizedStatus = collectionStatus || statusParam || checkout.toLowerCase();
+  const paymentId =
+    params.get('payment_id') ||
+    params.get('collection_id') ||
+    params.get('preapproval_id') ||
+    '';
+  const planCode = params.get('plan') === 'annual' ? 'annual' : 'monthly';
+  const currency = params.get('currency') === 'USD' ? 'USD' : 'PEN';
+
+  let status: CheckoutReturnStatus = 'pending';
+  if (['approved', 'success', 'authorized'].includes(normalizedStatus)) status = 'success';
+  if (['failure', 'failed', 'rejected', 'cancelled', 'canceled'].includes(normalizedStatus)) status = 'failure';
+
+  return { status, paymentId, planCode, currency };
+};
+
+const clearCheckoutReturnFromUrl = () => {
+  if (typeof window === 'undefined') return;
+
+  const url = new URL(window.location.href);
+  [
+    'checkout',
+    'status',
+    'collection_status',
+    'payment_id',
+    'collection_id',
+    'merchant_order_id',
+    'preapproval_id',
+    'preapproval_plan_id',
+    'external_reference',
+    'plan',
+    'currency',
+  ].forEach((key) => url.searchParams.delete(key));
+
+  window.history.replaceState({}, window.document.title, `${url.pathname}${url.search}${url.hash}`);
+};
+
+const buildMercadoPagoReturnUrl = (plan: BillingPlan, checkoutStatus: 'success' | 'pending' | 'failure') => {
+  const url = new URL(window.location.origin + window.location.pathname);
+  url.searchParams.set('checkout', checkoutStatus);
+  url.searchParams.set('plan', plan.code);
+  url.searchParams.set('currency', plan.currency);
+  return url.toString();
+};
+
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -207,8 +264,9 @@ export default function App() {
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [postLoginAction, setPostLoginAction] = useState<'billing' | null>(null);
+  const [checkoutReturn] = useState(() => readCheckoutReturn());
 
-  const [view, setView] = useState<'projects' | 'project' | 'scan' | 'billing' | 'admin'>('projects');
+  const [view, setView] = useState<AppView>('projects');
 
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -229,6 +287,15 @@ export default function App() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingSubmitting, setBillingSubmitting] = useState<string | null>(null);
   const [billingNote, setBillingNote] = useState<string | null>(null);
+  const [checkoutProcessing, setCheckoutProcessing] = useState(false);
+  const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending'>(
+    checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : 'success',
+  );
+  const [checkoutConfirmationTitle, setCheckoutConfirmationTitle] = useState('Suscripcion confirmada');
+  const [checkoutConfirmationDescription, setCheckoutConfirmationDescription] = useState(
+    'Tu operacion fue recibida y aqui veras el estado final de tu compra.',
+  );
+  const [checkoutConfirmationDetail, setCheckoutConfirmationDetail] = useState<string | null>(null);
 
   const [criterionApplicabilityFilter, setCriterionApplicabilityFilter] = useState<string>('todos');
   const [criterionResultFilter, setCriterionResultFilter] = useState<string>('todos');
@@ -597,6 +664,9 @@ export default function App() {
           const user = await res.json();
           setCurrentUser(user);
           setAuthMode('session');
+          if (checkoutReturn) {
+            setView('billing-success');
+          }
           return;
         }
       } catch (err) {
@@ -607,12 +677,81 @@ export default function App() {
     };
 
     bootstrapAuth().finally(() => setAuthLoading(false));
-  }, []);
+  }, [checkoutReturn]);
 
   useEffect(() => {
     if (authLoading || authMode !== 'session') return;
     fetchProjects();
   }, [authLoading, authMode]);
+
+  useEffect(() => {
+    if (authLoading || authMode !== 'session' || !checkoutReturn || view !== 'billing-success' || checkoutProcessing) return;
+
+    if (checkoutReturn.status === 'failure') {
+      setCheckoutConfirmationStatus('pending');
+      setCheckoutConfirmationTitle('Pago no completado');
+      setCheckoutConfirmationDescription('La operacion no termino como aprobada en Mercado Pago.');
+      setCheckoutConfirmationDetail('Puedes volver a la seccion de planes para intentarlo nuevamente.');
+      clearCheckoutReturnFromUrl();
+      return;
+    }
+
+    if (checkoutReturn.status === 'pending' || !checkoutReturn.paymentId) {
+      setCheckoutConfirmationStatus('pending');
+      setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
+      setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
+      setCheckoutConfirmationDetail('Si el cobro se aprueba, tu plan se actualizara automaticamente.');
+      clearCheckoutReturnFromUrl();
+      return;
+    }
+
+    const confirmFromReturn = async () => {
+      setCheckoutProcessing(true);
+      setCheckoutConfirmationStatus('processing');
+      setCheckoutConfirmationTitle('Confirmando suscripcion');
+      setCheckoutConfirmationDescription('Estamos validando tu regreso desde Mercado Pago para dejar tu plan registrado.');
+      setCheckoutConfirmationDetail(`Operacion recibida: ${checkoutReturn.paymentId}`);
+
+      try {
+        const confirmResponse = await fetchWithFallback('/billing/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planCode: checkoutReturn.planCode,
+            currency: checkoutReturn.currency,
+            paymentId: checkoutReturn.paymentId,
+          }),
+        });
+
+        if (!confirmResponse.ok) {
+          throw new Error(await readApiErrorMessage(confirmResponse));
+        }
+
+        await loadBillingData();
+        const userResponse = await fetchWithFallback('/auth/me');
+        if (userResponse.ok) {
+          setCurrentUser(await userResponse.json());
+        }
+
+        setBillingNote('Tu suscripcion ya fue registrada en el sistema.');
+        setCheckoutConfirmationStatus('success');
+        setCheckoutConfirmationTitle('Suscripcion confirmada');
+        setCheckoutConfirmationDescription('Tu compra fue recibida y tu acceso ya quedo asociado a la cuenta.');
+        setCheckoutConfirmationDetail(`Referencia de pago: ${checkoutReturn.paymentId}`);
+      } catch (err) {
+        console.error('Error al confirmar retorno de Mercado Pago:', err);
+        setCheckoutConfirmationStatus('pending');
+        setCheckoutConfirmationTitle('Pago recibido, pendiente de verificacion');
+        setCheckoutConfirmationDescription('Aun no pudimos dejar la suscripcion marcada como activa desde el retorno.');
+        setCheckoutConfirmationDetail(err instanceof Error ? err.message : 'Intenta revisar tu plan nuevamente en unos minutos.');
+      } finally {
+        clearCheckoutReturnFromUrl();
+        setCheckoutProcessing(false);
+      }
+    };
+
+    void confirmFromReturn();
+  }, [authLoading, authMode, checkoutProcessing, checkoutReturn, view]);
 
   // Client-side animated progress — replaces the realtime WebSocket feed so the backend
   // runs no 24/7 Redis poller. The percentage is simulated locally (no network calls)
@@ -1354,10 +1493,18 @@ export default function App() {
         throw new Error(text || `HTTP ${checkoutResponse.status}`);
       }
 
-      // TODO: usar checkoutData.initPoint (URL de Mercado Pago) para redirigir al usuario
-      const checkoutData = await checkoutResponse.json();
-      console.log('[Billing] checkout data:', checkoutData);
-      setBillingNote('Integración con Mercado Pago próximamente.');
+      const checkoutData = await checkoutResponse.json() as BillingCheckoutSession;
+      const checkoutUrl = checkoutData.initPoint || checkoutData.sandboxInitPoint || checkoutData.checkoutUrl || PRO_PAYMENT_URL;
+
+      if (!checkoutUrl) {
+        setBillingNote(
+          `La pantalla de confirmacion ya esta creada. Cuando conectes Mercado Pago, usa estas URLs de retorno: ${buildMercadoPagoReturnUrl(plan, 'success')} | ${buildMercadoPagoReturnUrl(plan, 'pending')} | ${buildMercadoPagoReturnUrl(plan, 'failure')}`,
+        );
+        return;
+      }
+
+      setBillingNote('Redirigiendo a Mercado Pago para completar la suscripcion...');
+      window.location.assign(checkoutUrl);
     } catch (err: any) {
       handleApiError('No se pudo iniciar el pago', err);
     } finally {
@@ -1803,7 +1950,7 @@ export default function App() {
         tabIndex={-1}
       >
         <p className="visually-hidden" aria-live="polite">
-          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : view === 'scan' ? 'Informe de escaneo' : view === 'admin' ? 'Administración' : 'Planes y pagos'}
+          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : view === 'scan' ? 'Informe de escaneo' : view === 'admin' ? 'Administración' : view === 'billing-success' ? 'Confirmacion de pago' : 'Planes y pagos'}
         </p>
         {appError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
@@ -1966,6 +2113,19 @@ export default function App() {
             onReload={loadBillingData}
             onBack={handleBackFromBilling}
           />
+          </Suspense>
+        )}
+
+        {view === 'billing-success' && (
+          <Suspense fallback={<div className="p-8 text-center text-slate-500">Confirmando pago...</div>}>
+            <PaymentConfirmationView
+              status={checkoutConfirmationStatus}
+              title={checkoutConfirmationTitle}
+              description={checkoutConfirmationDescription}
+              detail={checkoutConfirmationDetail}
+              onBackToProjects={() => setView('projects')}
+              onBackToBilling={() => setView('billing')}
+            />
           </Suspense>
         )}
 

@@ -434,27 +434,8 @@ describe('App project creation experience', () => {
     })
   })
 
-  it('renders billing plans and opens Culqi Checkout for the selected plan', async () => {
-    const user = userEvent.setup()
-    const checkoutOpen = vi.fn()
-    const checkoutClose = vi.fn()
-
-    vi.stubGlobal(
-      'CulqiCheckout',
-      class {
-        token: { id: string } | null = null
-        order = null
-        error = null
-        culqi: null | (() => void | Promise<void>) = null
-        constructor(_publicKey: string, _config: Record<string, unknown>) {}
-        open = () => {
-          checkoutOpen()
-          this.token = { id: 'tok_test_123' }
-          void this.culqi?.()
-        }
-        close = checkoutClose
-      },
-    )
+  it('shows a confirmation page after returning from Mercado Pago', async () => {
+    window.history.replaceState({}, '', '/?checkout=success&status=approved&payment_id=mp_123&plan=monthly&currency=PEN')
 
     vi.stubGlobal(
       'fetch',
@@ -473,7 +454,7 @@ describe('App project creation experience', () => {
               role: 'admin',
               billingStatus: 'inactive',
               billingPlan: null,
-              billingProvider: 'culqi',
+              billingProvider: 'mercadopago',
               billingCurrency: null,
               billingPeriodEnd: null,
               billingCustomerId: null,
@@ -495,8 +476,8 @@ describe('App project creation experience', () => {
             ok: true,
             status: 200,
             json: async () => ([
-              { code: 'monthly', currency: 'PEN', label: 'Mensual', description: 'Plan mensual', provider: 'culqi', providerPlanId: 'pln_pen_monthly', available: true, amount: 4900 },
-              { code: 'annual', currency: 'PEN', label: 'Anual', description: 'Plan anual', provider: 'culqi', providerPlanId: 'pln_pen_annual', available: true, amount: 49000 },
+              { code: 'monthly', currency: 'PEN', label: 'Mensual', description: 'Plan mensual', provider: 'mercadopago', available: true, amount: 4900 },
+              { code: 'annual', currency: 'PEN', label: 'Anual', description: 'Plan anual', provider: 'mercadopago', available: true, amount: 49000 },
             ]),
           }
         }
@@ -506,24 +487,13 @@ describe('App project creation experience', () => {
             ok: true,
             status: 200,
             json: async () => ({
-              status: 'inactive',
-              plan: null,
-              provider: 'culqi',
-              currency: null,
-              currentPeriodEnd: null,
-              customerId: null,
-              subscriptionId: null,
-            }),
-          }
-        }
-
-        if (url.includes('/billing/checkout') && init?.method === 'POST') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              publicKey: 'pk_test_123',
-              amount: 4900,
+              status: 'active',
+              plan: 'monthly',
+              provider: 'mercadopago',
+              currency: 'PEN',
+              currentPeriodEnd: '2026-06-30T00:00:00.000Z',
+              customerId: 'cus_test_123',
+              subscriptionId: 'mp_123',
             }),
           }
         }
@@ -535,11 +505,11 @@ describe('App project creation experience', () => {
             json: async () => ({
               status: 'active',
               plan: 'monthly',
-              provider: 'culqi',
+              provider: 'mercadopago',
               currency: 'PEN',
               currentPeriodEnd: '2026-06-30T00:00:00.000Z',
               customerId: 'cus_test_123',
-              subscriptionId: 'sxn_test_123',
+              subscriptionId: 'mp_123',
             }),
           }
         }
@@ -554,20 +524,8 @@ describe('App project creation experience', () => {
 
     render(<App />)
 
-    await screen.findByText('Portal de Servicios')
-    await user.click(screen.getByRole('button', { name: /^admin$/i }))
-    await screen.findByRole('heading', { name: /simple y transparente/i })
-    expect(screen.getByRole('button', { name: /volver al sistema/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /empezar gratis/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /contactar ventas/i })).toBeDisabled()
-
-    await user.click(screen.getByRole('button', { name: /empezar con pro/i }))
-
-    expect(checkoutOpen).toHaveBeenCalled()
-    expect(checkoutClose).toHaveBeenCalled()
-    await waitFor(() => {
-      expect(screen.getByText(/tu plan mensual ya qued.{1,4} registrado/i)).toBeInTheDocument()
-    })
+    await screen.findByRole('heading', { name: /gracias por tu compra/i })
+    expect(screen.getByText(/referencia de pago: mp_123/i)).toBeInTheDocument()
   })
 
   it('lets users return from billing to the main system', async () => {
