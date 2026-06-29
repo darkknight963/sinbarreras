@@ -1558,7 +1558,6 @@ export default function App() {
       const res = await fetchWithFallback('/billing/cancel', { method: 'POST' });
       if (!res.ok) throw new Error(await readApiErrorMessage(res));
       await loadBillingData();
-      setBillingNote('Tu suscripción fue cancelada. Mantendrás el acceso hasta el fin del período pagado.');
     } catch (err) {
       setBillingNote(`Error al cancelar: ${err instanceof Error ? err.message : 'Intenta de nuevo.'}`);
     }
