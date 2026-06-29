@@ -320,7 +320,7 @@ export default function App() {
   const [billingSubmitting, setBillingSubmitting] = useState<string | null>(null);
   const [billingNote, setBillingNote] = useState<string | null>(null);
   const [checkoutProcessing, setCheckoutProcessing] = useState(false);
-  const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending'>(
+  const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending' | 'failure'>(
     checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : 'success',
   );
   const [checkoutConfirmationTitle, setCheckoutConfirmationTitle] = useState('Suscripcion confirmada');
@@ -725,39 +725,42 @@ export default function App() {
 
     if (checkoutReturn.status === 'failure') {
       const paymentIdForDiag = checkoutReturn.paymentId;
-      let failureDetail = 'Puedes intentarlo nuevamente con otra tarjeta o desde otro dispositivo.';
 
-      if (paymentIdForDiag) {
-        try {
-          const diagRes = await fetchWithFallback(`/billing/debug/payment/${paymentIdForDiag}`);
-          if (diagRes.ok) {
-            const diag = await diagRes.json() as { status_detail?: string };
-            if (diag.status_detail === 'cc_rejected_high_risk') {
-              failureDetail = 'Tu banco o Mercado Pago rechazó el pago por seguridad. Intenta con otra tarjeta o desde otro dispositivo/red. Si el problema persiste, contacta a tu banco.';
-            } else if (diag.status_detail === 'cc_rejected_insufficient_amount') {
-              failureDetail = 'Fondos insuficientes. Verifica tu saldo e intenta nuevamente.';
-            } else if (diag.status_detail === 'cc_rejected_bad_filled_card_number') {
-              failureDetail = 'Número de tarjeta incorrecto. Verifica los datos e intenta nuevamente.';
-            } else if (diag.status_detail === 'cc_rejected_bad_filled_date') {
-              failureDetail = 'Fecha de vencimiento incorrecta. Verifica los datos e intenta nuevamente.';
-            } else if (diag.status_detail === 'cc_rejected_bad_filled_security_code') {
-              failureDetail = 'Código de seguridad (CVV) incorrecto. Verifica los datos e intenta nuevamente.';
-            } else if (diag.status_detail === 'cc_rejected_card_disabled') {
-              failureDetail = 'Tu tarjeta está deshabilitada. Contacta a tu banco para activarla.';
-            } else if (diag.status_detail) {
-              failureDetail = `Pago rechazado (${diag.status_detail}). Intenta con otra tarjeta o contacta a tu banco.`;
+      const handleFailure = async () => {
+        let failureDetail = 'Puedes intentarlo nuevamente con otra tarjeta o desde otro dispositivo.';
+        if (paymentIdForDiag) {
+          try {
+            const diagRes = await fetchWithFallback(`/billing/debug/payment/${paymentIdForDiag}`);
+            if (diagRes.ok) {
+              const diag = await diagRes.json() as { status_detail?: string };
+              if (diag.status_detail === 'cc_rejected_high_risk') {
+                failureDetail = 'Tu banco o Mercado Pago rechazó el pago por seguridad. Intenta con otra tarjeta o desde otro dispositivo/red. Si el problema persiste, contacta a tu banco.';
+              } else if (diag.status_detail === 'cc_rejected_insufficient_amount') {
+                failureDetail = 'Fondos insuficientes. Verifica tu saldo e intenta nuevamente.';
+              } else if (diag.status_detail === 'cc_rejected_bad_filled_card_number') {
+                failureDetail = 'Número de tarjeta incorrecto. Verifica los datos e intenta nuevamente.';
+              } else if (diag.status_detail === 'cc_rejected_bad_filled_date') {
+                failureDetail = 'Fecha de vencimiento incorrecta. Verifica los datos e intenta nuevamente.';
+              } else if (diag.status_detail === 'cc_rejected_bad_filled_security_code') {
+                failureDetail = 'Código de seguridad (CVV) incorrecto. Verifica los datos e intenta nuevamente.';
+              } else if (diag.status_detail === 'cc_rejected_card_disabled') {
+                failureDetail = 'Tu tarjeta está deshabilitada. Contacta a tu banco para activarla.';
+              } else if (diag.status_detail) {
+                failureDetail = `Pago rechazado (${diag.status_detail}). Intenta con otra tarjeta o contacta a tu banco.`;
+              }
             }
+          } catch {
+            // si falla el diagnóstico, usamos el mensaje genérico
           }
-        } catch {
-          // si falla el diagnóstico, usamos el mensaje genérico
         }
-      }
+        setCheckoutConfirmationStatus('failure');
+        setCheckoutConfirmationTitle('Pago rechazado');
+        setCheckoutConfirmationDescription(failureDetail);
+        setCheckoutConfirmationDetail('Puedes volver a la sección de planes para intentarlo nuevamente.');
+        clearCheckoutReturnFromUrl();
+      };
 
-      setCheckoutConfirmationStatus('failure');
-      setCheckoutConfirmationTitle('Pago rechazado');
-      setCheckoutConfirmationDescription(failureDetail);
-      setCheckoutConfirmationDetail('Puedes volver a la sección de planes para intentarlo nuevamente.');
-      clearCheckoutReturnFromUrl();
+      void handleFailure();
       return;
     }
 

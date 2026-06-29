@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle2, Clock3, ExternalLink, ShieldCheck } from 'lucide-react';
 
 type PaymentConfirmationViewProps = {
-  status: 'processing' | 'success' | 'pending';
+  status: 'processing' | 'success' | 'pending' | 'failure';
   title: string;
   description: string;
   detail: string | null;
