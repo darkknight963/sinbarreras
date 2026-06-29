@@ -136,6 +136,7 @@ export class BillingService {
       external_reference: externalReference,
       payer_email: this.resolveMercadoPagoPayerEmail(accessToken, user.email),
       back_url: this.buildReturnUrl(frontendUrl, plan, 'success'),
+      notification_url: `${this.getPublicApiBaseUrl()}/billing/webhooks/mp`,
       status: 'pending',
       auto_recurring: {
         frequency: plan.code === 'annual' ? 12 : 1,
@@ -155,6 +156,21 @@ export class BillingService {
     }
 
     const payload = await response.json() as Record<string, unknown>;
+    const preapprovalId = payload.id ? String(payload.id) : null;
+
+    // MP no agrega preapproval_id al back_url automáticamente (a diferencia de payment_id
+    // en checkout). Actualizamos el back_url con el ID real para que el frontend pueda
+    // confirmar la suscripción al regresar.
+    if (preapprovalId) {
+      const updatedBackUrl = this.buildReturnUrl(frontendUrl, plan, 'success', preapprovalId);
+      await this.fetchMercadoPagoWithRetry(`/preapproval/${preapprovalId}`, {
+        method: 'PUT',
+        headers: this.buildMercadoPagoHeaders(accessToken, true),
+        body: JSON.stringify({ back_url: updatedBackUrl }),
+      }).catch((err) => {
+        console.warn('[BillingService] No se pudo actualizar back_url del preapproval con ID', preapprovalId, err);
+      });
+    }
 
     return {
       plan,
@@ -162,7 +178,7 @@ export class BillingService {
       initPoint: String(payload.init_point || ''),
       sandboxInitPoint: String(payload.sandbox_init_point || ''),
       checkoutUrl: String(payload.init_point || payload.sandbox_init_point || ''),
-      preapprovalId: payload.id ? String(payload.id) : null,
+      preapprovalId,
       user: {
         id: user.id,
         email: user.email,
@@ -238,7 +254,22 @@ export class BillingService {
       });
     });
 
-    // TODO: cancelar suscripción en Mercado Pago si providerSubscriptionId existe
+    if (activeSubscription?.providerSubscriptionId) {
+      try {
+        const accessToken = this.getMercadoPagoAccessToken();
+        await this.fetchMercadoPagoWithRetry(`/preapproval/${activeSubscription.providerSubscriptionId}`, {
+          method: 'PUT',
+          headers: this.buildMercadoPagoHeaders(accessToken, true),
+          body: JSON.stringify({ status: 'cancelled' }),
+        });
+      } catch (err) {
+        console.error(
+          `[BILLING CRITICAL] cancelSubscription en MP falló para usuario ${userId} ` +
+          `(preapprovalId: ${activeSubscription.providerSubscriptionId}). Cancelar manualmente en MP.`,
+          err,
+        );
+      }
+    }
 
     return this.serializeBillingState(await this.getUserOrThrow(userId));
   }
@@ -329,7 +360,7 @@ export class BillingService {
 
   private getMercadoPagoCheckoutMode() {
     const mode = this.configService.get<string>('MP_CHECKOUT_MODE', '').trim().toLowerCase();
-    return mode === 'subscription' ? 'subscription' : 'payment';
+    return mode === 'preapproval' || mode === 'subscription' ? 'preapproval' : 'payment';
   }
 
   private resolveMercadoPagoPayerEmail(accessToken: string, userEmail: string) {
@@ -373,11 +404,14 @@ export class BillingService {
     throw new BadRequestException('Falta configurar PUBLIC_API_BASE_URL para recibir webhooks de Mercado Pago');
   }
 
-  private buildReturnUrl(frontendUrl: string, plan: BillingPlan, checkoutStatus: 'success' | 'pending' | 'failure') {
+  private buildReturnUrl(frontendUrl: string, plan: BillingPlan, checkoutStatus: 'success' | 'pending' | 'failure', preapprovalId?: string) {
     const url = new URL(frontendUrl);
     url.searchParams.set('checkout', checkoutStatus);
     url.searchParams.set('plan', plan.code);
     url.searchParams.set('currency', plan.currency);
+    if (preapprovalId) {
+      url.searchParams.set('preapproval_id', preapprovalId);
+    }
     return url.toString();
   }
 
