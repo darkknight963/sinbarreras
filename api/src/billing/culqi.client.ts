@@ -85,10 +85,10 @@ export class CulqiClient {
     );
 
     return JSON.stringify({
-      encryptedData,
-      encryptedKey,
+      encrypted_data: encryptedData,
+      encrypted_key: encryptedKey,
       iv: forge.util.encode64(iv),
-      authTag,
+      auth_tag: authTag,
     });
   }
 

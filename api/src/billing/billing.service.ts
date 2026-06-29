@@ -88,24 +88,38 @@ export class BillingService {
     }
 
     const customerPayload = this.buildCustomerPayload(user);
-    const existingCustomer = await this.culqiClient.findCustomerByEmail(user.email);
-    const customer = existingCustomer ?? await this.culqiClient.createCustomer(customerPayload);
-    const card = await this.culqiClient.createCard({
-      customer_id: customer?.id,
-      token_id: dto.tokenId,
-    });
-    const subscription = await this.culqiClient.createSubscription({
-      card_id: card?.id,
-      plan_id: plan.providerPlanId,
-      tyc: true,
-      metadata: {
-        user_id: user.id,
-        email: user.email,
-        company_name: user.companyName || '',
-        plan_code: plan.code,
-        currency: plan.currency,
-      },
-    });
+    const existingCustomer = await this.runCulqiStep('findCustomerByEmail', () =>
+      this.culqiClient.findCustomerByEmail(user.email),
+    );
+    const customer = existingCustomer ?? await this.runCulqiStep('createCustomer', () =>
+      this.culqiClient.createCustomer(customerPayload),
+    );
+    if (!customer?.id) {
+      throw new BadRequestException('No se pudo obtener o crear el cliente en Culqi');
+    }
+    const card = await this.runCulqiStep('createCard', () =>
+      this.culqiClient.createCard({
+        customer_id: customer.id,
+        token_id: dto.tokenId,
+      }),
+    );
+    if (!card?.id) {
+      throw new BadRequestException('No se pudo crear la tarjeta en Culqi');
+    }
+    const subscription = await this.runCulqiStep('createSubscription', () =>
+      this.culqiClient.createSubscription({
+        card_id: card.id,
+        plan_id: plan.providerPlanId,
+        tyc: true,
+        metadata: {
+          user_id: user.id,
+          email: user.email,
+          company_name: user.companyName || '',
+          plan_code: plan.code,
+          currency: plan.currency,
+        },
+      }),
+    );
 
     const billingStatus = this.mapStatusFromCulqi(subscription?.status ?? 'pending');
     const billingRecord = this.subscriptionRepository.create({
@@ -432,5 +446,17 @@ export class BillingService {
     }
 
     return null;
+  }
+
+  private async runCulqiStep<T>(
+    step: 'findCustomerByEmail' | 'createCustomer' | 'createCard' | 'createSubscription',
+    action: () => Promise<T>,
+  ) {
+    try {
+      return await action();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException(`Culqi ${step} failed: ${message}`);
+    }
   }
 }
