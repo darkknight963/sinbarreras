@@ -157,18 +157,6 @@ export function BillingView({
         </div>
       )}
 
-      {billingState?.status === 'active' && !billingState?.cancelAtPeriodEnd && (
-        <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            Cancelar suscripción
-          </button>
-        </div>
-      )}
-
       {note && <div className="billing-note">{note}</div>}
 
       {loading ? (
@@ -217,13 +205,24 @@ export function BillingView({
             </ul>
             <button
               type="button"
-              disabled={selectedPlanUnavailable || loading || Boolean(submittingKey)}
+              disabled={activeSelectedPlan || selectedPlanUnavailable || loading || Boolean(submittingKey)}
               onClick={() => selectedPlan && onSubscribe(selectedPlan)}
               className="billing-contact-btn"
             >
               {proButtonLabel}
               {!activeSelectedPlan && !selectedPlanUnavailable && <ArrowUpRight className="h-4 w-4" aria-hidden="true" />}
             </button>
+            {activeSelectedPlan && !billingState?.cancelAtPeriodEnd && (
+              <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Cancelar suscripción
+                </button>
+              </div>
+            )}
           </article>
 
           <article className="billing-plan-card billing-plan-enterprise billing-plan-coming-soon" aria-label="Plan Empresa próximamente">
