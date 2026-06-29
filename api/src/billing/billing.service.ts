@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -50,10 +50,10 @@ export class BillingService {
     const accessToken = this.getMercadoPagoAccessToken();
     const externalReference = this.buildExternalReference(user.id, plan.code, plan.currency);
     const frontendUrl = this.getFrontendUrl(dto.returnUrl);
-    const requestBody = JSON.stringify({
+    const requestPayload = {
       reason: `${plan.label} - ${plan.description}`,
       external_reference: externalReference,
-      payer_email: user.email,
+      payer_email: this.resolveMercadoPagoPayerEmail(accessToken, user.email),
       back_url: this.buildReturnUrl(frontendUrl, plan, 'success'),
       status: 'pending',
       auto_recurring: {
@@ -62,14 +62,11 @@ export class BillingService {
         transaction_amount: this.toMercadoPagoAmount(plan.amount),
         currency_id: plan.currency,
       },
-    });
+    };
     const response = await this.fetchMercadoPagoWithRetry('/preapproval', {
       method: 'POST',
       headers: this.buildMercadoPagoHeaders(accessToken, true),
-      body: JSON.stringify({
-        ...JSON.parse(requestBody) as Record<string, unknown>,
-        payer_email: this.resolveMercadoPagoPayerEmail(accessToken, user.email),
-      }),
+      body: JSON.stringify(requestPayload),
     });
 
     if (!response.ok) {
@@ -376,20 +373,51 @@ export class BillingService {
   }
 
   private async fetchMercadoPagoWithRetry(path: string, init: RequestInit, retries = 2) {
-    let response = await fetch(`${BillingService.MP_API_BASE_URL}${path}`, init);
     let attempt = 0;
+    let response = await this.fetchMercadoPago(path, init);
 
     while ((response.status === 503 || response.status === 502 || response.status === 504) && attempt < retries) {
       attempt += 1;
+      console.warn('[BillingService] Mercado Pago temporalmente no disponible', { path, status: response.status, attempt });
       await this.sleep(350 * attempt);
-      response = await fetch(`${BillingService.MP_API_BASE_URL}${path}`, init);
+      response = await this.fetchMercadoPago(path, init);
     }
 
     return response;
   }
 
+  private async fetchMercadoPago(path: string, init: RequestInit) {
+    const timeoutMs = this.getMercadoPagoTimeoutMs();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      return await fetch(`${BillingService.MP_API_BASE_URL}${path}`, {
+        ...init,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new ServiceUnavailableException(`Mercado Pago no respondio a tiempo (${timeoutMs} ms)`);
+      }
+
+      throw new ServiceUnavailableException('No se pudo conectar con Mercado Pago');
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   private sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getMercadoPagoTimeoutMs() {
+    const configured = this.configService.get<string>('MP_TIMEOUT_MS', '').trim();
+    const parsed = Number(configured);
+    if (Number.isFinite(parsed) && parsed >= 3000) {
+      return parsed;
+    }
+    return 12000;
   }
 
   private mapPaymentStatus(status: string): BillingStatus {

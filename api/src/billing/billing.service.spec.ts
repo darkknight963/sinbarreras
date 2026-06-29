@@ -133,6 +133,45 @@ describe('BillingService', () => {
     expect(payload.payer_email).toBe('buyer.test.user@mp-example.com');
   });
 
+  it('fails fast when Mercado Pago does not respond in time', async () => {
+    jest.useFakeTimers();
+
+    const timeoutConfigService = {
+      get: jest.fn((key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          MP_ACCESS_TOKEN: 'APP_USR-real-token',
+          MP_MONTHLY_PEN_AMOUNT: '7900',
+          FRONTEND_URL: 'https://sinbarreras.gzakgroup.com',
+          MP_TIMEOUT_MS: '3000',
+        };
+        return values[key] ?? fallback ?? '';
+      }),
+    } as any;
+
+    (global.fetch as jest.Mock).mockImplementation((_url: string, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const abortError = new Error('aborted');
+          abortError.name = 'AbortError';
+          reject(abortError);
+        });
+      });
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, timeoutConfigService, dataSource);
+    const guardedPromise = service
+      .createCheckoutSession('user-1', { planCode: 'monthly', currency: 'PEN' })
+      .then(() => null)
+      .catch((error) => error);
+
+    await jest.advanceTimersByTimeAsync(3000);
+
+    const error = await guardedPromise;
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toContain('Mercado Pago no respondio a tiempo');
+    jest.useRealTimers();
+  });
+
   it('confirms billing from a Mercado Pago preapproval return', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
