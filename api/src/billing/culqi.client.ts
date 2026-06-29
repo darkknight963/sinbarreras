@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as forge from 'node-forge';
+import * as crypto from 'crypto';
 
 type CulqiRequestInit = RequestInit & { body?: string };
 
@@ -62,39 +62,35 @@ export class CulqiClient {
   }
 
   private encryptWithRsa(plaintext: string): string {
-    // Replica exacta del SDK oficial de Culqi (culqi-php encoder.php, que usa
-    // openssl AES-256-GCM con IV de 16 bytes):
+    // Replica exacta del SDK oficial culqi-php (openssl), usando el módulo
+    // crypto nativo de Node (también openssl) en vez de node-forge, para
+    // garantizar compatibilidad de padding RSA-OAEP+SHA256 con Culqi:
     // 1. AES-256-GCM con key de 32 bytes y IV de 16 bytes.
-    // 2. El auth tag de GCM se DESCARTA (openssl lo entrega aparte y PHP no lo
-    //    envía); solo el ciphertext puro va en encrypted_data. En node-forge
-    //    cipher.output ya excluye el tag, equivalente al comportamiento de PHP.
-    // 3. La AES key y el IV se encriptan por separado con RSA-OAEP+SHA256.
-    // 4. Body: { encrypted_data, encrypted_key, encrypted_iv }.
-    const aesKey = forge.random.getBytesSync(32);
-    const iv = forge.random.getBytesSync(16);
+    // 2. encrypted_data = base64(ciphertext || authTag). GCM REQUIERE el tag
+    //    para desencriptar, así que se anexa al final del ciphertext (formato
+    //    estándar openssl); Culqi lo separa al desencriptar.
+    // 3. AES key e IV se encriptan por separado con RSA-OAEP (hash y MGF1 SHA256).
+    // 4. Body: { encrypted_data, encrypted_key, encrypted_iv } (todo base64).
+    const aesKey = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(16);
 
-    const cipher = forge.cipher.createCipher('AES-GCM', aesKey);
-    cipher.start({ iv });
-    cipher.update(forge.util.createBuffer(plaintext, 'utf8'));
-    cipher.finish();
+    const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
+    const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    const dataWithTag = Buffer.concat([ciphertext, authTag]);
 
-    // forge entrega el ciphertext sin tag en cipher.output (el tag va aparte
-    // en cipher.mode.tag). El SDK Go corta el tag del final; en forge el
-    // ciphertext ya viene sin tag, así que usamos cipher.output directamente.
-    const encryptedData = forge.util.encode64(cipher.output.getBytes());
-
-    const publicKey = forge.pki.publicKeyFromPem(this.rsaPublicKey);
-    const oaep = {
-      md: forge.md.sha256.create(),
-      mgf1: { md: forge.md.sha256.create() },
-    };
-    const encryptedKey = forge.util.encode64(publicKey.encrypt(aesKey, 'RSA-OAEP', oaep));
-    const encryptedIv = forge.util.encode64(publicKey.encrypt(iv, 'RSA-OAEP', oaep));
+    const oaepOptions = {
+      key: this.rsaPublicKey,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: 'sha256',
+    } as const;
+    const encryptedKey = crypto.publicEncrypt(oaepOptions, aesKey);
+    const encryptedIv = crypto.publicEncrypt(oaepOptions, iv);
 
     return JSON.stringify({
-      encrypted_data: encryptedData,
-      encrypted_key: encryptedKey,
-      encrypted_iv: encryptedIv,
+      encrypted_data: dataWithTag.toString('base64'),
+      encrypted_key: encryptedKey.toString('base64'),
+      encrypted_iv: encryptedIv.toString('base64'),
     });
   }
 
