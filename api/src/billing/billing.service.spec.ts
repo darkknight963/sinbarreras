@@ -104,6 +104,35 @@ describe('BillingService', () => {
     });
   });
 
+  it('uses MP_TEST_PAYER_EMAIL in sandbox subscriptions when configured', async () => {
+    const sandboxConfigService = {
+      get: jest.fn((key: string, fallback?: string) => {
+        const values: Record<string, string> = {
+          MP_ACCESS_TOKEN: 'TEST-access-token',
+          MP_MONTHLY_PEN_AMOUNT: '7900',
+          FRONTEND_URL: 'https://sinbarreras.gzakgroup.com',
+          MP_TEST_PAYER_EMAIL: 'buyer.test.user@mp-example.com',
+        };
+        return values[key] ?? fallback ?? '';
+      }),
+    } as any;
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'preapproval-123',
+        init_point: 'https://www.mercadopago.com/checkout/v1/redirect?preapproval_id=preapproval-123',
+      }),
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, sandboxConfigService, dataSource);
+    await service.createCheckoutSession('user-1', { planCode: 'monthly', currency: 'PEN' });
+
+    const [, request] = (global.fetch as jest.Mock).mock.calls[0];
+    const payload = JSON.parse(request.body as string);
+    expect(payload.payer_email).toBe('buyer.test.user@mp-example.com');
+  });
+
   it('confirms billing from a Mercado Pago preapproval return', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,

@@ -189,11 +189,27 @@ const readCheckoutReturn = () => {
 
   const params = new URLSearchParams(window.location.search);
   const checkout = params.get('checkout');
-  if (!checkout) return null;
+  const hasMercadoPagoParams = [
+    'checkout',
+    'status',
+    'collection_status',
+    'payment_id',
+    'collection_id',
+    'merchant_order_id',
+    'preapproval_id',
+    'preapproval_plan_id',
+    'external_reference',
+    'preference_id',
+    'payment_type',
+    'site_id',
+    'processing_mode',
+    'merchant_account_id',
+  ].some((key) => params.has(key));
+  if (!checkout && !hasMercadoPagoParams) return null;
 
   const statusParam = (params.get('status') || '').toLowerCase();
   const collectionStatus = (params.get('collection_status') || '').toLowerCase();
-  const normalizedStatus = collectionStatus || statusParam || checkout.toLowerCase();
+  const normalizedStatus = collectionStatus || statusParam || (checkout ? checkout.toLowerCase() : '');
   const paymentId =
     params.get('payment_id') ||
     params.get('collection_id') ||
@@ -207,6 +223,7 @@ const readCheckoutReturn = () => {
   let status: CheckoutReturnStatus = 'pending';
   if (['approved', 'success', 'authorized'].includes(normalizedStatus)) status = 'success';
   if (['failure', 'failed', 'rejected', 'cancelled', 'canceled'].includes(normalizedStatus)) status = 'failure';
+  if (!normalizedStatus && hasMercadoPagoParams) status = 'failure';
 
   return { status, paymentId, preapprovalId, planCode, currency };
 };
@@ -227,6 +244,11 @@ const clearCheckoutReturnFromUrl = () => {
     'external_reference',
     'plan',
     'currency',
+    'preference_id',
+    'payment_type',
+    'site_id',
+    'processing_mode',
+    'merchant_account_id',
   ].forEach((key) => url.searchParams.delete(key));
 
   window.history.replaceState({}, window.document.title, `${url.pathname}${url.search}${url.hash}`);
@@ -1496,6 +1518,7 @@ export default function App() {
     const key = `${plan.code}:${plan.currency}`;
     setBillingSubmitting(key);
     setBillingNote(null);
+    clearCheckoutReturnFromUrl();
 
     try {
       const checkoutResponse = await fetchWithFallback('/billing/checkout', {

@@ -66,7 +66,10 @@ export class BillingService {
     const response = await this.fetchMercadoPagoWithRetry('/preapproval', {
       method: 'POST',
       headers: this.buildMercadoPagoHeaders(accessToken, true),
-      body: requestBody,
+      body: JSON.stringify({
+        ...JSON.parse(requestBody) as Record<string, unknown>,
+        payer_email: this.resolveMercadoPagoPayerEmail(accessToken, user.email),
+      }),
     });
 
     if (!response.ok) {
@@ -238,6 +241,17 @@ export class BillingService {
       throw new BadRequestException('Falta configurar MP_ACCESS_TOKEN');
     }
     return token;
+  }
+
+  private resolveMercadoPagoPayerEmail(accessToken: string, userEmail: string) {
+    if (accessToken.startsWith('TEST-')) {
+      const configuredTestEmail = this.configService.get<string>('MP_TEST_PAYER_EMAIL', '').trim();
+      if (configuredTestEmail) {
+        return configuredTestEmail;
+      }
+    }
+
+    return userEmail;
   }
 
   private getFrontendUrl(returnUrl?: string) {
