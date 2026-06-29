@@ -73,6 +73,7 @@ export class CulqiClient {
 
     const data = await response.json().catch(() => null);
     if (!response.ok) {
+      console.error(`[CulqiClient] ERROR ${response.status} ${requestUrl}`, JSON.stringify(data));
       const message = typeof data?.merchant_message === 'string'
         ? data.merchant_message
         : typeof data?.user_message === 'string'
