@@ -1504,6 +1504,14 @@ export default function App() {
         body: JSON.stringify({ planCode: plan.code, currency: plan.currency }),
       });
 
+      if (checkoutResponse.status === 401) {
+        setCurrentUser(null);
+        setAuthMode('none');
+        setAuthFormMode('login');
+        setAppError('Tu sesion vencio. Inicia sesion nuevamente para continuar con el pago.');
+        return;
+      }
+
       if (!checkoutResponse.ok) {
         const text = await checkoutResponse.text();
         throw new Error(text || `HTTP ${checkoutResponse.status}`);

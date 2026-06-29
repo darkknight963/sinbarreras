@@ -50,22 +50,23 @@ export class BillingService {
     const accessToken = this.getMercadoPagoAccessToken();
     const externalReference = this.buildExternalReference(user.id, plan.code, plan.currency);
     const frontendUrl = this.getFrontendUrl(dto.returnUrl);
-    const response = await fetch(`${BillingService.MP_API_BASE_URL}/preapproval`, {
+    const requestBody = JSON.stringify({
+      reason: `${plan.label} - ${plan.description}`,
+      external_reference: externalReference,
+      payer_email: user.email,
+      back_url: this.buildReturnUrl(frontendUrl, plan, 'success'),
+      status: 'pending',
+      auto_recurring: {
+        frequency: plan.code === 'annual' ? 12 : 1,
+        frequency_type: 'months',
+        transaction_amount: this.toMercadoPagoAmount(plan.amount),
+        currency_id: plan.currency,
+      },
+    });
+    const response = await this.fetchMercadoPagoWithRetry('/preapproval', {
       method: 'POST',
       headers: this.buildMercadoPagoHeaders(accessToken, true),
-      body: JSON.stringify({
-        reason: `${plan.label} - ${plan.description}`,
-        external_reference: externalReference,
-        payer_email: user.email,
-        back_url: this.buildReturnUrl(frontendUrl, plan, 'success'),
-        status: 'pending',
-        auto_recurring: {
-          frequency: plan.code === 'annual' ? 12 : 1,
-          frequency_type: 'months',
-          transaction_amount: this.toMercadoPagoAmount(plan.amount),
-          currency_id: plan.currency,
-        },
-      }),
+      body: requestBody,
     });
 
     if (!response.ok) {
@@ -301,7 +302,7 @@ export class BillingService {
 
   private async getMercadoPagoPayment(paymentId: string) {
     const accessToken = this.getMercadoPagoAccessToken();
-    const response = await fetch(`${BillingService.MP_API_BASE_URL}/v1/payments/${paymentId}`, {
+    const response = await this.fetchMercadoPagoWithRetry(`/v1/payments/${paymentId}`, {
       headers: this.buildMercadoPagoHeaders(accessToken),
     });
 
@@ -314,7 +315,7 @@ export class BillingService {
 
   private async getMercadoPagoPreapproval(preapprovalId: string) {
     const accessToken = this.getMercadoPagoAccessToken();
-    const response = await fetch(`${BillingService.MP_API_BASE_URL}/preapproval/${preapprovalId}`, {
+    const response = await this.fetchMercadoPagoWithRetry(`/preapproval/${preapprovalId}`, {
       headers: this.buildMercadoPagoHeaders(accessToken),
     });
 
@@ -358,6 +359,23 @@ export class BillingService {
     }
 
     return headers;
+  }
+
+  private async fetchMercadoPagoWithRetry(path: string, init: RequestInit, retries = 2) {
+    let response = await fetch(`${BillingService.MP_API_BASE_URL}${path}`, init);
+    let attempt = 0;
+
+    while ((response.status === 503 || response.status === 502 || response.status === 504) && attempt < retries) {
+      attempt += 1;
+      await this.sleep(350 * attempt);
+      response = await fetch(`${BillingService.MP_API_BASE_URL}${path}`, init);
+    }
+
+    return response;
+  }
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private mapPaymentStatus(status: string): BillingStatus {
