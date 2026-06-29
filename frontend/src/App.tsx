@@ -727,17 +727,28 @@ export default function App() {
           throw new Error(await readApiErrorMessage(confirmResponse));
         }
 
+        const confirmedState = await confirmResponse.json() as BillingState;
+        setBillingState(confirmedState);
+
         await loadBillingData();
         const userResponse = await fetchWithFallback('/auth/me');
         if (userResponse.ok) {
           setCurrentUser(await userResponse.json());
         }
 
-        setBillingNote('Tu suscripcion ya fue registrada en el sistema.');
-        setCheckoutConfirmationStatus('success');
-        setCheckoutConfirmationTitle('Suscripcion confirmada');
-        setCheckoutConfirmationDescription('Tu compra fue recibida y tu acceso ya quedo asociado a la cuenta.');
-        setCheckoutConfirmationDetail(`Referencia de pago: ${checkoutReturn.paymentId}`);
+        if (confirmedState.status === 'active') {
+          setBillingNote('Tu suscripcion ya fue registrada en el sistema.');
+          setCheckoutConfirmationStatus('success');
+          setCheckoutConfirmationTitle('Suscripcion confirmada');
+          setCheckoutConfirmationDescription('Tu compra fue recibida y tu acceso ya quedo asociado a la cuenta.');
+          setCheckoutConfirmationDetail(`Referencia de pago: ${checkoutReturn.paymentId}`);
+        } else {
+          setBillingNote('Mercado Pago devolvio la operacion, pero el pago aun no figura como aprobado.');
+          setCheckoutConfirmationStatus('pending');
+          setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
+          setCheckoutConfirmationDescription('La suscripcion aun no aparece como activa. En cuanto Mercado Pago confirme el cobro, el acceso quedara habilitado.');
+          setCheckoutConfirmationDetail(`Referencia de pago: ${checkoutReturn.paymentId}`);
+        }
       } catch (err) {
         console.error('Error al confirmar retorno de Mercado Pago:', err);
         setCheckoutConfirmationStatus('pending');

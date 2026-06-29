@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository, DataSource } from 'typeorm';
@@ -19,6 +20,8 @@ import { MpWebhookDto } from './dto/mp-webhook.dto';
 
 @Injectable()
 export class BillingService {
+  private static readonly MP_API_BASE_URL = 'https://api.mercadopago.com';
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -44,10 +47,60 @@ export class BillingService {
       throw new BadRequestException(`No existe el monto configurado para ${plan.label} en ${plan.currency}`);
     }
 
-    // TODO: crear preferencia en Mercado Pago y devolver init_point o preference_id
+    const accessToken = this.getMercadoPagoAccessToken();
+    const externalReference = this.buildExternalReference(user.id, plan.code, plan.currency);
+    const frontendUrl = this.getFrontendUrl(dto.returnUrl);
+    const apiBaseUrl = this.getPublicApiBaseUrl();
+    const response = await fetch(`${BillingService.MP_API_BASE_URL}/checkout/preferences`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': randomUUID(),
+      },
+      body: JSON.stringify({
+        external_reference: externalReference,
+        back_urls: {
+          success: this.buildReturnUrl(frontendUrl, plan, 'success'),
+          pending: this.buildReturnUrl(frontendUrl, plan, 'pending'),
+          failure: this.buildReturnUrl(frontendUrl, plan, 'failure'),
+        },
+        auto_return: 'approved',
+        notification_url: `${apiBaseUrl}/billing/webhooks/mp`,
+        payer: {
+          email: user.email,
+          name: user.fullName || user.companyName || user.email,
+        },
+        metadata: {
+          userId: user.id,
+          planCode: plan.code,
+          currency: plan.currency,
+        },
+        items: [
+          {
+            id: `${plan.code}-${plan.currency}`,
+            title: `${plan.label} - ${plan.description}`,
+            quantity: 1,
+            currency_id: plan.currency,
+            unit_price: this.toMercadoPagoAmount(plan.amount),
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException(await this.readMercadoPagoError(response));
+    }
+
+    const payload = await response.json() as Record<string, unknown>;
+
     return {
       plan,
       amount: plan.amount,
+      initPoint: String(payload.init_point || ''),
+      sandboxInitPoint: String(payload.sandbox_init_point || ''),
+      checkoutUrl: String(payload.init_point || payload.sandbox_init_point || ''),
+      preferenceId: payload.id ? String(payload.id) : null,
       user: {
         id: user.id,
         email: user.email,
@@ -82,37 +135,11 @@ export class BillingService {
       return this.serializeBillingState(user);
     }
 
-    // TODO: verificar pago en Mercado Pago con dto.paymentId antes de activar
-    const billingRecord = this.subscriptionRepository.create({
-      user,
-      provider: BILLING_PROVIDER,
-      plan: plan.code,
-      currency: plan.currency,
-      status: 'pending',
-      providerPlanId: null,
-      providerCustomerId: null,
-      providerSubscriptionId: dto.paymentId || null,
-      providerCardId: null,
-      providerTokenId: null,
-      currentPeriodEnd: null,
-      metadata: { paymentId: dto.paymentId },
-    });
-
-    await this.dataSource.transaction(async (manager) => {
-      const saved = await manager.save(BillingSubscription, billingRecord);
-      const userUpdate = {
-        billingStatus: saved.status,
-        billingPlan: plan.code,
-        billingCurrency: plan.currency,
-        billingPeriodEnd: saved.currentPeriodEnd,
-        billingCustomerId: saved.providerCustomerId,
-        billingSubscriptionId: saved.providerSubscriptionId,
-      };
-      Object.assign(user, userUpdate);
-      await manager.update(User, user.id, userUpdate);
-    });
-
-    return this.serializeBillingState(user);
+    const payment = await this.getMercadoPagoPayment(dto.paymentId);
+    const paymentStatus = String(payment.status || '').toLowerCase();
+    const billingStatus = this.mapPaymentStatus(paymentStatus);
+    await this.upsertBillingFromPayment(user, plan.code, plan.currency, dto.paymentId, payment, billingStatus);
+    return this.serializeBillingState(await this.getUserOrThrow(user.id));
   }
 
   async cancelSubscription(userId: string) {
@@ -147,48 +174,216 @@ export class BillingService {
     const data = (payload.data as Record<string, unknown> | undefined) || {};
     const paymentId = String(data.id || payload.id || '');
 
-    // TODO: implementar procesamiento de webhooks de Mercado Pago
-    // Los eventos principales son: payment, subscription_authorized_payment, subscription_preapproval
     console.log('[BillingService] MP webhook recibido:', { eventType, paymentId });
 
     if (!eventType) {
       return { ok: true, ignored: true };
     }
 
-    const billingRecord = paymentId
-      ? await this.subscriptionRepository.findOne({
-          where: { providerSubscriptionId: paymentId },
-          relations: { user: true },
-        })
-      : null;
-
-    if (!billingRecord) {
+    if (!paymentId) {
       return { ok: true, matched: false };
     }
 
-    billingRecord.status = this.mapStatusFromEvent(eventType, billingRecord.status);
+    const payment = await this.getMercadoPagoPayment(paymentId);
+    const paymentStatus = String(payment.status || '').toLowerCase();
+    const externalReference = String(payment.external_reference || '');
+    const parsedReference = this.parseExternalReference(externalReference);
 
-    const userUpdate = {
-      billingStatus: billingRecord.status,
-      billingPlan: billingRecord.plan,
-      billingCurrency: billingRecord.currency,
-      billingPeriodEnd: billingRecord.currentPeriodEnd,
-      billingCustomerId: billingRecord.providerCustomerId,
-      billingSubscriptionId: billingRecord.providerSubscriptionId,
-    };
+    if (!parsedReference) {
+      return { ok: true, matched: false };
+    }
 
-    Object.assign(billingRecord.user, userUpdate);
+    const user = await this.userRepository.findOne({ where: { id: parsedReference.userId } });
+    if (!user) {
+      return { ok: true, matched: false };
+    }
 
-    await this.dataSource.transaction(async (manager) => {
-      await manager.save(BillingSubscription, billingRecord);
-      await manager.update(User, billingRecord.user.id, userUpdate);
-    });
+    await this.upsertBillingFromPayment(
+      user,
+      parsedReference.planCode,
+      parsedReference.currency,
+      paymentId,
+      payment,
+      this.mapPaymentStatus(paymentStatus),
+    );
 
     return { ok: true, matched: true };
   }
 
   getWebhookSecret(): string {
     return this.configService.get<string>('MP_WEBHOOK_SECRET', '').trim();
+  }
+
+  private getMercadoPagoAccessToken() {
+    const token = this.configService.get<string>('MP_ACCESS_TOKEN', '').trim();
+    if (!token) {
+      throw new BadRequestException('Falta configurar MP_ACCESS_TOKEN');
+    }
+    return token;
+  }
+
+  private getFrontendUrl(returnUrl?: string) {
+    const candidate =
+      returnUrl?.trim() ||
+      this.configService.get<string>('FRONTEND_URL', '').trim() ||
+      process.env.FRONTEND_URL?.trim() ||
+      'http://localhost:5173';
+    return candidate.replace(/\/+$/, '');
+  }
+
+  private getPublicApiBaseUrl() {
+    const configured =
+      this.configService.get<string>('PUBLIC_API_BASE_URL', '').trim() ||
+      this.configService.get<string>('API_PUBLIC_URL', '').trim() ||
+      this.configService.get<string>('BACKEND_URL', '').trim() ||
+      process.env.PUBLIC_API_BASE_URL?.trim() ||
+      process.env.API_PUBLIC_URL?.trim() ||
+      process.env.BACKEND_URL?.trim();
+
+    if (configured) {
+      return configured.replace(/\/+$/, '');
+    }
+
+    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+    if (railwayDomain) {
+      return `https://${railwayDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '')}`;
+    }
+
+    throw new BadRequestException('Falta configurar PUBLIC_API_BASE_URL para recibir webhooks de Mercado Pago');
+  }
+
+  private buildReturnUrl(frontendUrl: string, plan: BillingPlan, checkoutStatus: 'success' | 'pending' | 'failure') {
+    const url = new URL(frontendUrl);
+    url.searchParams.set('checkout', checkoutStatus);
+    url.searchParams.set('plan', plan.code);
+    url.searchParams.set('currency', plan.currency);
+    return url.toString();
+  }
+
+  private buildExternalReference(userId: string, planCode: BillingPlanCode, currency: BillingCurrency) {
+    return `sb|${userId}|${planCode}|${currency}`;
+  }
+
+  private parseExternalReference(value: string) {
+    const [prefix, userId, planCode, currency] = value.split('|');
+    if (
+      prefix !== 'sb' ||
+      !userId ||
+      (planCode !== 'monthly' && planCode !== 'annual') ||
+      (currency !== 'PEN' && currency !== 'USD')
+    ) {
+      return null;
+    }
+
+    return {
+      userId,
+      planCode: planCode as BillingPlanCode,
+      currency: currency as BillingCurrency,
+    };
+  }
+
+  private async getMercadoPagoPayment(paymentId: string) {
+    const accessToken = this.getMercadoPagoAccessToken();
+    const response = await fetch(`${BillingService.MP_API_BASE_URL}/v1/payments/${paymentId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException(await this.readMercadoPagoError(response));
+    }
+
+    return await response.json() as Record<string, unknown>;
+  }
+
+  private async readMercadoPagoError(response: Response) {
+    try {
+      const body = await response.json() as Record<string, unknown>;
+      return String(body.message || body.error || `Mercado Pago HTTP ${response.status}`);
+    } catch {
+      return `Mercado Pago HTTP ${response.status}`;
+    }
+  }
+
+  private mapPaymentStatus(status: string): BillingStatus {
+    if (status === 'approved') return 'active';
+    if (status === 'in_process' || status === 'pending') return 'pending';
+    if (status === 'cancelled' || status === 'cancelled_by_user' || status === 'refunded' || status === 'charged_back') {
+      return 'canceled';
+    }
+    return 'past_due';
+  }
+
+  private resolvePeriodEnd(planCode: BillingPlanCode, payment: Record<string, unknown>) {
+    const approvedAt = typeof payment.date_approved === 'string' ? payment.date_approved : null;
+    const paidAt = approvedAt ? new Date(approvedAt) : new Date();
+    if (Number.isNaN(paidAt.getTime())) {
+      return null;
+    }
+
+    const currentPeriodEnd = new Date(paidAt);
+    if (planCode === 'annual') {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
+    return currentPeriodEnd;
+  }
+
+  private toMercadoPagoAmount(amount: number) {
+    return amount >= 1000 ? amount / 100 : amount;
+  }
+
+  private async upsertBillingFromPayment(
+    user: User,
+    planCode: BillingPlanCode,
+    currency: BillingCurrency,
+    paymentId: string,
+    payment: Record<string, unknown>,
+    status: BillingStatus,
+  ) {
+    const providerCustomerId =
+      (payment.payer && typeof payment.payer === 'object' && 'id' in payment.payer && payment.payer.id !== null)
+        ? String(payment.payer.id)
+        : null;
+    const currentPeriodEnd = status === 'active' ? this.resolvePeriodEnd(planCode, payment) : null;
+    const existingRecord = await this.subscriptionRepository.findOne({
+      where: { providerSubscriptionId: paymentId },
+    });
+
+    const billingRecord = existingRecord || this.subscriptionRepository.create({
+      user,
+      provider: BILLING_PROVIDER,
+      plan: planCode,
+      currency,
+    });
+
+    billingRecord.user = user;
+    billingRecord.plan = planCode;
+    billingRecord.currency = currency;
+    billingRecord.status = status;
+    billingRecord.providerPlanId = null;
+    billingRecord.providerCustomerId = providerCustomerId;
+    billingRecord.providerSubscriptionId = paymentId;
+    billingRecord.providerCardId = null;
+    billingRecord.providerTokenId = null;
+    billingRecord.currentPeriodEnd = currentPeriodEnd;
+    billingRecord.metadata = payment;
+
+    await this.dataSource.transaction(async (manager) => {
+      const saved = await manager.save(BillingSubscription, billingRecord);
+      const userUpdate = {
+        billingStatus: saved.status,
+        billingPlan: saved.status === 'canceled' ? null : planCode,
+        billingCurrency: saved.status === 'canceled' ? null : currency,
+        billingPeriodEnd: saved.currentPeriodEnd,
+        billingCustomerId: saved.providerCustomerId,
+        billingSubscriptionId: saved.providerSubscriptionId,
+      };
+      Object.assign(user, userUpdate);
+      await manager.update(User, user.id, userUpdate);
+    });
   }
 
   private async resolvePlan(planCode: BillingPlanCode, currency: BillingCurrency) {
@@ -257,10 +452,4 @@ export class BillingService {
     return Number.isFinite(numeric) && numeric > 0 ? Math.round(numeric) : null;
   }
 
-  private mapStatusFromEvent(eventType: string, current: BillingStatus): BillingStatus {
-    if (eventType.includes('cancel') || eventType.includes('refund')) return 'canceled';
-    if (eventType.includes('payment') && eventType.includes('approved')) return 'active';
-    if (eventType.includes('payment') && eventType.includes('failed')) return 'past_due';
-    return current;
-  }
 }
