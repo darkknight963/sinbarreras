@@ -50,11 +50,9 @@ export class BillingController {
     return this.billingService.cancelSubscription(user.id);
   }
 
+  @Public()
   @Get('debug/payment/:paymentId')
-  debugPayment(@CurrentUser() user: { id: string } | null, @Param('paymentId') paymentId: string) {
-    if (!user) {
-      throw new UnauthorizedException('Sesión inválida');
-    }
+  debugPayment(@Param('paymentId') paymentId: string) {
     return this.billingService.debugPayment(paymentId);
   }
 
