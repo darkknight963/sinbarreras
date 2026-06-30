@@ -2230,8 +2230,18 @@ export default function App() {
               title={checkoutConfirmationTitle}
               description={checkoutConfirmationDescription}
               detail={checkoutConfirmationDetail}
+              retryPlanCode={checkoutReturn?.planCode ?? undefined}
+              retryCurrency={checkoutReturn?.currency ?? undefined}
               onBackToProjects={() => setView('projects')}
               onBackToBilling={() => setView('billing')}
+              onRetry={async (planCode, currency) => {
+                const plan = billingPlans.find((p) => p.code === planCode && p.currency === currency);
+                if (plan) {
+                  await handleBillingSubscribe(plan);
+                } else {
+                  setView('billing');
+                }
+              }}
             />
           </Suspense>
         )}
