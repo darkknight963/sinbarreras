@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UnauthorizedException, UsePipes, ValidationPipe } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
@@ -73,6 +73,7 @@ export class BillingController {
 
   @Public()
   @Post('webhooks/mp')
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: false }))
   handleWebhook(
     @Body() payload: MpWebhookDto,
     @Req() request: Request & { rawBody?: Buffer },
