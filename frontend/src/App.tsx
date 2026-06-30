@@ -255,10 +255,12 @@ const clearCheckoutReturnFromUrl = () => {
     'plan',
     'currency',
     'preference_id',
+    'preference-id',
     'payment_type',
     'site_id',
     'processing_mode',
     'merchant_account_id',
+    'router-request-id',
   ].forEach((key) => url.searchParams.delete(key));
 
   window.history.replaceState({}, window.document.title, `${url.pathname}${url.search}${url.hash}`);

@@ -299,11 +299,14 @@ export class BillingService {
     });
 
     // Cancelar en MP primero para detener cobros futuros.
+    // Solo aplica a preapprovals (IDs no numéricos); los pagos únicos no se pueden cancelar.
     // Si falla, aun marcamos cancelAtPeriodEnd en BD para que no se renueve.
-    if (activeSubscription?.providerSubscriptionId) {
+    const subId = activeSubscription?.providerSubscriptionId;
+    const isPreapproval = subId && !/^\d+$/.test(subId);
+    if (isPreapproval) {
       try {
         const accessToken = this.getMercadoPagoAccessToken();
-        await this.fetchMercadoPagoWithRetry(`/preapproval/${activeSubscription.providerSubscriptionId}`, {
+        await this.fetchMercadoPagoWithRetry(`/preapproval/${subId}`, {
           method: 'PUT',
           headers: this.buildMercadoPagoHeaders(accessToken, true),
           body: JSON.stringify({ status: 'cancelled' }),
@@ -311,7 +314,7 @@ export class BillingService {
       } catch (err) {
         console.error(
           `[BILLING CRITICAL] cancelSubscription en MP falló para usuario ${userId} ` +
-          `(preapprovalId: ${activeSubscription.providerSubscriptionId}). Cancelar manualmente en MP.`,
+          `(preapprovalId: ${subId}). Cancelar manualmente en MP.`,
           err,
         );
       }
