@@ -1,4 +1,4 @@
-export type BillingProvider = 'mercadopago';
+export type BillingProvider = 'mercadopago' | 'manual';
 export type BillingCurrency = 'PEN' | 'USD';
 export type BillingPlanCode = 'monthly' | 'annual';
 export type BillingStatus = 'inactive' | 'pending' | 'active' | 'past_due' | 'canceled';

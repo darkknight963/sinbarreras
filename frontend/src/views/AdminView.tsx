@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Clock3,
+  CreditCard,
   KeyRound,
   ListFilter,
   RefreshCw,
@@ -135,6 +136,11 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     role: 'free' as AdminUser['role'],
   });
   const [passwordForm, setPasswordForm] = useState('');
+  const [billingForm, setBillingForm] = useState({
+    plan: 'monthly' as 'monthly' | 'annual',
+    currency: 'PEN' as 'PEN' | 'USD',
+    periodEndDate: '',
+  });
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) || null,
@@ -223,6 +229,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       role: 'free',
     });
     setPasswordForm('');
+    setBillingForm({ plan: 'monthly', currency: 'PEN', periodEndDate: '' });
   };
 
   const handleCreateUser = async (event: React.FormEvent) => {
@@ -317,6 +324,28 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el estado del usuario');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleManualBilling = async () => {
+    if (!selectedUser) return;
+    setSavingKey(`billing-${selectedUser.id}`);
+    setError(null);
+
+    try {
+      const response = await fetchWithAuth(`/admin/users/${selectedUser.id}/billing`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(billingForm),
+      });
+
+      if (!response.ok) throw new Error(await readError(response));
+      setBillingForm({ plan: 'monthly', currency: 'PEN', periodEndDate: '' });
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo activar el plan');
     } finally {
       setSavingKey(null);
     }
@@ -663,6 +692,68 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                   <button type="button" className="report-action-btn" disabled={!passwordForm || savingKey === `reset-${selectedUser.id}`} onClick={() => void handleResetPassword()}>
                     <KeyRound className="h-4 w-4" />
                     Resetear contrasena
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selectedUser && (
+              <div className="mt-5 border-t border-slate-100 pt-5">
+                <div className="flex items-center gap-3">
+                  <div className="project-card-icon">
+                    <CreditCard className="h-5 w-5 text-gob-blue" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Activacion manual de plan</p>
+                    <p className="text-xs text-slate-500">
+                      Usa esto cuando el cliente paga por transferencia u otro medio externo.
+                      El acceso se revocara automaticamente al vencer el periodo.
+                    </p>
+                  </div>
+                </div>
+
+                {selectedUser.billingStatus === 'active' && selectedUser.billingPeriodEnd && (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs text-emerald-800">
+                    Plan activo: <strong>{selectedUser.billingPlan}</strong> ({selectedUser.billingCurrency}) · vence{' '}
+                    <strong>{new Date(selectedUser.billingPeriodEnd).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                  </div>
+                )}
+
+                <div className="mt-4 grid gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                      Plan
+                      <select className="create-project-control" value={billingForm.plan} onChange={(e) => setBillingForm((prev) => ({ ...prev, plan: e.target.value as 'monthly' | 'annual' }))}>
+                        <option value="monthly">Mensual</option>
+                        <option value="annual">Anual</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                      Moneda
+                      <select className="create-project-control" value={billingForm.currency} onChange={(e) => setBillingForm((prev) => ({ ...prev, currency: e.target.value as 'PEN' | 'USD' }))}>
+                        <option value="PEN">PEN (soles)</option>
+                        <option value="USD">USD (dolares)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    Fecha de vencimiento
+                    <input
+                      className="create-project-control"
+                      type="date"
+                      value={billingForm.periodEndDate}
+                      min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                      onChange={(e) => setBillingForm((prev) => ({ ...prev, periodEndDate: e.target.value }))}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="report-action-btn"
+                    disabled={!billingForm.periodEndDate || savingKey === `billing-${selectedUser.id}`}
+                    onClick={() => void handleManualBilling()}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {savingKey === `billing-${selectedUser.id}` ? 'Activando...' : 'Activar plan Pro'}
                   </button>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength, Matches } from 'class-validator';
 
 export class CreateAdminUserDto {
   @IsEmail()
@@ -71,4 +71,16 @@ export class ResetAdminUserPasswordDto {
   @MinLength(12)
   @MaxLength(128)
   password!: string;
+}
+
+export class ManualBillingActivationDto {
+  @IsIn(['monthly', 'annual'])
+  plan!: 'monthly' | 'annual';
+
+  @IsIn(['PEN', 'USD'])
+  currency!: 'PEN' | 'USD';
+
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'periodEndDate debe tener formato YYYY-MM-DD' })
+  periodEndDate!: string;
 }

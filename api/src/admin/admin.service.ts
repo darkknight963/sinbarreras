@@ -5,7 +5,7 @@ import { AuthService } from '../auth/auth.service';
 import { User } from '../auth/entities/user.entity';
 import { Session } from '../auth/entities/session.entity';
 import { AdminAuditLog } from './entities/admin-audit-log.entity';
-import { CreateAdminUserDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
+import { CreateAdminUserDto, ManualBillingActivationDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
 
 type AppRole = 'admin' | 'superadmin' | 'guest';
 type PaginatedResult<T> = {
@@ -167,6 +167,35 @@ export class AdminService {
 
   async setActiveState(actor: { id: string; email: string }, id: string, isActive: boolean) {
     return this.updateUser(actor, id, { isActive });
+  }
+
+  async manualActivateBilling(actor: { id: string; email: string }, id: string, dto: ManualBillingActivationDto) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    const periodEnd = new Date(dto.periodEndDate + 'T23:59:59.000Z');
+    if (Number.isNaN(periodEnd.getTime()) || periodEnd <= new Date()) {
+      throw new BadRequestException('La fecha de vencimiento debe ser una fecha futura valida');
+    }
+
+    user.billingStatus = 'active';
+    user.billingPlan = dto.plan;
+    user.billingCurrency = dto.currency;
+    user.billingPeriodEnd = periodEnd;
+    user.billingProvider = 'manual';
+    user.billingSubscriptionId = null;
+
+    const savedUser = await this.userRepository.save(user);
+    await this.writeAudit(actor, 'billing.manual_activate', 'user', savedUser.id, {
+      email: savedUser.email,
+      plan: dto.plan,
+      currency: dto.currency,
+      periodEndDate: dto.periodEndDate,
+    });
+
+    return this.serializeUser(savedUser);
   }
 
   async deleteUser(actor: { id: string; email: string }, id: string) {

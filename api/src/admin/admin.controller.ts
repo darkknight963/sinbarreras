@@ -1,7 +1,7 @@
 import { Body, Controller, DefaultValuePipe, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminGuard } from '../auth/admin.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { CreateAdminUserDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
+import { CreateAdminUserDto, ManualBillingActivationDto, ResetAdminUserPasswordDto, UpdateAdminUserDto } from './dto/admin-user.dto';
 import { AdminService } from './admin.service';
 
 type AdminRequestUser = { id: string; email: string };
@@ -37,6 +37,11 @@ export class AdminController {
   @Patch('users/:id/active')
   setActiveState(@CurrentUser() user: AdminRequestUser, @Param('id') id: string, @Body('isActive') isActive: boolean) {
     return this.adminService.setActiveState(user, id, Boolean(isActive));
+  }
+
+  @Patch('users/:id/billing')
+  manualActivateBilling(@CurrentUser() user: AdminRequestUser, @Param('id') id: string, @Body() dto: ManualBillingActivationDto) {
+    return this.adminService.manualActivateBilling(user, id, dto);
   }
 
   @Delete('users/:id')
