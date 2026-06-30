@@ -101,6 +101,7 @@ export function BillingView({
 
   const activeSelectedPlan = Boolean(
     selectedPlan &&
+    billingState?.status === 'active' &&
     billingState?.plan === selectedPlan.code &&
     billingState?.currency === selectedPlan.currency,
   );
