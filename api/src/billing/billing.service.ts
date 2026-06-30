@@ -358,6 +358,12 @@ export class BillingService {
       return { ok: true, matched: false };
     }
 
+    // Ignorar tipos de webhook que no son pagos ni preapprovals
+    const ignoredTypes = ['topic_merchant_order_wh', 'merchant_order', 'point_integration_wh', 'delivery', 'associate_plan'];
+    if (ignoredTypes.some((t) => eventType.toLowerCase().includes(t))) {
+      return { ok: true, ignored: true };
+    }
+
     if (this.isPreapprovalWebhook(eventType, payload, resourceId)) {
       const preapproval = await this.safeGetMercadoPagoPreapproval(resourceId);
       if (!preapproval) {
