@@ -200,10 +200,12 @@ const readCheckoutReturn = () => {
     'preapproval_plan_id',
     'external_reference',
     'preference_id',
+    'preference-id',
     'payment_type',
     'site_id',
     'processing_mode',
     'merchant_account_id',
+    'router-request-id',
   ].some((key) => params.has(key));
   if (!checkout && !hasMercadoPagoParams) return null;
 
@@ -768,10 +770,17 @@ export default function App() {
 
     // Sin referencia de pago o suscripción no podemos confirmar nada
     if (!referenceId) {
-      setCheckoutConfirmationStatus('pending');
-      setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
-      setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
-      setCheckoutConfirmationDetail('Si el cobro se aprueba, tu plan se actualizara automaticamente.');
+      if (checkoutReturn.status === 'failure') {
+        setCheckoutConfirmationStatus('failure');
+        setCheckoutConfirmationTitle('Pago rechazado');
+        setCheckoutConfirmationDescription('Mercado Pago rechazó el pago. Puedes intentarlo nuevamente con otra tarjeta.');
+        setCheckoutConfirmationDetail('Vuelve a la sección de planes para intentarlo nuevamente.');
+      } else {
+        setCheckoutConfirmationStatus('pending');
+        setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
+        setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
+        setCheckoutConfirmationDetail('Si el cobro se aprueba, tu plan se actualizara automaticamente.');
+      }
       clearCheckoutReturnFromUrl();
       return;
     }
