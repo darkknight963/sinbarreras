@@ -128,6 +128,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [userForm, setUserForm] = useState({
     email: '',
     password: '',
@@ -221,6 +222,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
 
   const resetUserEditor = () => {
     setSelectedUserId(null);
+    setShowCreateForm(false);
     setUserForm({
       email: '',
       password: '',
@@ -537,7 +539,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
       ) : null}
 
       {activeTab === 'users' && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_380px]">
+        <div className={`grid gap-4 ${selectedUser ? 'xl:grid-cols-[minmax(0,1.5fr)_380px]' : ''}`}>
           <section className="report-card-entity overflow-hidden">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
               <div className="project-card-top">
@@ -554,8 +556,55 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
                   {users.filter((user) => user.isActive).length} activas en esta pagina
                 </span>
+                <button
+                  type="button"
+                  className={showCreateForm && !selectedUser ? actionButtonClass : softButtonClass}
+                  onClick={() => { resetUserEditor(); setShowCreateForm(true); }}
+                >
+                  + Nuevo usuario
+                </button>
               </div>
             </div>
+
+            {showCreateForm && !selectedUser && (
+              <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <form className="grid gap-3" onSubmit={handleCreateUser}>
+                  <p className="text-sm font-bold text-slate-900">Crear nuevo usuario</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                      Correo
+                      <input className="create-project-control" type="email" autoComplete="email" required value={userForm.email} onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))} />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                      Nombre completo
+                      <input className="create-project-control" type="text" autoComplete="name" value={userForm.fullName} onChange={(e) => setUserForm((prev) => ({ ...prev, fullName: e.target.value }))} />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                      Empresa
+                      <input className="create-project-control" type="text" autoComplete="organization" value={userForm.companyName} onChange={(e) => setUserForm((prev) => ({ ...prev, companyName: e.target.value }))} />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                      Rol
+                      <select className="create-project-control" value={userForm.role} onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value as AdminUser['role'] }))}>
+                        <option value="free">Usuario (Free/Pro segun plan)</option>
+                        <option value="admin">Administrador de cuenta</option>
+                        <option value="superadmin">Superadministrador</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700 sm:col-span-2">
+                      Contrasena inicial
+                      <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))} />
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="submit" className="create-project-submit" disabled={savingKey === 'create-user'}>
+                      {savingKey === 'create-user' ? 'Creando...' : 'Crear usuario'}
+                    </button>
+                    <button type="button" className={softButtonClass} onClick={resetUserEditor}>Cancelar</button>
+                  </div>
+                </form>
+              </div>
+            )}
 
             <div className="mt-4 overflow-x-auto">
               <table className="auth-report-preview-table">
@@ -619,17 +668,18 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             })}
           </section>
 
+          {selectedUser && (
           <section className="grid gap-4 content-start">
             {/* Card: datos del usuario */}
             <div className="report-card-entity">
-              <form className="grid gap-4" onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}>
+              <form className="grid gap-4" onSubmit={handleUpdateUser}>
                 <div className="flex items-center gap-3 pb-3 border-b border-blue-100">
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100">
                     <UserCog className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{selectedUser ? 'Editar usuario' : 'Crear usuario'}</p>
-                    <p className="text-xs text-slate-500">{selectedUser ? `Editando ${selectedUser.email}` : 'Completa los datos para crear una nueva cuenta.'}</p>
+                    <p className="text-sm font-bold text-slate-900">Editar usuario</p>
+                    <p className="text-xs text-slate-500">{selectedUser.email}</p>
                   </div>
                 </div>
 
@@ -657,59 +707,47 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                   </select>
                 </label>
 
-                {!selectedUser && (
-                  <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-                    Contrasena inicial
-                    <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))} />
-                  </label>
-                )}
-
                 <div className="flex flex-wrap gap-2">
-                  <button type="submit" className="create-project-submit" disabled={savingKey === 'create-user' || savingKey === `update-${selectedUser?.id}`}>
-                    {selectedUser ? 'Guardar cambios' : 'Crear usuario'}
+                  <button type="submit" className="create-project-submit" disabled={savingKey === `update-${selectedUser.id}`}>
+                    Guardar cambios
                   </button>
-                  {selectedUser && (
-                    <button type="button" className={softButtonClass} onClick={resetUserEditor}>
-                      Limpiar
-                    </button>
-                  )}
+                  <button type="button" className={softButtonClass} onClick={resetUserEditor}>
+                    Cerrar
+                  </button>
                 </div>
               </form>
             </div>
 
             {/* Card: resetear contraseña */}
-            {selectedUser && (
-              <div className="report-card-entity">
-                <div className="flex items-center gap-3 pb-3 border-b border-amber-100">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100">
-                    <KeyRound className="h-4 w-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">Resetear contrasena</p>
-                    <p className="text-xs text-slate-500">Invalida todas las sesiones activas del usuario.</p>
-                  </div>
+            <div className="report-card-entity">
+              <div className="flex items-center gap-3 pb-3 border-b border-amber-100">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100">
+                  <KeyRound className="h-4 w-4 text-amber-600" />
                 </div>
-                <div className="mt-4 grid gap-3">
-                  <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-                    Nueva contrasena
-                    <input className="create-project-control" type="password" autoComplete="new-password" minLength={12} value={passwordForm} onChange={(event) => setPasswordForm(event.target.value)} />
-                  </label>
-                  <button
-                    type="button"
-                    className="report-action-btn"
-                    disabled={!passwordForm || savingKey === `reset-${selectedUser.id}`}
-                    onClick={() => void handleResetPassword()}
-                  >
-                    <KeyRound className="h-4 w-4" />
-                    {savingKey === `reset-${selectedUser.id}` ? 'Reseteando...' : 'Resetear contrasena'}
-                  </button>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Resetear contrasena</p>
+                  <p className="text-xs text-slate-500">Invalida todas las sesiones activas del usuario.</p>
                 </div>
               </div>
-            )}
+              <div className="mt-4 grid gap-3">
+                <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                  Nueva contrasena
+                  <input className="create-project-control" type="password" autoComplete="new-password" minLength={12} value={passwordForm} onChange={(event) => setPasswordForm(event.target.value)} />
+                </label>
+                <button
+                  type="button"
+                  className="report-action-btn"
+                  disabled={!passwordForm || savingKey === `reset-${selectedUser.id}`}
+                  onClick={() => void handleResetPassword()}
+                >
+                  <KeyRound className="h-4 w-4" />
+                  {savingKey === `reset-${selectedUser.id}` ? 'Reseteando...' : 'Resetear contrasena'}
+                </button>
+              </div>
+            </div>
 
             {/* Card: activación manual de plan */}
-            {selectedUser && (
-              <div className="report-card-entity" style={{ borderColor: '#bbf7d0' }}>
+            <div className="report-card-entity" style={{ borderColor: '#bbf7d0' }}>
                 <div className="flex items-center gap-3 pb-3 border-b border-emerald-100">
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100">
                     <CreditCard className="h-4 w-4 text-emerald-600" />
@@ -765,9 +803,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                     {savingKey === `billing-${selectedUser.id}` ? 'Activando...' : 'Activar plan Pro'}
                   </button>
                 </div>
-              </div>
-            )}
+            </div>
           </section>
+          )}
         </div>
       )}
 
