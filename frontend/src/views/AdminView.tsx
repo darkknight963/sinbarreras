@@ -570,7 +570,10 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id}>
+                    <tr
+                      key={user.id}
+                      style={selectedUserId === user.id ? { background: '#eff6ff', outline: '2px solid #bfdbfe', outlineOffset: '-1px' } : undefined}
+                    >
                       <td>
                         <strong>{user.email}</strong>
                         <div className="text-xs text-slate-500">{user.fullName || 'Sin nombre'}</div>
@@ -581,7 +584,17 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                           {user.isActive ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
-                      <td>{user.billingPlan || '—'}</td>
+                      <td>
+                        {user.billingStatus === 'active' && user.billingPlan ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            {user.billingPlan === 'monthly' ? 'Mensual' : 'Anual'}
+                          </span>
+                        ) : user.billingStatus === 'past_due' ? (
+                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">Vencido</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">Sin plan</span>
+                        )}
+                      </td>
                       <td>
                         <div className="flex flex-wrap gap-2">
                           <button type="button" className={actionButtonClass} onClick={() => setSelectedUserId(user.id)}>
@@ -592,7 +605,6 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                           </button>
                           <button type="button" className={dangerButtonClass} onClick={() => handleDeleteUser(user)} disabled={savingKey === `delete-user-${user.id}`}>
                             <Trash2 className="h-4 w-4" />
-                            Eliminar
                           </button>
                         </div>
                       </td>
@@ -607,128 +619,124 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             })}
           </section>
 
-          <section className="report-card-entity">
-            <form className="grid gap-4" onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}>
-              <div className="project-card-top">
-                <div className="project-card-icon">
-                  <UserCog className="h-6 w-6 text-gob-blue" />
-                </div>
-                <div className="project-card-main-copy">
-                  <h3 className="font-bold text-lg text-gob-dark">{selectedUser ? 'Editar usuario' : 'Crear usuario'}</h3>
-                  <p className="text-slate-500 text-sm">Panel lateral para altas, ajustes y recuperacion de acceso.</p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                {selectedUser ? (
-                  <span>
-                    Editando <strong>{selectedUser.email}</strong>
-                  </span>
-                ) : (
-                  <span>Completa los datos para crear una nueva cuenta.</span>
-                )}
-              </div>
-
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Correo
-                <input className="create-project-control" type="email" autoComplete="email" required value={userForm.email} onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))} />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Nombre completo
-                <input className="create-project-control" type="text" autoComplete="name" value={userForm.fullName} onChange={(event) => setUserForm((prev) => ({ ...prev, fullName: event.target.value }))} />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Empresa
-                <input className="create-project-control" type="text" autoComplete="organization" value={userForm.companyName} onChange={(event) => setUserForm((prev) => ({ ...prev, companyName: event.target.value }))} />
-              </label>
-
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Rol
-                <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value as AdminUser['role'] }))}>
-                  <option value="free">Usuario (Free/Pro segun plan)</option>
-                  <option value="admin">Administrador de cuenta</option>
-                  <option value="superadmin">Superadministrador</option>
-                </select>
-              </label>
-
-              {!selectedUser && (
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
-                  Contrasena inicial
-                  <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))} />
-                </label>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <button type="submit" className="create-project-submit" disabled={savingKey === 'create-user' || savingKey === `update-${selectedUser?.id}`}>
-                  {selectedUser ? 'Guardar cambios' : 'Crear usuario'}
-                </button>
-                {selectedUser && (
-                  <button type="button" className={softButtonClass} onClick={resetUserEditor}>
-                    Limpiar
-                  </button>
-                )}
-              </div>
-            </form>
-
-            {selectedUser && (
-              <div className="mt-5 border-t border-slate-100 pt-5">
-                <div className="flex items-center gap-3">
-                  <div className="project-card-icon">
-                    <KeyRound className="h-5 w-5 text-gob-blue" />
+          <section className="grid gap-4 content-start">
+            {/* Card: datos del usuario */}
+            <div className="report-card-entity">
+              <form className="grid gap-4" onSubmit={selectedUser ? handleUpdateUser : handleCreateUser}>
+                <div className="flex items-center gap-3 pb-3 border-b border-blue-100">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100">
+                    <UserCog className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Reinicio de contrasena</p>
-                    <p className="text-xs text-slate-500">Este cambio invalida las sesiones activas del usuario.</p>
+                    <p className="text-sm font-bold text-slate-900">{selectedUser ? 'Editar usuario' : 'Crear usuario'}</p>
+                    <p className="text-xs text-slate-500">{selectedUser ? `Editando ${selectedUser.email}` : 'Completa los datos para crear una nueva cuenta.'}</p>
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3">
-                  <label className="grid gap-2 text-sm font-medium text-slate-700">
-                    Nueva contrasena
-                    <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={passwordForm} onChange={(event) => setPasswordForm(event.target.value)} />
+                <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                  Correo
+                  <input className="create-project-control" type="email" autoComplete="email" required value={userForm.email} onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))} />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                  Nombre completo
+                  <input className="create-project-control" type="text" autoComplete="name" value={userForm.fullName} onChange={(event) => setUserForm((prev) => ({ ...prev, fullName: event.target.value }))} />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                  Empresa
+                  <input className="create-project-control" type="text" autoComplete="organization" value={userForm.companyName} onChange={(event) => setUserForm((prev) => ({ ...prev, companyName: event.target.value }))} />
+                </label>
+
+                <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                  Rol
+                  <select className="create-project-control" autoComplete="off" value={userForm.role} onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value as AdminUser['role'] }))}>
+                    <option value="free">Usuario (Free/Pro segun plan)</option>
+                    <option value="admin">Administrador de cuenta</option>
+                    <option value="superadmin">Superadministrador</option>
+                  </select>
+                </label>
+
+                {!selectedUser && (
+                  <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                    Contrasena inicial
+                    <input className="create-project-control" type="password" autoComplete="new-password" required minLength={12} value={userForm.password} onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))} />
                   </label>
-                  <button type="button" className="report-action-btn" disabled={!passwordForm || savingKey === `reset-${selectedUser.id}`} onClick={() => void handleResetPassword()}>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <button type="submit" className="create-project-submit" disabled={savingKey === 'create-user' || savingKey === `update-${selectedUser?.id}`}>
+                    {selectedUser ? 'Guardar cambios' : 'Crear usuario'}
+                  </button>
+                  {selectedUser && (
+                    <button type="button" className={softButtonClass} onClick={resetUserEditor}>
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Card: resetear contraseña */}
+            {selectedUser && (
+              <div className="report-card-entity">
+                <div className="flex items-center gap-3 pb-3 border-b border-amber-100">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100">
+                    <KeyRound className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Resetear contrasena</p>
+                    <p className="text-xs text-slate-500">Invalida todas las sesiones activas del usuario.</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                    Nueva contrasena
+                    <input className="create-project-control" type="password" autoComplete="new-password" minLength={12} value={passwordForm} onChange={(event) => setPasswordForm(event.target.value)} />
+                  </label>
+                  <button
+                    type="button"
+                    className="report-action-btn"
+                    disabled={!passwordForm || savingKey === `reset-${selectedUser.id}`}
+                    onClick={() => void handleResetPassword()}
+                  >
                     <KeyRound className="h-4 w-4" />
-                    Resetear contrasena
+                    {savingKey === `reset-${selectedUser.id}` ? 'Reseteando...' : 'Resetear contrasena'}
                   </button>
                 </div>
               </div>
             )}
 
+            {/* Card: activación manual de plan */}
             {selectedUser && (
-              <div className="mt-5 border-t border-slate-100 pt-5">
-                <div className="flex items-center gap-3">
-                  <div className="project-card-icon">
-                    <CreditCard className="h-5 w-5 text-gob-blue" />
+              <div className="report-card-entity" style={{ borderColor: '#bbf7d0' }}>
+                <div className="flex items-center gap-3 pb-3 border-b border-emerald-100">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Activacion manual de plan</p>
-                    <p className="text-xs text-slate-500">
-                      Usa esto cuando el cliente paga por transferencia u otro medio externo.
-                      El acceso se revocara automaticamente al vencer el periodo.
-                    </p>
+                    <p className="text-sm font-bold text-slate-900">Activar plan Pro</p>
+                    <p className="text-xs text-slate-500">Para pagos en efectivo, transferencia u otro medio externo.</p>
                   </div>
                 </div>
 
                 {selectedUser.billingStatus === 'active' && selectedUser.billingPeriodEnd && (
-                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs text-emerald-800">
-                    Plan activo: <strong>{selectedUser.billingPlan}</strong> ({selectedUser.billingCurrency}) · vence{' '}
+                  <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    Plan activo: <strong>{selectedUser.billingPlan === 'monthly' ? 'Mensual' : 'Anual'}</strong> · {selectedUser.billingCurrency} · vence{' '}
                     <strong>{new Date(selectedUser.billingPeriodEnd).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
                   </div>
                 )}
 
                 <div className="mt-4 grid gap-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
                       Plan
                       <select className="create-project-control" value={billingForm.plan} onChange={(e) => setBillingForm((prev) => ({ ...prev, plan: e.target.value as 'monthly' | 'annual' }))}>
                         <option value="monthly">Mensual</option>
                         <option value="annual">Anual</option>
                       </select>
                     </label>
-                    <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    <label className="grid gap-1.5 text-sm font-medium text-slate-700">
                       Moneda
                       <select className="create-project-control" value={billingForm.currency} onChange={(e) => setBillingForm((prev) => ({ ...prev, currency: e.target.value as 'PEN' | 'USD' }))}>
                         <option value="PEN">PEN (soles)</option>
@@ -736,8 +744,8 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                       </select>
                     </label>
                   </div>
-                  <label className="grid gap-2 text-sm font-medium text-slate-700">
-                    Fecha de vencimiento
+                  <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+                    Acceso hasta
                     <input
                       className="create-project-control"
                       type="date"
@@ -748,7 +756,8 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                   </label>
                   <button
                     type="button"
-                    className="report-action-btn"
+                    style={{ background: '#16a34a', borderColor: '#15803d', color: '#fff' }}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!billingForm.periodEndDate || savingKey === `billing-${selectedUser.id}`}
                     onClick={() => void handleManualBilling()}
                   >
