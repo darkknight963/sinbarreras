@@ -216,10 +216,13 @@ export class BillingService {
     }
 
     if (dto.preapprovalId) {
-      const preapproval = await this.getMercadoPagoPreapproval(dto.preapprovalId);
+      const preapproval = await this.safeGetMercadoPagoPreapproval(dto.preapprovalId);
+      if (!preapproval) {
+        // MP no reconoce el preapproval (abandonado, expirado o inválido) — tratar como pending
+        return this.serializeBillingState(user);
+      }
       const subscriptionStatus = String(preapproval.status || '').toLowerCase();
       const billingStatus = this.mapPreapprovalStatus(subscriptionStatus);
-      // Intentar extraer planCode/currency del external_reference del preapproval
       const preapprovalRef = String(preapproval.external_reference || '');
       const parsedPreapprovalRef = preapprovalRef ? this.parseExternalReference(preapprovalRef) : null;
       const resolvedPlanCode = parsedPreapprovalRef?.planCode ?? plan.code;
@@ -229,10 +232,13 @@ export class BillingService {
     }
 
     if (!dto.paymentId) {
-      throw new BadRequestException('Mercado Pago no devolvio una referencia de pago o suscripcion');
+      return this.serializeBillingState(user);
     }
 
-    const payment = await this.getMercadoPagoPayment(dto.paymentId);
+    const payment = await this.safeGetMercadoPagoPayment(dto.paymentId);
+    if (!payment) {
+      return this.serializeBillingState(user);
+    }
     const paymentStatus = String(payment.status || '').toLowerCase();
 
     // Intentar extraer planCode/currency del external_reference del pago (formato sb|userId|planCode|currency|uuid).
@@ -249,11 +255,13 @@ export class BillingService {
       : null;
 
     if (preapprovalIdFromPayment) {
-      const preapproval = await this.getMercadoPagoPreapproval(preapprovalIdFromPayment);
-      const subscriptionStatus = String(preapproval.status || '').toLowerCase();
-      const billingStatus = this.mapPreapprovalStatus(subscriptionStatus);
-      await this.upsertBillingFromPreapproval(user, resolvedPlanCode, resolvedCurrency, preapprovalIdFromPayment, preapproval, billingStatus);
-      return this.serializeBillingState(await this.getUserOrThrow(user.id));
+      const preapproval = await this.safeGetMercadoPagoPreapproval(preapprovalIdFromPayment);
+      if (preapproval) {
+        const subscriptionStatus = String(preapproval.status || '').toLowerCase();
+        const billingStatus = this.mapPreapprovalStatus(subscriptionStatus);
+        await this.upsertBillingFromPreapproval(user, resolvedPlanCode, resolvedCurrency, preapprovalIdFromPayment, preapproval, billingStatus);
+        return this.serializeBillingState(await this.getUserOrThrow(user.id));
+      }
     }
 
     const billingStatus = this.mapPaymentStatus(paymentStatus);
