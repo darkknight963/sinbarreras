@@ -323,7 +323,6 @@ export default function App() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingSubmitting, setBillingSubmitting] = useState<string | null>(null);
   const [billingNote, setBillingNote] = useState<string | null>(null);
-  const [checkoutProcessing, setCheckoutProcessing] = useState(false);
   const checkoutHandledRef = useRef(false);
   const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending' | 'failure'>(
     checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : 'success',
@@ -774,23 +773,15 @@ export default function App() {
 
     // Sin referencia de pago o suscripción no podemos confirmar nada
     if (!referenceId) {
-      if (checkoutReturn.status === 'failure') {
-        setCheckoutConfirmationStatus('failure');
-        setCheckoutConfirmationTitle('Pago rechazado');
-        setCheckoutConfirmationDescription('Mercado Pago rechazó el pago. Puedes intentarlo nuevamente con otra tarjeta.');
-        setCheckoutConfirmationDetail('Vuelve a la sección de planes para intentarlo nuevamente.');
-      } else {
-        setCheckoutConfirmationStatus('pending');
-        setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
-        setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
-        setCheckoutConfirmationDetail('Si el cobro se aprueba, tu plan se actualizara automaticamente.');
-      }
+      setCheckoutConfirmationStatus('pending');
+      setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
+      setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
+      setCheckoutConfirmationDetail('Si el cobro se aprueba, tu plan se actualizara automaticamente.');
       clearCheckoutReturnFromUrl();
       return;
     }
 
     const confirmFromReturn = async () => {
-      setCheckoutProcessing(true);
       setCheckoutConfirmationStatus('processing');
       setCheckoutConfirmationTitle('Confirmando suscripcion');
       setCheckoutConfirmationDescription('Estamos validando tu regreso desde Mercado Pago para dejar tu plan registrado.');
@@ -842,7 +833,6 @@ export default function App() {
         setCheckoutConfirmationDetail(err instanceof Error ? err.message : 'Intenta revisar tu plan nuevamente en unos minutos.');
       } finally {
         clearCheckoutReturnFromUrl();
-        setCheckoutProcessing(false);
       }
     };
 
