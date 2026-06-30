@@ -364,7 +364,7 @@ export function AuthView({
         </section>
 
         {showAccessPanel && (
-          <div className="auth-access-modal-overlay" role="presentation" onClick={closeAccessPanel}>
+          <div className="auth-access-modal-overlay" role="presentation">
             <section
               id="auth-access-panel"
               className={`auth-access-panel auth-access-modal ${authFormMode === 'login' ? 'auth-access-modal-login' : 'auth-access-modal-register'}`}
