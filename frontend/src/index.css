@@ -17877,3 +17877,19 @@ header.sticky {
     transition: none;
   }
 }
+
+/* Panel admin: las cards son contenedores estaticos, no elementos clickeables */
+html body main#main-content.app-main-content.billing-page-main .report-card-entity {
+  cursor: default !important;
+}
+
+html body main#main-content.app-main-content.billing-page-main .report-card-entity:hover {
+  border-color: #dbe6ff !important;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.09) !important;
+  transform: none !important;
+}
+
+/* Textos, iconos y divs dentro del admin no deben mostrar manito */
+html body main#main-content.app-main-content.billing-page-main *:not(button):not(a):not(select):not(input):not([role="button"]) {
+  cursor: default;
+}
