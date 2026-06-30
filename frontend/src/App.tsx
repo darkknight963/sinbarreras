@@ -322,6 +322,7 @@ export default function App() {
   const [billingSubmitting, setBillingSubmitting] = useState<string | null>(null);
   const [billingNote, setBillingNote] = useState<string | null>(null);
   const [checkoutProcessing, setCheckoutProcessing] = useState(false);
+  const checkoutHandledRef = useRef(false);
   const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending' | 'failure'>(
     checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : 'success',
   );
@@ -723,7 +724,8 @@ export default function App() {
   }, [authLoading, authMode]);
 
   useEffect(() => {
-    if (authLoading || authMode !== 'session' || !checkoutReturn || view !== 'billing-success' || checkoutProcessing) return;
+    if (authLoading || authMode !== 'session' || !checkoutReturn || view !== 'billing-success' || checkoutHandledRef.current) return;
+    checkoutHandledRef.current = true;
 
     if (checkoutReturn.status === 'failure') {
       const paymentIdForDiag = checkoutReturn.paymentId;
@@ -843,7 +845,7 @@ export default function App() {
     };
 
     void confirmFromReturn();
-  }, [authLoading, authMode, checkoutProcessing, checkoutReturn, view]);
+  }, [authLoading, authMode, checkoutReturn, view]);
 
   // Client-side animated progress — replaces the realtime WebSocket feed so the backend
   // runs no 24/7 Redis poller. The percentage is simulated locally (no network calls)
