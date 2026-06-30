@@ -325,7 +325,7 @@ export default function App() {
   const [billingNote, setBillingNote] = useState<string | null>(null);
   const checkoutHandledRef = useRef(false);
   const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending' | 'failure'>(
-    checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : 'success',
+    checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : checkoutReturn?.status === 'failure' ? 'failure' : 'success',
   );
   const [checkoutConfirmationTitle, setCheckoutConfirmationTitle] = useState('Suscripcion confirmada');
   const [checkoutConfirmationDescription, setCheckoutConfirmationDescription] = useState(
@@ -2235,7 +2235,11 @@ export default function App() {
               onBackToProjects={() => setView('projects')}
               onBackToBilling={() => setView('billing')}
               onRetry={async (planCode, currency) => {
-                const plan = billingPlans.find((p) => p.code === planCode && p.currency === currency);
+                let plan = billingPlans.find((p) => p.code === planCode && p.currency === currency);
+                if (!plan) {
+                  await loadBillingData();
+                  plan = billingPlans.find((p) => p.code === planCode && p.currency === currency);
+                }
                 if (plan) {
                   await handleBillingSubscribe(plan);
                 } else {
