@@ -134,7 +134,7 @@ export class BillingService {
     frontendUrl: string,
   ) {
     const requestPayload = {
-      reason: `${plan.label} - ${plan.description}`,
+      reason: `Sin Barreras Pro ${plan.label}`.slice(0, 40),
       external_reference: externalReference,
       payer_email: this.resolveMercadoPagoPayerEmail(accessToken, user.email),
       back_url: this.buildReturnUrl(frontendUrl, plan, 'success'),
