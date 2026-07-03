@@ -1818,6 +1818,9 @@ export default function App() {
   useEffect(() => {
     const section = view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle del Proyecto' : 'Informe de Escaneo';
     document.title = `${BRAND_NAME} | ${section}`;
+    return () => {
+      document.title = `${BRAND_NAME} | Convierte tu web en un lugar para todos`;
+    };
   }, [view]);
 
   const latestScans = projects
