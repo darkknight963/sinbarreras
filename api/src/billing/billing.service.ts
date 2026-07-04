@@ -18,10 +18,10 @@ import * as crypto from 'crypto';
 
 const CULQI_API_BASE = 'https://api.culqi.com/v2';
 
-// CulqiOnline exige body encriptado RSA solo en /plans y /subscriptions
-// (JSON plano devuelve 401 "Ruta inválida"). /customers y /cards van en JSON
+// El API de suscripciones de CulqiOnline vive bajo /recurrent/* (SDK oficial
+// culqi-go) y exige body encriptado RSA. /customers y /cards van en JSON
 // plano: no soportan payload encriptado y responden 500 si se les envía.
-const CULQI_RSA_PATHS = ['/plans', '/subscriptions'];
+const CULQI_RSA_PATHS = ['/recurrent/plans', '/recurrent/subscriptions'];
 
 @Injectable()
 export class BillingService {
@@ -97,7 +97,7 @@ export class BillingService {
     if (subId) {
       try {
         const secretKey = this.getCulqiSecretKey();
-        await this.culqiRequest(`/subscriptions/${subId}`, 'DELETE', undefined, secretKey);
+        await this.culqiRequest(`/recurrent/subscriptions/${subId}`, 'DELETE', undefined, secretKey);
       } catch (err) {
         console.error(
           `[BILLING CRITICAL] cancelSubscription en Culqi falló para usuario ${userId} ` +
@@ -260,13 +260,16 @@ export class BillingService {
     planId: string,
     secretKey: string,
   ): Promise<Record<string, unknown>> {
-    const subscription = await this.culqiRequest('/subscriptions', 'POST', {
-      plan_id: planId,
-      customer_id: customerId,
+    // Formato del SDK oficial culqi-go: card_id + plan_id + tyc (aceptación de
+    // términos y condiciones). El customer se infiere de la tarjeta.
+    const subscription = await this.culqiRequest('/recurrent/subscriptions/create', 'POST', {
       card_id: cardId,
+      plan_id: planId,
+      tyc: true,
       metadata: {},
     }, secretKey);
-    return subscription;
+    // La respuesta puede no incluir estos campos; los fijamos para persistirlos.
+    return { ...subscription, customer_id: customerId, card_id: cardId, plan_id: planId };
   }
 
   private async upsertBillingFromSubscription(
