@@ -30,12 +30,13 @@ export class AuthCleanupService {
 
     const guestCutoff = new Date(now.getTime() - GUEST_TTL_DAYS * 24 * 60 * 60 * 1000);
     const guestsResult = await this.userRepository
-      .createQueryBuilder('user')
+      .createQueryBuilder()
       .delete()
-      .where('user.role = :role', { role: 'guest' })
-      .andWhere('user."createdAt" < :cutoff', { cutoff: guestCutoff })
+      .from(User)
+      .where('role = :role', { role: 'guest' })
+      .andWhere('"createdAt" < :cutoff', { cutoff: guestCutoff })
       .andWhere(
-        'NOT EXISTS (SELECT 1 FROM sessions s WHERE s."userId" = user.id AND s."expiresAt" > :now)',
+        'NOT EXISTS (SELECT 1 FROM sessions s WHERE s."userId" = "users".id AND s."expiresAt" > :now)',
         { now },
       )
       .execute();
