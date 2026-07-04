@@ -35,11 +35,11 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
   const displayAmount = (amountCentavos / 100).toFixed(2);
 
   useEffect(() => {
-    // Inject Culqi.js once
+    // Inject Culqi.js once — URL oficial v4
     if (!document.getElementById('culqi-js')) {
       const script = document.createElement('script');
       script.id = 'culqi-js';
-      script.src = 'https://js.culqi.com/checkout-js';
+      script.src = 'https://checkout.culqi.com/js/v4';
       script.async = true;
       document.head.appendChild(script);
     }
@@ -51,7 +51,7 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
         culqiReadyRef.current = true;
         initCulqi();
       }
-    }, 100);
+    }, 150);
 
     const maxWait = setTimeout(() => {
       clearInterval(poll);
@@ -59,7 +59,7 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
         setStatus('error');
         setErrorMsg('No se pudo cargar el módulo de pago. Verifica tu conexión e intenta de nuevo.');
       }
-    }, 8000);
+    }, 15000);
 
     return () => {
       clearInterval(poll);
