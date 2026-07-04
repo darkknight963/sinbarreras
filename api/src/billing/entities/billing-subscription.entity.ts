@@ -19,7 +19,7 @@ export class BillingSubscription {
   @ManyToOne(() => User, { onDelete: 'CASCADE', eager: true })
   user!: User;
 
-  @Column({ type: 'varchar', length: 32, default: 'mercadopago' })
+  @Column({ type: 'varchar', length: 32, default: 'culqi' })
   provider!: BillingProvider;
 
   @Column({ type: 'varchar', length: 32 })

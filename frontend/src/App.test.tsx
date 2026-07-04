@@ -434,12 +434,12 @@ describe('App project creation experience', () => {
     })
   })
 
-  it('shows a confirmation page after returning from Mercado Pago', async () => {
-    window.history.replaceState({}, '', '/?checkout=success&status=approved&payment_id=mp_123&plan=monthly&currency=PEN')
+  it('shows Culqi checkout modal when clicking subscribe on billing page', async () => {
+    const user = userEvent.setup()
 
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
         const url = String(input)
 
         if (url.includes('/auth/me')) {
@@ -454,7 +454,7 @@ describe('App project creation experience', () => {
               role: 'admin',
               billingStatus: 'inactive',
               billingPlan: null,
-              billingProvider: 'mercadopago',
+              billingProvider: 'culqi',
               billingCurrency: null,
               billingPeriodEnd: null,
               billingCustomerId: null,
@@ -464,11 +464,7 @@ describe('App project creation experience', () => {
         }
 
         if (url.includes('/projects') && !url.includes('/billing')) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => projectsResponse,
-          }
+          return { ok: true, status: 200, json: async () => projectsResponse }
         }
 
         if (url.includes('/billing/plans')) {
@@ -476,8 +472,7 @@ describe('App project creation experience', () => {
             ok: true,
             status: 200,
             json: async () => ([
-              { code: 'monthly', currency: 'PEN', label: 'Mensual', description: 'Plan mensual', provider: 'mercadopago', available: true, amount: 4900 },
-              { code: 'annual', currency: 'PEN', label: 'Anual', description: 'Plan anual', provider: 'mercadopago', available: true, amount: 49000 },
+              { code: 'monthly', currency: 'PEN', label: 'Mensual', description: 'Plan mensual', provider: 'culqi', available: true, amount: 7900 },
             ]),
           }
         }
@@ -487,45 +482,26 @@ describe('App project creation experience', () => {
             ok: true,
             status: 200,
             json: async () => ({
-              status: 'active',
-              plan: 'monthly',
-              provider: 'mercadopago',
-              currency: 'PEN',
-              currentPeriodEnd: '2026-06-30T00:00:00.000Z',
-              customerId: 'cus_test_123',
-              subscriptionId: 'mp_123',
+              status: 'inactive', plan: null, provider: 'culqi',
+              currency: null, currentPeriodEnd: null,
+              customerId: null, subscriptionId: null, cancelAtPeriodEnd: false,
             }),
           }
         }
 
-        if (url.includes('/billing/confirm') && init?.method === 'POST') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              status: 'active',
-              plan: 'monthly',
-              provider: 'mercadopago',
-              currency: 'PEN',
-              currentPeriodEnd: '2026-06-30T00:00:00.000Z',
-              customerId: 'cus_test_123',
-              subscriptionId: 'mp_123',
-            }),
-          }
-        }
-
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({}),
-        }
+        return { ok: true, status: 200, json: async () => ({}) }
       }),
     )
 
     render(<App />)
 
-    await screen.findByRole('heading', { name: /gracias por tu compra/i })
-    expect(screen.getByText(/referencia de suscripcion: mp_123/i)).toBeInTheDocument()
+    const planBtn = await screen.findByRole('button', { name: /ver planes/i })
+    await user.click(planBtn)
+
+    const subscribeBtn = await screen.findByRole('button', { name: /empezar con pro/i })
+    await user.click(subscribeBtn)
+
+    expect(await screen.findByText(/activar plan pro/i)).toBeInTheDocument()
   })
 
   it('lets users return from billing to the main system', async () => {

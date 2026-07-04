@@ -1,10 +1,8 @@
-import { Body, Controller, Get, Param, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
-import { ConfirmSubscriptionDto } from './dto/confirm-subscription.dto';
-import { MpWebhookDto } from './dto/mp-webhook.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Public } from '../auth/public.decorator';
 
@@ -20,59 +18,27 @@ export class BillingController {
 
   @Get('me')
   getBilling(@CurrentUser() user: { id: string } | null) {
-    if (!user) {
-      throw new UnauthorizedException('Sesión inválida');
-    }
+    if (!user) throw new UnauthorizedException('Sesión inválida');
     return this.billingService.getBillingState(user.id);
   }
 
   @Post('checkout')
-  createCheckout(@CurrentUser() user: { id: string } | null, @Body() dto: CreateCheckoutSessionDto) {
-    if (!user) {
-      throw new UnauthorizedException('Sesión inválida');
-    }
+  createCheckout(
+    @CurrentUser() user: { id: string } | null,
+    @Body() dto: CreateCheckoutSessionDto & { culqiToken?: string },
+  ) {
+    if (!user) throw new UnauthorizedException('Sesión inválida');
     return this.billingService.createCheckoutSession(user.id, dto);
-  }
-
-  @Post('confirm')
-  confirmSubscription(@CurrentUser() user: { id: string } | null, @Body() dto: ConfirmSubscriptionDto) {
-    if (!user) {
-      throw new UnauthorizedException('Sesión inválida');
-    }
-    return this.billingService.confirmSubscription(user.id, dto);
   }
 
   @Post('cancel')
   cancel(@CurrentUser() user: { id: string } | null) {
-    if (!user) {
-      throw new UnauthorizedException('Sesión inválida');
-    }
+    if (!user) throw new UnauthorizedException('Sesión inválida');
     return this.billingService.cancelSubscription(user.id);
   }
 
   @Public()
-  @Get('debug/payment/:paymentId')
-  debugPayment(@Param('paymentId') paymentId: string) {
-    return this.billingService.debugPayment(paymentId);
-  }
-
-  @Public()
-  @Post('admin/activate-by-payment')
-  adminActivateByPayment(@Body() body: { adminSecret: string; userId: string; paymentId?: string; preapprovalId?: string; planCode: string; currency: string }) {
-    const expectedSecret = process.env.ADMIN_PASSWORD;
-    if (!expectedSecret || body.adminSecret !== expectedSecret) {
-      throw new UnauthorizedException('Secreto de admin inválido');
-    }
-    return this.billingService.adminActivate(body.userId, {
-      planCode: body.planCode as 'monthly' | 'annual',
-      currency: body.currency as 'PEN' | 'USD',
-      paymentId: body.paymentId,
-      preapprovalId: body.preapprovalId,
-    });
-  }
-
-  @Public()
-  @Post('webhooks/mp')
+  @Post('webhooks/culqi')
   handleWebhook(
     @Body() payload: Record<string, unknown>,
     @Req() request: Request & { rawBody?: Buffer },
@@ -80,17 +46,13 @@ export class BillingController {
     const webhookSecret = this.billingService.getWebhookSecret();
 
     if (webhookSecret) {
-      const signature = String(
-        request.headers['x-signature'] ||
-        request.headers['x-hub-signature-256'] ||
-        '',
-      ).trim();
+      const signature = String(request.headers['x-culqi-signature'] || '').trim();
 
       if (signature) {
         const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
         const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
         const expectedBuf = Buffer.from(expected, 'hex');
-        const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ''), 'hex');
+        const incomingBuf = Buffer.from(signature, 'hex');
 
         if (
           expectedBuf.length !== incomingBuf.length ||

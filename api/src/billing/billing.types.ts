@@ -1,4 +1,4 @@
-export type BillingProvider = 'mercadopago' | 'manual';
+export type BillingProvider = 'culqi' | 'manual';
 export type BillingCurrency = 'PEN' | 'USD';
 export type BillingPlanCode = 'monthly' | 'annual';
 export type BillingStatus = 'inactive' | 'pending' | 'active' | 'past_due' | 'canceled';
@@ -9,6 +9,7 @@ export interface BillingPlanConfig {
   label: string;
   description: string;
   amountEnv: string;
+  culqiPlanId: string;
 }
 
 export interface BillingPlan extends BillingPlanConfig {
@@ -28,7 +29,7 @@ export interface BillingState {
   cancelAtPeriodEnd: boolean;
 }
 
-export const BILLING_PROVIDER: BillingProvider = 'mercadopago';
+export const BILLING_PROVIDER: BillingProvider = 'culqi';
 
 export const BILLING_PLAN_CONFIGS: BillingPlanConfig[] = [
   {
@@ -36,27 +37,7 @@ export const BILLING_PLAN_CONFIGS: BillingPlanConfig[] = [
     currency: 'PEN',
     label: 'Mensual',
     description: 'Suscripción recurrente mensual en soles.',
-    amountEnv: 'MP_MONTHLY_PEN_AMOUNT',
-  },
-  {
-    code: 'annual',
-    currency: 'PEN',
-    label: 'Anual',
-    description: 'Suscripción recurrente anual en soles.',
-    amountEnv: 'MP_ANNUAL_PEN_AMOUNT',
-  },
-  {
-    code: 'monthly',
-    currency: 'USD',
-    label: 'Mensual',
-    description: 'Suscripción recurrente mensual en dólares.',
-    amountEnv: 'MP_MONTHLY_USD_AMOUNT',
-  },
-  {
-    code: 'annual',
-    currency: 'USD',
-    label: 'Anual',
-    description: 'Suscripción recurrente anual en dólares.',
-    amountEnv: 'MP_ANNUAL_USD_AMOUNT',
+    amountEnv: 'CULQI_MONTHLY_PEN_AMOUNT',
+    culqiPlanId: process.env.CULQI_PLAN_ID || 'pln_live_zIcHlDPYFqnA9XqZ',
   },
 ];

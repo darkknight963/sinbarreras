@@ -33,7 +33,7 @@ export class User {
   @Column({ type: 'varchar', length: 32, nullable: true })
   billingPlan!: BillingPlanCode | null;
 
-  @Column({ type: 'varchar', length: 32, default: 'mercadopago' })
+  @Column({ type: 'varchar', length: 32, default: 'culqi' })
   billingProvider!: BillingProvider;
 
   @Column({ type: 'varchar', length: 8, nullable: true })

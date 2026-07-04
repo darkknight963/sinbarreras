@@ -12,5 +12,5 @@ export class CreateCheckoutSessionDto {
 
   @IsOptional()
   @IsString()
-  returnUrl?: string;
+  culqiToken?: string;
 }

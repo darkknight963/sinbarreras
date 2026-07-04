@@ -1,6 +1,6 @@
 export type BillingCurrency = 'PEN' | 'USD';
 export type BillingPlanCode = 'monthly' | 'annual';
-export type BillingProvider = 'mercadopago';
+export type BillingProvider = 'culqi' | 'manual';
 export type BillingStatus = 'inactive' | 'pending' | 'active' | 'past_due' | 'canceled';
 
 export interface BillingPlan {
@@ -24,12 +24,7 @@ export interface BillingState {
   cancelAtPeriodEnd: boolean;
 }
 
-export interface BillingCheckoutSession {
-  amount?: number | null;
-  initPoint?: string | null;
-  sandboxInitPoint?: string | null;
-  checkoutUrl?: string | null;
-  preferenceId?: string | null;
-  preapprovalId?: string | null;
-  plan?: BillingPlan;
+export interface BillingCheckoutResult {
+  status: BillingStatus;
+  subscriptionId?: string | null;
 }

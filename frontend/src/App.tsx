@@ -10,11 +10,11 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, PRO_PAYMENT_URL, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
-import type { BillingCheckoutSession, BillingCurrency, BillingPlan, BillingState } from './billing';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
+import type { BillingCurrency, BillingPlan, BillingState } from './billing';
 import { AuthView } from './views/AuthView';
+import { CulqiCheckoutModal } from './CulqiCheckoutModal';
 const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
-const PaymentConfirmationView = lazy(() => import('./PaymentConfirmationView').then(m => ({ default: m.PaymentConfirmationView })));
 const ProjectsView = lazy(() => import('./views/ProjectsView').then(m => ({ default: m.ProjectsView })));
 const ProjectDetailView = lazy(() => import('./views/ProjectDetailView').then(m => ({ default: m.ProjectDetailView })));
 const ScanReportView = lazy(() => import('./views/ScanReportView').then(m => ({ default: m.ScanReportView })));
@@ -52,8 +52,7 @@ const BRAND_NAME = 'Sin Barreras';
 const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
 
 type AuthMode = 'session' | 'none' | 'public';
-type AppView = 'projects' | 'project' | 'scan' | 'billing' | 'billing-success' | 'admin';
-type CheckoutReturnStatus = 'success' | 'pending' | 'failure';
+type AppView = 'projects' | 'project' | 'scan' | 'billing' | 'admin';
 
 type AuthUser = {
   id: string;
@@ -184,95 +183,6 @@ const readApiJson = async <T,>(res: Response): Promise<T | null> => {
   return JSON.parse(text) as T;
 };
 
-const readCheckoutReturn = () => {
-  if (typeof window === 'undefined') return null;
-
-  const params = new URLSearchParams(window.location.search);
-  const checkout = params.get('checkout');
-  const hasMercadoPagoParams = [
-    'checkout',
-    'status',
-    'collection_status',
-    'payment_id',
-    'collection_id',
-    'merchant_order_id',
-    'preapproval_id',
-    'preapproval_plan_id',
-    'external_reference',
-    'preference_id',
-    'preference-id',
-    'payment_type',
-    'site_id',
-    'processing_mode',
-    'merchant_account_id',
-    'router-request-id',
-  ].some((key) => params.has(key));
-  if (!checkout && !hasMercadoPagoParams) return null;
-
-  const statusParam = (params.get('status') || '').toLowerCase();
-  const collectionStatus = (params.get('collection_status') || '').toLowerCase();
-  const normalizedStatus = collectionStatus || statusParam || (checkout ? checkout.toLowerCase() : '');
-  const paymentId =
-    params.get('payment_id') ||
-    params.get('collection_id') ||
-    '';
-  const preapprovalId =
-    params.get('preapproval_id') ||
-    '';
-
-  // MP puede no preservar nuestros params (plan, currency) en el back_url.
-  // Intentamos extraerlos del external_reference que siempre incluye MP: sb|userId|planCode|currency|uuid
-  const externalRef = params.get('external_reference') || '';
-  const externalRefParts = externalRef.startsWith('sb|') ? externalRef.split('|') : [];
-  const planFromRef = externalRefParts[2] === 'annual' ? 'annual' : null;
-  const currencyFromRef = externalRefParts[3] === 'USD' ? 'USD' : externalRefParts[3] === 'PEN' ? 'PEN' : null;
-
-  const planCode = (params.get('plan') === 'annual' ? 'annual' : params.get('plan') === 'monthly' ? 'monthly' : null) ?? planFromRef ?? 'monthly';
-  const currency = (params.get('currency') === 'USD' ? 'USD' : params.get('currency') === 'PEN' ? 'PEN' : null) ?? currencyFromRef ?? 'PEN';
-
-  let status: CheckoutReturnStatus = 'pending';
-  if (['approved', 'success', 'authorized'].includes(normalizedStatus)) status = 'success';
-  if (['failure', 'failed', 'rejected', 'cancelled', 'canceled'].includes(normalizedStatus)) status = 'failure';
-  if (!normalizedStatus && hasMercadoPagoParams) status = 'failure';
-
-  return { status, paymentId, preapprovalId, planCode, currency };
-};
-
-const clearCheckoutReturnFromUrl = () => {
-  if (typeof window === 'undefined') return;
-
-  const url = new URL(window.location.href);
-  [
-    'checkout',
-    'status',
-    'collection_status',
-    'payment_id',
-    'collection_id',
-    'merchant_order_id',
-    'preapproval_id',
-    'preapproval_plan_id',
-    'external_reference',
-    'plan',
-    'currency',
-    'preference_id',
-    'preference-id',
-    'payment_type',
-    'site_id',
-    'processing_mode',
-    'merchant_account_id',
-    'router-request-id',
-  ].forEach((key) => url.searchParams.delete(key));
-
-  window.history.replaceState({}, window.document.title, `${url.pathname}${url.search}${url.hash}`);
-};
-
-const buildMercadoPagoReturnUrl = (plan: BillingPlan, checkoutStatus: 'success' | 'pending' | 'failure') => {
-  const url = new URL(window.location.origin + window.location.pathname);
-  url.searchParams.set('checkout', checkoutStatus);
-  url.searchParams.set('plan', plan.code);
-  url.searchParams.set('currency', plan.currency);
-  return url.toString();
-};
 
 
 export default function App() {
@@ -300,7 +210,6 @@ export default function App() {
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [postLoginAction, setPostLoginAction] = useState<'billing' | null>(null);
-  const [checkoutReturn] = useState(() => readCheckoutReturn());
 
   const [view, setView] = useState<AppView>('projects');
 
@@ -323,15 +232,7 @@ export default function App() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingSubmitting, setBillingSubmitting] = useState<string | null>(null);
   const [billingNote, setBillingNote] = useState<string | null>(null);
-  const checkoutHandledRef = useRef(false);
-  const [checkoutConfirmationStatus, setCheckoutConfirmationStatus] = useState<'processing' | 'success' | 'pending' | 'failure'>(
-    checkoutReturn?.status === 'success' ? 'processing' : checkoutReturn?.status === 'pending' ? 'pending' : checkoutReturn?.status === 'failure' ? 'failure' : 'success',
-  );
-  const [checkoutConfirmationTitle, setCheckoutConfirmationTitle] = useState('Suscripcion confirmada');
-  const [checkoutConfirmationDescription, setCheckoutConfirmationDescription] = useState(
-    'Tu operacion fue recibida y aqui veras el estado final de tu compra.',
-  );
-  const [checkoutConfirmationDetail, setCheckoutConfirmationDetail] = useState<string | null>(null);
+  const [culqiModalPlan, setCulqiModalPlan] = useState<BillingPlan | null>(null);
 
   const [criterionApplicabilityFilter, setCriterionApplicabilityFilter] = useState<string>('todos');
   const [criterionResultFilter, setCriterionResultFilter] = useState<string>('todos');
@@ -704,9 +605,6 @@ export default function App() {
           const user = await res.json();
           setCurrentUser(user);
           setAuthMode('session');
-          if (checkoutReturn) {
-            setView('billing-success');
-          }
           return;
         }
       } catch (err) {
@@ -717,127 +615,13 @@ export default function App() {
     };
 
     bootstrapAuth().finally(() => setAuthLoading(false));
-  }, [checkoutReturn]);
+  }, []);
 
   useEffect(() => {
     if (authLoading || authMode !== 'session') return;
     fetchProjects();
   }, [authLoading, authMode]);
 
-  useEffect(() => {
-    if (authLoading || authMode !== 'session' || !checkoutReturn || view !== 'billing-success' || checkoutHandledRef.current) return;
-    checkoutHandledRef.current = true;
-
-    if (checkoutReturn.status === 'failure') {
-      const paymentIdForDiag = checkoutReturn.paymentId;
-
-      const handleFailure = async () => {
-        let failureDetail = 'Puedes intentarlo nuevamente con otra tarjeta o desde otro dispositivo.';
-        if (paymentIdForDiag) {
-          try {
-            const diagRes = await fetchWithFallback(`/billing/debug/payment/${paymentIdForDiag}`);
-            if (diagRes.ok) {
-              const diag = await diagRes.json() as { status_detail?: string };
-              if (diag.status_detail === 'cc_rejected_high_risk') {
-                failureDetail = 'Tu banco o Mercado Pago rechazó el pago por seguridad. Intenta con otra tarjeta o desde otro dispositivo/red. Si el problema persiste, contacta a tu banco.';
-              } else if (diag.status_detail === 'cc_rejected_insufficient_amount') {
-                failureDetail = 'Fondos insuficientes. Verifica tu saldo e intenta nuevamente.';
-              } else if (diag.status_detail === 'cc_rejected_bad_filled_card_number') {
-                failureDetail = 'Número de tarjeta incorrecto. Verifica los datos e intenta nuevamente.';
-              } else if (diag.status_detail === 'cc_rejected_bad_filled_date') {
-                failureDetail = 'Fecha de vencimiento incorrecta. Verifica los datos e intenta nuevamente.';
-              } else if (diag.status_detail === 'cc_rejected_bad_filled_security_code') {
-                failureDetail = 'Código de seguridad (CVV) incorrecto. Verifica los datos e intenta nuevamente.';
-              } else if (diag.status_detail === 'cc_rejected_card_disabled') {
-                failureDetail = 'Tu tarjeta está deshabilitada. Contacta a tu banco para activarla.';
-              } else if (diag.status_detail) {
-                failureDetail = `Pago rechazado (${diag.status_detail}). Intenta con otra tarjeta o contacta a tu banco.`;
-              }
-            }
-          } catch {
-            // si falla el diagnóstico, usamos el mensaje genérico
-          }
-        }
-        setCheckoutConfirmationStatus('failure');
-        setCheckoutConfirmationTitle('Pago rechazado');
-        setCheckoutConfirmationDescription(failureDetail);
-        setCheckoutConfirmationDetail('Puedes volver a la sección de planes para intentarlo nuevamente.');
-        clearCheckoutReturnFromUrl();
-      };
-
-      void handleFailure();
-      return;
-    }
-
-    const referenceId = checkoutReturn.preapprovalId || checkoutReturn.paymentId;
-
-    // Sin referencia de pago o suscripción no podemos confirmar nada
-    if (!referenceId) {
-      setCheckoutConfirmationStatus('pending');
-      setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
-      setCheckoutConfirmationDescription('Mercado Pago devolvio la operacion, pero todavia no tenemos una aprobacion final.');
-      setCheckoutConfirmationDetail('Si el cobro se aprueba, tu plan se actualizara automaticamente.');
-      clearCheckoutReturnFromUrl();
-      return;
-    }
-
-    const confirmFromReturn = async () => {
-      setCheckoutConfirmationStatus('processing');
-      setCheckoutConfirmationTitle('Confirmando suscripcion');
-      setCheckoutConfirmationDescription('Estamos validando tu regreso desde Mercado Pago para dejar tu plan registrado.');
-      setCheckoutConfirmationDetail(`Operacion recibida: ${referenceId}`);
-
-      try {
-        const confirmResponse = await fetchWithFallback('/billing/confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            planCode: checkoutReturn.planCode,
-            currency: checkoutReturn.currency,
-            paymentId: checkoutReturn.paymentId,
-            preapprovalId: checkoutReturn.preapprovalId,
-          }),
-        });
-
-        if (!confirmResponse.ok) {
-          throw new Error(await readApiErrorMessage(confirmResponse));
-        }
-
-        const confirmedState = await confirmResponse.json() as BillingState;
-        setBillingState(confirmedState);
-
-        await loadBillingData();
-        const userResponse = await fetchWithFallback('/auth/me');
-        if (userResponse.ok) {
-          setCurrentUser(await userResponse.json());
-        }
-
-        if (confirmedState.status === 'active') {
-          setBillingNote('Tu suscripcion ya fue registrada en el sistema.');
-          setCheckoutConfirmationStatus('success');
-          setCheckoutConfirmationTitle('Suscripcion confirmada');
-          setCheckoutConfirmationDescription('Tu compra fue recibida y tu acceso ya quedo asociado a la cuenta.');
-          setCheckoutConfirmationDetail(`Referencia de suscripcion: ${referenceId}`);
-        } else {
-          setBillingNote('Mercado Pago devolvio la operacion, pero el pago aun no figura como aprobado.');
-          setCheckoutConfirmationStatus('pending');
-          setCheckoutConfirmationTitle('Pago recibido, pendiente de validacion');
-          setCheckoutConfirmationDescription('La suscripcion aun no aparece como activa. En cuanto Mercado Pago confirme el cobro, el acceso quedara habilitado.');
-          setCheckoutConfirmationDetail(`Referencia de suscripcion: ${referenceId}`);
-        }
-      } catch (err) {
-        console.error('Error al confirmar retorno de Mercado Pago:', err);
-        setCheckoutConfirmationStatus('pending');
-        setCheckoutConfirmationTitle('Pago recibido, pendiente de verificacion');
-        setCheckoutConfirmationDescription('Aun no pudimos dejar la suscripcion marcada como activa desde el retorno.');
-        setCheckoutConfirmationDetail(err instanceof Error ? err.message : 'Intenta revisar tu plan nuevamente en unos minutos.');
-      } finally {
-        clearCheckoutReturnFromUrl();
-      }
-    };
-
-    void confirmFromReturn();
-  }, [authLoading, authMode, checkoutReturn, view]);
 
   // Client-side animated progress — replaces the realtime WebSocket feed so the backend
   // runs no 24/7 Redis poller. The percentage is simulated locally (no network calls)
@@ -1566,53 +1350,56 @@ export default function App() {
     }
   };
 
-  const handleBillingSubscribe = async (plan: BillingPlan) => {
+  const handleBillingSubscribe = (plan: BillingPlan) => {
     if (authMode !== 'session') {
       setPostLoginAction('billing');
       setAuthMode('none');
       setAuthFormMode('register');
       return;
     }
-
-    const key = `${plan.code}:${plan.currency}`;
-    setBillingSubmitting(key);
     setBillingNote(null);
-    clearCheckoutReturnFromUrl();
+    setCulqiModalPlan(plan);
+  };
+
+  const handleCulqiToken = async (token: string) => {
+    if (!culqiModalPlan) return;
+    const key = `${culqiModalPlan.code}:${culqiModalPlan.currency}`;
+    setBillingSubmitting(key);
 
     try {
-      const checkoutResponse = await fetchWithFallback('/billing/checkout', {
+      const res = await fetchWithFallback('/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planCode: plan.code, currency: plan.currency }),
+        body: JSON.stringify({
+          planCode: culqiModalPlan.code,
+          currency: culqiModalPlan.currency,
+          culqiToken: token,
+        }),
       });
 
-      if (checkoutResponse.status === 401) {
+      if (res.status === 401) {
         setCurrentUser(null);
         setAuthMode('none');
         setAuthFormMode('login');
-        setAppError('Tu sesion vencio. Inicia sesion nuevamente para continuar con el pago.');
+        setCulqiModalPlan(null);
+        setAppError('Tu sesión venció. Inicia sesión nuevamente.');
         return;
       }
 
-      if (!checkoutResponse.ok) {
-        const text = await checkoutResponse.text();
-        throw new Error(text || `HTTP ${checkoutResponse.status}`);
+      if (!res.ok) {
+        throw new Error(await readApiErrorMessage(res));
       }
 
-      const checkoutData = await checkoutResponse.json() as BillingCheckoutSession;
-      const checkoutUrl = checkoutData.initPoint || checkoutData.sandboxInitPoint || checkoutData.checkoutUrl || PRO_PAYMENT_URL;
+      const state = await res.json() as BillingState;
+      setBillingState(state);
+      await loadBillingData();
+      const userRes = await fetchWithFallback('/auth/me');
+      if (userRes.ok) setCurrentUser(await userRes.json());
 
-      if (!checkoutUrl) {
-        setBillingNote(
-          `La pantalla de confirmacion ya esta creada. Cuando conectes Mercado Pago, usa estas URLs de retorno: ${buildMercadoPagoReturnUrl(plan, 'success')} | ${buildMercadoPagoReturnUrl(plan, 'pending')} | ${buildMercadoPagoReturnUrl(plan, 'failure')}`,
-        );
-        return;
-      }
-
-      setBillingNote('Redirigiendo a Mercado Pago para completar la suscripcion...');
-      window.location.assign(checkoutUrl);
-    } catch (err: any) {
-      handleApiError('No se pudo iniciar el pago', err);
+      setCulqiModalPlan(null);
+      setBillingNote('¡Suscripción activada! Tu plan Pro ya está activo.');
+    } catch (err) {
+      throw err;
     } finally {
       setBillingSubmitting(null);
     }
@@ -2059,7 +1846,7 @@ export default function App() {
         tabIndex={-1}
       >
         <p className="visually-hidden" aria-live="polite">
-          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : view === 'scan' ? 'Informe de escaneo' : view === 'admin' ? 'Administración' : view === 'billing-success' ? 'Confirmacion de pago' : 'Planes y pagos'}
+          Vista actual: {view === 'projects' ? 'Proyectos' : view === 'project' ? 'Detalle de proyecto' : view === 'scan' ? 'Informe de escaneo' : view === 'admin' ? 'Administración' : 'Planes y pagos'}
         </p>
         {appError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
@@ -2226,33 +2013,6 @@ export default function App() {
           </Suspense>
         )}
 
-        {view === 'billing-success' && (
-          <Suspense fallback={<div className="p-8 text-center text-slate-500">Confirmando pago...</div>}>
-            <PaymentConfirmationView
-              status={checkoutConfirmationStatus}
-              title={checkoutConfirmationTitle}
-              description={checkoutConfirmationDescription}
-              detail={checkoutConfirmationDetail}
-              retryPlanCode={checkoutReturn?.planCode ?? undefined}
-              retryCurrency={checkoutReturn?.currency ?? undefined}
-              onBackToProjects={() => setView('projects')}
-              onBackToBilling={() => setView('billing')}
-              onRetry={async (planCode, currency) => {
-                let plan = billingPlans.find((p) => p.code === planCode && p.currency === currency);
-                if (!plan) {
-                  await loadBillingData();
-                  plan = billingPlans.find((p) => p.code === planCode && p.currency === currency);
-                }
-                if (plan) {
-                  await handleBillingSubscribe(plan);
-                } else {
-                  setView('billing');
-                }
-              }}
-            />
-          </Suspense>
-        )}
-
         {view === 'admin' && currentUser && isMasterAccount && (
           <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando panel...</div>}>
             <AdminView
@@ -2262,6 +2022,14 @@ export default function App() {
           </Suspense>
         )}
       </main>
+      {culqiModalPlan && currentUser && (
+        <CulqiCheckoutModal
+          plan={culqiModalPlan}
+          userEmail={currentUser.email}
+          onToken={handleCulqiToken}
+          onClose={() => setCulqiModalPlan(null)}
+        />
+      )}
       {showPasswordModal && currentUser && (
         <div className="fixed inset-0 report-modal-overlay flex items-center justify-center p-4" role="presentation">
           <div className="report-modal account-modal" role="dialog" aria-modal="true" aria-labelledby="change-password-title">

@@ -43,8 +43,5 @@ export const SOCKET_URL =
 export const SOCKET_PATH =
   import.meta.env.VITE_SOCKET_PATH?.trim() || '/socket.io';
 
-export const PRO_PAYMENT_URL =
-  import.meta.env.VITE_PRO_PAYMENT_URL?.trim() || '';
-
 export const CHROME_EXTENSION_ID =
   import.meta.env.VITE_EXTENSION_ID?.trim() || 'bipiiijphpkdbodephdbahlkdcnopjao';

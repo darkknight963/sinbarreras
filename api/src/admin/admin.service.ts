@@ -79,7 +79,7 @@ export class AdminService {
       isActive: true,
       billingStatus: dto.billingStatus || 'inactive',
       billingPlan: dto.billingPlan || null,
-      billingProvider: 'mercadopago',
+      billingProvider: 'culqi',
       billingCurrency: null,
       billingPeriodEnd: null,
       billingCustomerId: null,
