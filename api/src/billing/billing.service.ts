@@ -14,8 +14,13 @@ import {
   BillingStatus,
 } from './billing.types';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
+import * as crypto from 'crypto';
 
 const CULQI_API_BASE = 'https://api.culqi.com/v2';
+
+// Endpoints protegidos por la RSA Backend Key en CulqiOnline: con la llave
+// activa en el panel, Culqi rechaza JSON plano en ellos (401 "Petición invalida").
+const CULQI_RSA_PATHS = ['/plans', '/subscriptions', '/cards', '/customers'];
 
 @Injectable()
 export class BillingService {
@@ -320,6 +325,69 @@ export class BillingService {
     return key;
   }
 
+  private getRsaKeyId(): string {
+    return this.configService.get<string>('CULQI_RSA_KEY_ID', '').trim();
+  }
+
+  private getRsaPublicKey(): string {
+    return this.normalizeRsaKey(this.configService.get<string>('CULQI_RSA_PUBLIC_KEY', '') || '');
+  }
+
+  private needsRsa(path: string, method: string): boolean {
+    if (method === 'GET' || method === 'DELETE') return false;
+    if (!this.getRsaPublicKey() || !this.getRsaKeyId()) return false;
+    return CULQI_RSA_PATHS.some((p) => path.startsWith(p));
+  }
+
+  // Encriptación híbrida RSA-AES exigida por CulqiOnline cuando hay una RSA Key
+  // activa en el panel (Desarrollo → RSA Keys). Formato del SDK oficial:
+  // 1. AES-256-GCM con key de 32 bytes e IV de 16 bytes aleatorios.
+  // 2. encrypted_data = base64(ciphertext || authTag): GCM requiere el tag para
+  //    desencriptar, va anexado al final del ciphertext (formato openssl).
+  // 3. Key e IV se encriptan por separado con RSA-OAEP (SHA-256 + MGF1).
+  // 4. Body final: { encrypted_data, encrypted_key, encrypted_iv } en base64,
+  //    más el header x-culqi-rsa-id con el ID de la llave.
+  private encryptWithRsa(plaintext: string): string {
+    const aesKey = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(16);
+
+    const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
+    const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const dataWithTag = Buffer.concat([ciphertext, cipher.getAuthTag()]);
+
+    const oaepOptions = {
+      key: this.getRsaPublicKey(),
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: 'sha256',
+    } as const;
+
+    return JSON.stringify({
+      encrypted_data: dataWithTag.toString('base64'),
+      encrypted_key: crypto.publicEncrypt(oaepOptions, aesKey).toString('base64'),
+      encrypted_iv: crypto.publicEncrypt(oaepOptions, iv).toString('base64'),
+    });
+  }
+
+  // Reconstruye el PEM desde el base64 puro. Tolera comillas envolventes,
+  // \n literales y CRLF — cualquier variante en que Railway entregue la env var.
+  private normalizeRsaKey(raw: string): string {
+    let key = raw.trim();
+    if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+      key = key.slice(1, -1);
+    }
+    key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').trim();
+
+    const b64 = key
+      .replace(/-----BEGIN PUBLIC KEY-----/, '')
+      .replace(/-----END PUBLIC KEY-----/, '')
+      .replace(/\s+/g, '');
+
+    if (!b64) return '';
+
+    const lines = b64.match(/.{1,64}/g) ?? [];
+    return `-----BEGIN PUBLIC KEY-----\n${lines.join('\n')}\n-----END PUBLIC KEY-----`;
+  }
+
   private async culqiRequest(
     path: string,
     method: 'GET' | 'POST' | 'DELETE' | 'PATCH',
@@ -331,14 +399,22 @@ export class BillingService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    };
+
+    let payload = body ? JSON.stringify(body) : undefined;
+    if (payload && this.needsRsa(path, method)) {
+      payload = this.encryptWithRsa(payload);
+      headers['x-culqi-rsa-id'] = this.getRsaKeyId();
+    }
+
     try {
       const res = await fetch(`${CULQI_API_BASE}${path}`, {
         method,
-        headers: {
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-        },
-        body: body ? JSON.stringify(body) : undefined,
+        headers,
+        body: payload,
         signal: controller.signal,
       });
 
