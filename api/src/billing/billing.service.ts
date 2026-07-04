@@ -206,14 +206,16 @@ export class BillingService {
       return user.billingCustomerId;
     }
 
+    const displayName = user.fullName || user.companyName || user.email;
+    const nameParts = displayName.trim().split(/\s+/);
     const body = {
-      first_name: (user.fullName || user.companyName || user.email).split(' ')[0] || 'Cliente',
-      last_name: this.extractLastName(user.fullName || user.companyName || user.email),
+      first_name: nameParts[0] || 'Cliente',
+      last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || 'Cliente',
       email: user.email,
-      address: 'Lima',
+      address: 'Av. Principal 123',
       address_city: 'Lima',
       country_code: 'PE',
-      phone_number: '51999999999',
+      phone_number: '51900000001',
     };
 
     const customer = await this.culqiRequest('/customers', 'POST', body, secretKey);
@@ -339,10 +341,12 @@ export class BillingService {
       const json = await res.json() as Record<string, unknown>;
 
       if (!res.ok) {
+        console.error(`[Culqi] ${method} ${path} → ${res.status}`, JSON.stringify(json));
         const msg = String(json.merchant_message || json.user_message || json.message || `Culqi HTTP ${res.status}`);
         throw new BadRequestException(msg);
       }
 
+      console.log(`[Culqi] ${method} ${path} → ${res.status} id=${json.id || '?'}`);
       return json;
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
