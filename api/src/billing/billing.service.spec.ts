@@ -70,7 +70,6 @@ describe('BillingService', () => {
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'cus_test_123' }) })  // create customer
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'crd_test_456' }) })  // create card
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'pln_live_zIcHlDPYFqnA9XqZ', status: 'active' }) }) // get plan (diagnóstico)
       .mockResolvedValueOnce({ ok: true, json: async () => ({                           // create subscription
         id: 'sub_test_789',
         customer_id: 'cus_test_123',

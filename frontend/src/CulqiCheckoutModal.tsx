@@ -38,6 +38,7 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
     window.culqi = async () => {
       if (window.Culqi?.token) {
         const token = window.Culqi.token.id;
+        window.Culqi.close();
         setStatus('processing');
         setErrorMsg(null);
         try {

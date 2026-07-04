@@ -34,14 +34,7 @@ export class BillingService {
     private readonly subscriptionRepository: Repository<BillingSubscription>,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
-  ) {
-    const rsaKey = this.getRsaPublicKey();
-    console.log('[Culqi] RSA config al arranque:', {
-      keyId: this.getRsaKeyId() || '(VACIO)',
-      publicKeyChars: rsaKey.length,
-      publicKeyOk: rsaKey.startsWith('-----BEGIN PUBLIC KEY-----'),
-    });
-  }
+  ) {}
 
   async listPlans(): Promise<BillingPlan[]> {
     return BILLING_PLAN_CONFIGS.map((plan) => this.resolveBillingPlan(plan));
@@ -219,11 +212,7 @@ export class BillingService {
     // Reutilizar solo si es un customer de Culqi (cus_...). Los usuarios migrados
     // desde Mercado Pago tienen IDs numéricos residuales que Culqi no reconoce.
     if (user.billingCustomerId && user.billingCustomerId.startsWith('cus_')) {
-      console.log('[Culqi] ensureCulqiCustomer reusing existing customerId:', user.billingCustomerId);
       return user.billingCustomerId;
-    }
-    if (user.billingCustomerId) {
-      console.log('[Culqi] ensureCulqiCustomer descartando customerId ajeno a Culqi:', user.billingCustomerId);
     }
 
     const displayName = user.fullName || user.companyName || user.email;
@@ -238,10 +227,8 @@ export class BillingService {
       phone_number: '51900000001',
     };
 
-    console.log('[Culqi] ensureCulqiCustomer creating new customer for email:', user.email);
     const customer = await this.culqiRequest('/customers', 'POST', body, secretKey);
     const customerId = String(customer.id);
-    console.log('[Culqi] ensureCulqiCustomer created customerId:', customerId);
 
     await this.userRepository.update(user.id, { billingCustomerId: customerId });
     user.billingCustomerId = customerId;
@@ -250,9 +237,7 @@ export class BillingService {
   }
 
   private async createCulqiCard(customerId: string, token: string, secretKey: string): Promise<string> {
-    const payload = { customer_id: customerId, token_id: token };
-    console.log('[Culqi] createCulqiCard payload:', JSON.stringify(payload), 'key prefix:', secretKey.slice(0, 12));
-    const card = await this.culqiRequest('/cards', 'POST', payload, secretKey);
+    const card = await this.culqiRequest('/cards', 'POST', { customer_id: customerId, token_id: token }, secretKey);
     return String(card.id);
   }
 
@@ -262,14 +247,6 @@ export class BillingService {
     planId: string,
     secretKey: string,
   ): Promise<Record<string, unknown>> {
-    // Diagnóstico: verificar que el plan exista antes de suscribir.
-    try {
-      const plan = await this.culqiRequest(`/recurrent/plans/${planId}`, 'GET', undefined, secretKey);
-      console.log('[Culqi] plan verificado:', JSON.stringify({ id: plan.id, status: (plan as any).status, name: (plan as any).name }));
-    } catch (err) {
-      console.error(`[Culqi] ADVERTENCIA: no se pudo obtener el plan ${planId}:`, err instanceof Error ? err.message : err);
-    }
-
     // Formato del SDK oficial culqi-go: card_id + plan_id + tyc (aceptación de
     // términos y condiciones). El customer se infiere de la tarjeta.
     const subscription = await this.culqiRequest('/recurrent/subscriptions/create', 'POST', {
