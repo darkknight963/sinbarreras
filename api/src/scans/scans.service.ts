@@ -174,6 +174,17 @@ export class ScansService {
 
     scan.status = 'cancelled';
     const saved = await this.scanRepository.save(scan);
+
+    // Remover el job de la cola si aún no fue tomado por el worker. Si ya está
+    // activo, remove() falla y el worker lo detiene solo (chequeo por URL +
+    // transición guardada que respeta el estado 'cancelled').
+    try {
+      const job = await this.scansQueue.getJob(id);
+      if (job) await job.remove();
+    } catch {
+      // Job activo o inexistente — el worker respeta el estado en Postgres.
+    }
+
     await this.invalidateScanCache(id);
     return saved;
   }
@@ -538,6 +549,15 @@ export class ScansService {
     const project = await projectQuery.getOne();
     if (!project) throw new Error('Project not found');
 
+    // El id opcional del cliente solo puede CREAR, nunca sobrescribir: save() con un
+    // id existente haría upsert, permitiendo secuestrar el scan de otro usuario.
+    if (createScanDto.id) {
+      const existing = await this.scanRepository.findOne({ where: { id: createScanDto.id }, select: { id: true } });
+      if (existing) {
+        throw new BadRequestException('El identificador de escaneo ya está en uso.');
+      }
+    }
+
     if (ownerId && options.enforceSingleFreeUrl) {
       await this.enforceSingleFreeUrl(ownerId, project, urls);
     }
@@ -567,11 +587,9 @@ export class ScansService {
       // Backpressure: si la cola tiene demasiados jobs pendientes, rechazar con 503
       // en lugar de acumular jobs que esperarían horas. El umbral es configurable.
       const QUEUE_MAX_PENDING = Number(process.env.QUEUE_MAX_PENDING || 50);
-      const [waiting, delayed] = await Promise.all([
-        this.scansQueue.getWaitingCount(),
-        this.scansQueue.getDelayedCount(),
-      ]);
-      const pendingTotal = waiting + delayed;
+      // Solo 'waiting': los jobs delayed de la cola son cleanups de scans públicos
+      // (5 min de delay) que no representan carga de escaneo pendiente.
+      const pendingTotal = await this.scansQueue.getWaitingCount();
       if (pendingTotal >= QUEUE_MAX_PENDING) {
         // Marcar el scan como fallido antes de rechazar para no dejar registros huérfanos.
         await this.scanRepository.update(savedScan.id, { status: 'failed' });
@@ -685,15 +703,26 @@ export class ScansService {
     return `scan:cache:${id}:${ownerId ?? 'public'}`;
   }
 
+  // SET que registra las variantes de caché escritas para un scan. Permite
+  // invalidar con SMEMBERS + DEL (2-3 comandos) en lugar de un SCAN sobre todo
+  // el keyspace de Redis (que recorría también las miles de llaves de BullMQ).
+  private scanCacheSetKey(id: string): string {
+    return `scan:cachekeys:${id}`;
+  }
+
+  private async writeScanCache(id: string, ownerId: string | null, value: unknown, ttlMs: number): Promise<void> {
+    const cacheKey = this.scanCacheKey(id, ownerId);
+    await this.rateLimitService.setJson(cacheKey, value, ttlMs);
+    await this.rateLimitService.addToSet(this.scanCacheSetKey(id), cacheKey, 60_000);
+  }
+
   async invalidateScanCache(id: string): Promise<void> {
-    // Borra todas las variantes de caché para este scan: pública y por owner.
-    // El worker llama esto al completar o fallar un scan.
-    const pattern = `scan:cache:${id}:*`;
     try {
-      const keys = await this.rateLimitService.scanKeys(pattern);
-      if (keys.length) {
-        await Promise.all(keys.map((k) => this.rateLimitService.deleteKey(k)));
-      }
+      const setKey = this.scanCacheSetKey(id);
+      const tracked = await this.rateLimitService.getSetMembers(setKey);
+      // La variante pública se incluye siempre por si el SET expiró antes que la caché.
+      const toDelete = [...new Set([...tracked, this.scanCacheKey(id, null)])];
+      await this.rateLimitService.deleteKeys([...toDelete, setKey]);
     } catch {
       // No fatal: la caché expirará sola en max 8s
     }
@@ -760,7 +789,7 @@ export class ScansService {
     if (result) {
       const ttl = this.getScanCacheTtlMs(result.status);
       if (ttl > 0) {
-        await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+        await this.writeScanCache(id, ownerId, result, ttl).catch(() => {/* non-fatal */});
       }
     }
     return result;
@@ -791,7 +820,7 @@ export class ScansService {
     if (result) {
       const ttl = this.getScanCacheTtlMs(result.status);
       if (ttl > 0) {
-        await this.rateLimitService.setJson(cacheKey, result, ttl).catch(() => {/* non-fatal */});
+        await this.writeScanCache(id, null, result, ttl).catch(() => {/* non-fatal */});
       }
     }
     return result;
@@ -817,6 +846,12 @@ export class ScansService {
       throw new BadRequestException('Este escaneo ya fue procesado o no está esperando resultados de la extensión.');
     }
 
+    // Este chequeo debe ir ANTES de la transición atómica: si lanzara después,
+    // el scan quedaría atascado en 'running' sin camino de reintento.
+    if (scan.urlResults?.length) {
+      throw new BadRequestException('Este escaneo ya tiene resultados y no puede sobrescribirse.');
+    }
+
     // Atomic status transition prevents two concurrent extension submissions from
     // both passing the awaiting_login check and writing duplicate urlResults.
     const transitioned = await this.scanRepository
@@ -828,10 +863,6 @@ export class ScansService {
 
     if (!transitioned.affected || transitioned.affected === 0) {
       throw new BadRequestException('Este escaneo ya fue procesado o no está esperando resultados de la extensión.');
-    }
-
-    if (scan.urlResults?.length) {
-      throw new BadRequestException('Este escaneo ya tiene resultados y no puede sobrescribirse.');
     }
 
     const violations = Array.isArray(payload.violations) ? payload.violations : [];

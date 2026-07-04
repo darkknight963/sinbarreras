@@ -33,25 +33,34 @@ const pool = new Pool(
       }
 );
 
-// Invalida todas las entradas de caché para un scan dado usando SCAN cursor.
-// No-fatal: si Redis no está disponible, la caché expira sola (máx 8s activa, 5min terminal).
+// Invalida las entradas de caché de un scan. El API registra cada variante de
+// caché en el SET scan:cachekeys:{id}, así que basta SMEMBERS + DEL (2-3
+// comandos) en lugar de un SCAN sobre todo el keyspace (que recorría también
+// las miles de llaves de BullMQ en cada invalidación).
+// No-fatal: si Redis no está disponible, la caché expira sola (máx 8s).
 async function invalidateScanCache(scanId: string): Promise<void> {
   try {
     const redis = getRedisClient();
-    const pattern = `scan:cache:${scanId}:*`;
-    let cursor = '0';
-    const toDelete: string[] = [];
-    do {
-      const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-      cursor = next;
-      toDelete.push(...keys);
-    } while (cursor !== '0');
-    if (toDelete.length) {
-      await redis.del(...toDelete);
-      log.info('Cache invalidada', { scanId, keys: toDelete.length });
-    }
+    const setKey = `scan:cachekeys:${scanId}`;
+    const tracked = await redis.smembers(setKey);
+    // La variante pública siempre se incluye por si el SET expiró antes que la caché.
+    const toDelete = [...new Set([...tracked, `scan:cache:${scanId}:public`])];
+    await redis.del(...toDelete, setKey);
   } catch (err) {
     log.warn('Cache invalidation fallida (no-fatal)', { scanId, error: (err as Error)?.message });
+  }
+}
+
+// Los scans manual_assisted quedan en awaiting_login hasta que la extensión
+// envía resultados. Si el usuario nunca completa el flujo, expiran a las 24h
+// para que el frontend deje de mostrarlos (y de pollearlos) como activos.
+export async function expireStaleAwaitingLoginScans(): Promise<void> {
+  const result = await pool.query(
+    `UPDATE scans SET status = 'failed'
+     WHERE status = 'awaiting_login' AND "createdAt" < NOW() - INTERVAL '24 hours'`,
+  );
+  if (result.rowCount) {
+    log.info('Scans awaiting_login expirados por antigüedad', { count: result.rowCount });
   }
 }
 
@@ -150,11 +159,10 @@ export async function processScan(job: Job): Promise<{ scanId: string; publicSca
   // runWithScanContext usa AsyncLocalStorage: el contexto isPublic queda aislado
   // por cadena de promesas, por lo que con concurrencia 3 cada scan tiene su
   // propio contexto y no puede contaminar al de otro.
-  return runWithScanContext(Boolean(publicScan), () => _processScanBody(job, scanId, urls, scanMode, preNavigationScript, publicScan));
+  return runWithScanContext(Boolean(publicScan), () => _processScanBody(scanId, urls, scanMode, preNavigationScript, publicScan));
 }
 
 async function _processScanBody(
-  job: Job,
   scanId: string,
   urls: string[],
   scanMode: string,
@@ -162,11 +170,18 @@ async function _processScanBody(
   publicScan: boolean | undefined,
 ): Promise<{ scanId: string; publicScan?: boolean }> {
 
-  // Update scan status to running
-  await pool.query(
-    `UPDATE scans SET status = 'running' WHERE id = $1`,
+  // Transición guardada: si el usuario canceló el scan mientras estaba en cola
+  // (o ya está en un estado terminal), NO lo revivimos a 'running' — antes el
+  // UPDATE incondicional pisaba el 'cancelled' y el scan corría completo igual.
+  const startUpdate = await pool.query(
+    `UPDATE scans SET status = 'running'
+     WHERE id = $1 AND status NOT IN ('cancelled', 'completed', 'failed')`,
     [scanId]
   );
+  if (startUpdate.rowCount === 0) {
+    log.info('Job omitido: scan cancelado o ya terminal antes de iniciar', { scanId });
+    return { scanId, publicScan };
+  }
 
   let validatedUrls: string[];
   try {
@@ -252,17 +267,25 @@ async function _processScanBody(
       // Paralelo fue revertido: bajo presión de memoria los contextos simultáneos pueden
       // producir falsos negativos en axe y capturas incompletas. El timeout por URL
       // sigue activo para evitar que una página lenta congele el job.
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`URL scan timeout after ${URL_SCAN_TIMEOUT_MS / 1000}s: ${url}`)), URL_SCAN_TIMEOUT_MS),
-      );
+      let timeoutHandle: NodeJS.Timeout | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new Error(`URL scan timeout after ${URL_SCAN_TIMEOUT_MS / 1000}s: ${url}`)),
+          URL_SCAN_TIMEOUT_MS,
+        );
+      });
       const viewportResults: Awaited<ReturnType<typeof scanUrl>>[] = [];
-      for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
-        const vp = viewports[viewportIndex];
-        const res = await Promise.race([
-          scanUrl(url, { viewport: vp, lightScan: viewportIndex > 0 }),
-          timeoutPromise,
-        ]);
-        viewportResults.push(res);
+      try {
+        for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
+          const vp = viewports[viewportIndex];
+          const res = await Promise.race([
+            scanUrl(url, { viewport: vp, lightScan: viewportIndex > 0 }),
+            timeoutPromise,
+          ]);
+          viewportResults.push(res);
+        }
+      } finally {
+        clearTimeout(timeoutHandle);
       }
 
       // Aggregate scores
@@ -328,13 +351,18 @@ async function _processScanBody(
       break; // Éxito: salir del loop de reintentos
     } catch (urlErr) {
       lastUrlError = urlErr;
-      const isLastAttempt = attempt === MAX_URL_RETRIES;
+      // Un timeout NO se reintenta: el scanUrl abandonado por Promise.race sigue
+      // corriendo en background, y un reintento inmediato duplicaría contextos de
+      // Chromium en paralelo (pico de memoria = riesgo de falsos negativos).
+      const isTimeout = String((urlErr as Error)?.message || '').includes('URL scan timeout');
+      const isLastAttempt = attempt === MAX_URL_RETRIES || isTimeout;
       if (isLastAttempt) {
-        log.error('URL scan failed after all retries', { url, attempts: MAX_URL_RETRIES + 1, error: (urlErr as Error)?.message, scanId });
+        log.error('URL scan failed after all retries', { url, attempts: attempt + 1, timeout: isTimeout, error: (urlErr as Error)?.message, scanId });
         await pool.query(
           `INSERT INTO url_results (url, score, violations, applicability, "focusTraversal", "engineReport", "semanticStructure", "visualMap", status, "scanId") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [url, 0, '[]', 'null', 'null', JSON.stringify([]), JSON.stringify(null), JSON.stringify(null), 'failed', scanId]
         );
+        break;
       } else {
         log.warn('URL scan attempt failed, will retry', { url, attempt: attempt + 1, maxAttempts: MAX_URL_RETRIES + 1, error: (urlErr as Error)?.message });
       }
@@ -362,13 +390,14 @@ async function _processScanBody(
     vp = vo * ux;
   }
 
-  // Update final scan record
+  // Si NINGUNA URL pudo escanearse, el scan falló — antes se marcaba 'completed'
+  // con score 0, indistinguible de un sitio catastróficamente inaccesible.
+  const finalStatus = results.length > 0 ? 'completed' : 'failed';
   await pool.query(
-    `UPDATE scans SET status = 'completed', "globalScore" = $1, vp = $2 WHERE id = $3`,
-    [finalScore, vp, scanId]
+    `UPDATE scans SET status = $1, "globalScore" = $2, vp = $3 WHERE id = $4`,
+    [finalStatus, results.length > 0 ? finalScore : null, vp, scanId]
   );
 
   await invalidateScanCache(scanId);
-  await job.updateProgress({ scanId, value: 100 });
   return { scanId, publicScan };
 }

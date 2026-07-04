@@ -1,6 +1,6 @@
 import { Worker, Job, Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
-import { cleanupPublicScan, processScan } from './processor.js';
+import { cleanupPublicScan, expireStaleAwaitingLoginScans, processScan } from './processor.js';
 import { initializeStorage, cleanupExpiredEvidence } from './storage.js';
 import { createLogger } from './logger.js';
 import { browserPool } from './browser-pool.js';
@@ -50,15 +50,15 @@ const buildRedisConnection = () => {
 async function bootstrap() {
   await initializeStorage();
 
-  // Cola dedicada al cleanup de scans públicos y evidencias expiradas, separada de la
-  // cola principal para que los jobs de limpieza no compitan con scans de usuario.
-  const cleanupQueue = new Queue('scans-cleanup', { connection: buildRedisConnection() });
+  // Los jobs de cleanup viven en la MISMA cola 'scans' (diferenciados por nombre).
+  // Antes había una cola 'scans-cleanup' con su propio Worker: ese segundo consumidor
+  // duplicaba el polling idle contra Redis (~2x comandos/mes en Upstash) para jobs
+  // que corren una vez al día o con 5 min de delay. Un solo worker despacha por nombre.
+  const scansQueue = new Queue('scans', { connection: buildRedisConnection() });
 
   // Programa un job de cleanup de evidencias en R2 cada 24 horas.
-  // Se hace aquí (BullMQ) en vez de en initializeStorage para evitar bloquear el
-  // arranque del worker y para poder distribuir el trabajo si hay varios workers.
   const EVIDENCE_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
-  await cleanupQueue.add(
+  await scansQueue.add(
     'cleanup-expired-evidence',
     {},
     {
@@ -72,7 +72,7 @@ async function bootstrap() {
   const schedulePublicScanCleanup = async (scanId: string) => {
     if (!scanId) return;
     try {
-      await cleanupQueue.add(
+      await scansQueue.add(
         'cleanup-public-scan',
         { scanId },
         {
@@ -110,44 +110,30 @@ async function bootstrap() {
     async (job: Job) => {
       log.info('Procesando job', { jobId: job.id, jobName: job.name });
       try {
-        await processScan(job);
+        if (job.name === 'cleanup-expired-evidence') {
+          await cleanupExpiredEvidence();
+          await expireStaleAwaitingLoginScans();
+        } else if (job.name === 'cleanup-public-scan') {
+          await cleanupPublicScan(String(job.data?.scanId || ''));
+        } else {
+          await processScan(job);
+        }
       } catch (err) {
-        log.error('Job falló', { jobId: job.id, error: (err as Error)?.message });
+        log.error('Job falló', { jobId: job.id, jobName: job.name, error: (err as Error)?.message });
         throw err;
       }
     },
     {
       connection: buildRedisConnection(),
       concurrency: workerConcurrency,
-      stalledInterval: 60 * 1000,
+      // stalledInterval 60s era agresivo para un lockDuration de 45 min: cada chequeo
+      // son comandos Redis constantes. 5 min sigue detectando workers muertos a tiempo.
+      stalledInterval: 5 * 60 * 1000,
       lockDuration: lockDurationMs,
       drainDelay: drainDelayMs,
     }
   );
   log.info('Worker iniciado', { concurrency: workerConcurrency, lockDurationMs, drainDelayMs });
-
-  const cleanupWorker = new Worker(
-    'scans-cleanup',
-    async (job: Job) => {
-      log.info('Procesando cleanup job', { jobId: job.id, jobName: job.name });
-      try {
-        if (job.name === 'cleanup-expired-evidence') {
-          await cleanupExpiredEvidence();
-        } else {
-          await cleanupPublicScan(String(job.data?.scanId || ''));
-        }
-      } catch (err) {
-        log.error('Cleanup job falló', { jobId: job.id, error: (err as Error)?.message });
-        throw err;
-      }
-    },
-    {
-      connection: buildRedisConnection(),
-      concurrency: 2,
-      stalledInterval: 60 * 1000,
-      drainDelay: drainDelayMs,
-    }
-  );
 
   worker.on('completed', (job) => {
     log.info('Job completado', { jobId: job.id });
@@ -163,14 +149,10 @@ async function bootstrap() {
     }
   });
 
-  cleanupWorker.on('failed', (job, err) => {
-    log.warn('Cleanup job fallido', { jobId: job?.id, error: err.message });
-  });
-
   // Cierre limpio del browser pool cuando Railway detiene el contenedor (SIGTERM/SIGINT)
   const shutdown = async (signal: string) => {
     log.info(`${signal} recibido — cerrando browser pool y workers`);
-    await Promise.allSettled([worker.close(), cleanupWorker.close(), browserPool.shutdown()]);
+    await Promise.allSettled([worker.close(), scansQueue.close(), browserPool.shutdown()]);
     process.exit(0);
   };
   process.once('SIGTERM', () => void shutdown('SIGTERM'));

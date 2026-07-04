@@ -194,6 +194,24 @@ export class RequestRateLimitService implements OnModuleDestroy {
     await this.redis.set(key, JSON.stringify(value), 'PX', ttlMs);
   }
 
+  // Registra un miembro en un SET con TTL — usado para rastrear variantes de caché
+  // por scan y poder invalidarlas con DEL directo en lugar de SCAN del keyspace.
+  async addToSet(setKey: string, member: string, ttlMs: number): Promise<void> {
+    const multi = this.redis.multi();
+    multi.sadd(setKey, member);
+    multi.pexpire(setKey, ttlMs);
+    await multi.exec();
+  }
+
+  async getSetMembers(setKey: string): Promise<string[]> {
+    return this.redis.smembers(setKey);
+  }
+
+  async deleteKeys(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    await this.redis.del(...keys);
+  }
+
   // SCAN uses Redis SCAN cursor — safe for production (doesn't block like KEYS).
   async scanKeys(pattern: string): Promise<string[]> {
     const keys: string[] = [];

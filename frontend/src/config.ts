@@ -32,16 +32,5 @@ export const API_BASE_URL = resolveApiBaseUrl(
   runtimeHostname,
 );
 
-// SOCKET_URL must point directly to the API server (Railway), never to the Vercel frontend.
-// Vercel cannot proxy WebSocket upgrades. Set VITE_SOCKET_URL in Vercel env vars.
-export const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL?.trim() ||
-  (isDev || isLocalRuntimeHost(runtimeHostname)
-    ? API_FALLBACK_BASE_URL
-    : 'https://sinbarreras-production.up.railway.app');
-
-export const SOCKET_PATH =
-  import.meta.env.VITE_SOCKET_PATH?.trim() || '/socket.io';
-
 export const CHROME_EXTENSION_ID =
   import.meta.env.VITE_EXTENSION_ID?.trim() || 'bipiiijphpkdbodephdbahlkdcnopjao';

@@ -17,7 +17,6 @@ import { AdminAuditLog } from './admin/entities/admin-audit-log.entity';
 import { ProjectsModule } from './projects/projects.module';
 import { ScansModule } from './scans/scans.module';
 import { UrlResultsModule } from './url-results/url-results.module';
-import { EventsModule } from './events/events.module';
 import { ComplianceModule } from './compliance/compliance.module';
 import { ReportsModule } from './reports/reports.module';
 import { EvidenceModule } from './evidence/evidence.module';
@@ -120,7 +119,6 @@ const buildRedisConnection = (
     ProjectsModule,
     ScansModule,
     UrlResultsModule,
-    EventsModule,
     ComplianceModule,
     ReportsModule,
     EvidenceModule,

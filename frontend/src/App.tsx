@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, useCallback, Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { io as socketIo, Socket } from 'socket.io-client';
 import {
   CheckCircle,
   X,
@@ -10,7 +9,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, isLocalRuntimeHost, SOCKET_URL, SOCKET_PATH, CHROME_EXTENSION_ID } from './config';
+import { API_BASE_URL, API_FALLBACK_BASE_URL, isLocalRuntimeHost, CHROME_EXTENSION_ID } from './config';
 import type { BillingCurrency, BillingPlan, BillingState } from './billing';
 import { AuthView } from './views/AuthView';
 import { CulqiCheckoutModal } from './CulqiCheckoutModal';
@@ -188,7 +187,6 @@ const readApiJson = async <T,>(res: Response): Promise<T | null> => {
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const currentProjectRef = useRef<Project | null>(null);
   const [currentScan, setCurrentScan] = useState<Scan | null>(null);
   const [selectedUrlResult, setSelectedUrlResult] = useState<UrlResult | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('none');
@@ -249,47 +247,6 @@ export default function App() {
   const [hasMoreScans, setHasMoreScans] = useState(false);
   const [loadingMoreScans, setLoadingMoreScans] = useState(false);
   const [appError, setAppError] = useState<string | null>(null);
-  const socketRef = useRef<Socket | null>(null);
-  const watchedScanIdsRef = useRef<Set<string>>(new Set());
-  const fetchScanDetailsRef = useRef<((id: string) => void) | null>(null);
-  const fetchProjectDetailsRef = useRef<((id: string) => void) | null>(null);
-
-  useEffect(() => {
-    currentProjectRef.current = currentProject;
-  }, [currentProject]);
-
-  // WebSocket connection — replaces polling for active scans.
-  // SOCKET_URL points directly to Railway (not Vercel), because Vercel cannot proxy WebSockets.
-  // The socket connects once and stays alive; individual scans are subscribed by UUID room.
-  useEffect(() => {
-    const socket = socketIo(SOCKET_URL, {
-      path: SOCKET_PATH,
-      transports: ['websocket', 'polling'],
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-    });
-    socketRef.current = socket;
-
-    socket.on('scan-completed', ({ scanId }: { scanId: string }) => {
-      // One targeted fetch instead of continuous polling — uses refs to get latest functions
-      fetchScanDetailsRef.current?.(scanId);
-      const projectId = currentProjectRef.current?.id;
-      if (projectId) fetchProjectDetailsRef.current?.(projectId);
-    });
-
-    return () => {
-      socket.disconnect();
-      socketRef.current = null;
-      watchedScanIdsRef.current.clear();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const watchScan = useCallback((scanId: string) => {
-    if (!scanId || watchedScanIdsRef.current.has(scanId)) return;
-    watchedScanIdsRef.current.add(scanId);
-    socketRef.current?.emit('watch-scan', scanId);
-  }, []);
 
   useEffect(() => {
     if (!showAccountMenu) return;
@@ -687,10 +644,7 @@ export default function App() {
     const inProgressScans = (currentProject.scans || []).filter(isScanInProgress);
     if (inProgressScans.length === 0) return;
 
-    // Subscribe each active scan to WebSocket room for push notification
-    inProgressScans.forEach((scan) => watchScan(scan.id));
-
-    // Fallback poll every 30s in case WebSocket misses an event
+    // Poll cada 30s mientras haya scans activos en el proyecto
     const refreshProject = () => { void fetchProjectDetails(currentProject.id); };
     refreshProject();
     const intervalId = window.setInterval(refreshProject, 30000);
@@ -701,15 +655,13 @@ export default function App() {
     view,
     currentProject?.id,
     currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
-    watchScan,
   ]);
 
   useEffect(() => {
     if (authLoading || view !== 'scan') return;
     if (!currentScan || !isScanInProgress(currentScan)) return;
 
-    // Subscribe via WebSocket; fallback poll every 30s
-    watchScan(currentScan.id);
+    // Poll cada 30s mientras el scan esté activo
     const refreshScan = () => {
       if (authMode === 'public') {
         void fetchPublicScanDetails(currentScan.id);
@@ -720,7 +672,7 @@ export default function App() {
     refreshScan();
     const intervalId = window.setInterval(refreshScan, 30000);
     return () => window.clearInterval(intervalId);
-  }, [authLoading, authMode, view, currentScan?.id, currentScan?.status, watchScan]);
+  }, [authLoading, authMode, view, currentScan?.id, currentScan?.status]);
 
   useEffect(() => {
     if (authLoading || authMode === 'none' || view !== 'billing') return;
@@ -734,8 +686,7 @@ export default function App() {
     const runningScan = currentProject?.scans?.find(isScanInProgress);
     if (!runningScan) return;
 
-    // Public scans: subscribe via WebSocket + fallback poll every 15s (public users can't auth socket)
-    watchScan(runningScan.id);
+    // Scans públicos: poll cada 15s mientras estén activos
     const refreshPublicScan = () => { void fetchPublicScanDetails(runningScan.id); };
     refreshPublicScan();
     const intervalId = window.setInterval(refreshPublicScan, 15000);
@@ -746,7 +697,6 @@ export default function App() {
     view,
     currentProject?.id,
     currentProject?.scans?.map((scan) => `${scan.id}:${scan.status}`).join('|'),
-    watchScan,
   ]);
 
   useEffect(() => {
@@ -761,6 +711,9 @@ export default function App() {
 
     if (!awaitingScan) return;
 
+    // El estado awaiting_login solo cambia cuando la extensión envía resultados;
+    // pollear a 2.5s con 3 requests (~72 req/min) era el mayor consumidor de
+    // Redis/Postgres del frontend. 10s con un solo request es imperceptible.
     const refreshManualScan = () => {
       if (view === 'scan') {
         void fetchScanDetails(awaitingScan.id);
@@ -768,11 +721,10 @@ export default function App() {
       if (view === 'project' && currentProject?.id) {
         void fetchProjectDetails(currentProject.id);
       }
-      void fetchProjects();
     };
 
     refreshManualScan();
-    const intervalId = window.setInterval(refreshManualScan, 2500);
+    const intervalId = window.setInterval(refreshManualScan, 10000);
 
     return () => window.clearInterval(intervalId);
   }, [
@@ -866,10 +818,6 @@ export default function App() {
       handleApiError('No se pudo cargar el detalle del escaneo', err);
     }
   };
-
-  // Keep refs up-to-date so the socket handler always calls the latest version
-  fetchScanDetailsRef.current = fetchScanDetails;
-  fetchProjectDetailsRef.current = fetchProjectDetails;
 
   const fetchPublicScanDetails = async (id: string) => {
     try {
