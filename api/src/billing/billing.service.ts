@@ -414,9 +414,15 @@ export class BillingService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
+    // Headers que envía el SDK oficial (culqi-go); x-api-version es necesario
+    // para que el API 2.0 de suscripciones (/recurrent) enrute correctamente.
     const headers: Record<string, string> = {
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
+      'x-api-version': '2',
+      'x-culqi-env': key.includes('_live_') ? 'live' : 'test',
+      'x-culqi-client': 'culqi-go',
+      'x-culqi-client-version': '1.0.0',
     };
 
     let payload = body ? JSON.stringify(body) : undefined;
