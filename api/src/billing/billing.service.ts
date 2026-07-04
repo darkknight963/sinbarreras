@@ -266,7 +266,6 @@ export class BillingService {
       card_id: cardId,
       plan_id: planId,
       tyc: true,
-      metadata: {},
     }, secretKey);
     // La respuesta puede no incluir estos campos; los fijamos para persistirlos.
     return { ...subscription, customer_id: customerId, card_id: cardId, plan_id: planId };
