@@ -206,9 +206,14 @@ export class BillingService {
   }
 
   private async ensureCulqiCustomer(user: User, secretKey: string): Promise<string> {
-    if (user.billingCustomerId) {
+    // Reutilizar solo si es un customer de Culqi (cus_...). Los usuarios migrados
+    // desde Mercado Pago tienen IDs numéricos residuales que Culqi no reconoce.
+    if (user.billingCustomerId && user.billingCustomerId.startsWith('cus_')) {
       console.log('[Culqi] ensureCulqiCustomer reusing existing customerId:', user.billingCustomerId);
       return user.billingCustomerId;
+    }
+    if (user.billingCustomerId) {
+      console.log('[Culqi] ensureCulqiCustomer descartando customerId ajeno a Culqi:', user.billingCustomerId);
     }
 
     const displayName = user.fullName || user.companyName || user.email;
