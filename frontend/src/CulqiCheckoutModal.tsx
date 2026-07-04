@@ -74,6 +74,7 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
         description: `Plan Pro ${plan.label}`,
         amount: amountCentavos,
         order: '',
+        email: userEmail,
       });
       initializedRef.current = true;
     }

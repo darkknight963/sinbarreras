@@ -201,8 +201,8 @@ export class BillingService {
   }
 
   private async ensureCulqiCustomer(user: User, secretKey: string): Promise<string> {
-    // Reuse existing customer if stored
     if (user.billingCustomerId) {
+      console.log('[Culqi] ensureCulqiCustomer reusing existing customerId:', user.billingCustomerId);
       return user.billingCustomerId;
     }
 
@@ -218,8 +218,10 @@ export class BillingService {
       phone_number: '51900000001',
     };
 
+    console.log('[Culqi] ensureCulqiCustomer creating new customer for email:', user.email);
     const customer = await this.culqiRequest('/customers', 'POST', body, secretKey);
     const customerId = String(customer.id);
+    console.log('[Culqi] ensureCulqiCustomer created customerId:', customerId);
 
     await this.userRepository.update(user.id, { billingCustomerId: customerId });
     user.billingCustomerId = customerId;
@@ -228,7 +230,9 @@ export class BillingService {
   }
 
   private async createCulqiCard(customerId: string, token: string, secretKey: string): Promise<string> {
-    const card = await this.culqiRequest('/cards', 'POST', { customer_id: customerId, token_id: token }, secretKey);
+    const payload = { customer_id: customerId, token_id: token };
+    console.log('[Culqi] createCulqiCard payload:', JSON.stringify(payload), 'key prefix:', secretKey.slice(0, 12));
+    const card = await this.culqiRequest('/cards', 'POST', payload, secretKey);
     return String(card.id);
   }
 
