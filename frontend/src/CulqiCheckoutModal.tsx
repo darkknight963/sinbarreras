@@ -12,7 +12,6 @@ declare global {
       token?: { id: string; email: string };
       error?: Record<string, unknown>;
     };
-    culqiSettings?: unknown;
     culqi?: () => void;
   }
 }
@@ -27,60 +26,15 @@ type Props = {
 const CULQI_PUBLIC_KEY = import.meta.env.VITE_CULQI_PUBLIC_KEY || 'pk_live_9soMfgQwzum5vP8X';
 
 export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'processing' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'waiting' | 'processing' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const culqiReadyRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const amountCentavos = plan.amount ?? 0;
   const displayAmount = (amountCentavos / 100).toFixed(2);
 
+  // Register window.culqi callback once when modal mounts
   useEffect(() => {
-    // Inject Culqi.js once — URL oficial v4
-    if (!document.getElementById('culqi-js')) {
-      const script = document.createElement('script');
-      script.id = 'culqi-js';
-      script.src = 'https://checkout.culqi.com/js/v4';
-      script.async = true;
-      document.head.appendChild(script);
-    }
-
-    // Poll until Culqi object is available
-    const poll = setInterval(() => {
-      if (window.Culqi) {
-        clearInterval(poll);
-        culqiReadyRef.current = true;
-        initCulqi();
-      }
-    }, 150);
-
-    const maxWait = setTimeout(() => {
-      clearInterval(poll);
-      if (!culqiReadyRef.current) {
-        setStatus('error');
-        setErrorMsg('No se pudo cargar el módulo de pago. Verifica tu conexión e intenta de nuevo.');
-      }
-    }, 15000);
-
-    return () => {
-      clearInterval(poll);
-      clearTimeout(maxWait);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function initCulqi() {
-    if (!window.Culqi) return;
-
-    window.Culqi.publicKey = CULQI_PUBLIC_KEY;
-    window.Culqi.settings({
-      title: 'Sin Barreras',
-      currency: 'PEN',
-      description: plan.label,
-      amount: amountCentavos,
-      order: '',
-    });
-
-    // Culqi calls window.culqi() when user submits card or closes
     window.culqi = async () => {
       if (window.Culqi?.token) {
         const token = window.Culqi.token.id;
@@ -93,23 +47,39 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
           setErrorMsg(err instanceof Error ? err.message : 'Error al procesar el pago. Intenta de nuevo.');
         }
       } else if (window.Culqi?.error) {
-        const culqiErr = window.Culqi.error as Record<string, unknown>;
-        const msg = String(culqiErr.user_message || culqiErr.merchant_message || 'Error al leer la tarjeta');
+        const e = window.Culqi.error as Record<string, unknown>;
+        const msg = String(e.user_message || e.merchant_message || 'Error al leer la tarjeta.');
         setStatus('error');
         setErrorMsg(msg);
       }
     };
 
-    setStatus('idle');
-  }
+    return () => {
+      window.culqi = undefined;
+    };
+  }, [onToken]);
 
-  const handleOpenCulqi = () => {
-    if (!culqiReadyRef.current || !window.Culqi) {
+  const openCulqiForm = () => {
+    if (!window.Culqi) {
       setStatus('error');
-      setErrorMsg('El módulo de pago aún no está listo. Espera un momento e intenta de nuevo.');
+      setErrorMsg('El módulo de pago no está disponible. Recarga la página e intenta de nuevo.');
       return;
     }
+
+    if (!initializedRef.current) {
+      window.Culqi.publicKey = CULQI_PUBLIC_KEY;
+      window.Culqi.settings({
+        title: 'Sin Barreras',
+        currency: 'PEN',
+        description: `Plan Pro ${plan.label}`,
+        amount: amountCentavos,
+        order: '',
+      });
+      initializedRef.current = true;
+    }
+
     setErrorMsg(null);
+    setStatus('waiting');
     window.Culqi.open();
   };
 
@@ -176,18 +146,18 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
         ) : (
           <button
             type="button"
-            onClick={handleOpenCulqi}
-            disabled={status === 'loading'}
+            onClick={openCulqiForm}
+            disabled={status === 'waiting'}
             style={{
               width: '100%', padding: '0.85rem',
               background: '#2563eb', color: '#fff',
               border: 'none', borderRadius: 10,
               fontSize: '1rem', fontWeight: 700,
-              cursor: status === 'loading' ? 'wait' : 'pointer',
-              opacity: status === 'loading' ? 0.7 : 1,
+              cursor: status === 'waiting' ? 'wait' : 'pointer',
+              opacity: status === 'waiting' ? 0.7 : 1,
             }}
           >
-            {status === 'loading' ? 'Cargando...' : `Pagar S/ ${displayAmount}`}
+            {status === 'waiting' ? 'Abriendo formulario...' : `Ingresar datos de tarjeta`}
           </button>
         )}
 
