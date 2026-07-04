@@ -121,6 +121,63 @@ describe('BillingService', () => {
     ).resolves.toEqual({ ok: true, matched: true });
   });
 
+  it('parses webhook data sent as a JSON string', async () => {
+    subscriptionRepository.findOne.mockResolvedValue({
+      id: 'billing-sub-1',
+      plan: 'monthly',
+      status: 'active',
+      user: { id: 'user-1' },
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
+
+    await expect(
+      service.handleWebhook({
+        type: 'subscription.charge.succeeded',
+        data: JSON.stringify({ subscription_id: 'sub_test_789' }),
+      }),
+    ).resolves.toEqual({ ok: true, matched: true });
+  });
+
+  it('extracts nested subscription.id and sxn_-prefixed ids from webhook data', async () => {
+    subscriptionRepository.findOne.mockResolvedValue({
+      id: 'billing-sub-1',
+      plan: 'monthly',
+      status: 'active',
+      user: { id: 'user-1' },
+    });
+
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
+
+    await expect(
+      service.handleWebhook({
+        type: 'subscription.charge.failed',
+        data: { id: 'chr_live_abc123', subscription: { id: 'sxn_live_xyz' } },
+      }),
+    ).resolves.toEqual({ ok: true, matched: true });
+
+    await expect(
+      service.handleWebhook({
+        type: 'subscription.cancel.succeeded',
+        data: { id: 'sxn_live_xyz' },
+      }),
+    ).resolves.toEqual({ ok: true, matched: true });
+  });
+
+  it('does not treat a charge id (chr_) as a subscription id', async () => {
+    subscriptionRepository.findOne.mockResolvedValue(null);
+    const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
+
+    await expect(
+      service.handleWebhook({
+        type: 'subscription.charge.failed',
+        data: { id: 'chr_live_only_charge_id' },
+      }),
+    ).resolves.toEqual({ ok: true, matched: false });
+    // No debe intentar buscar con el id del cargo
+    expect(subscriptionRepository.findOne).not.toHaveBeenCalled();
+  });
+
   it('ignores unknown webhook types', async () => {
     const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
 

@@ -119,7 +119,7 @@ export class BillingService {
 
     if (!type) return { ok: true, ignored: true };
 
-    const object = (payload.data as Record<string, unknown> | undefined) || {};
+    const object = this.parseWebhookData(payload);
 
     if (type === 'subscription.charge.succeeded') {
       return this.handleSubscriptionChargeSuccess(object);
@@ -143,16 +143,60 @@ export class BillingService {
     };
   }
 
+  // Culqi puede enviar `data` como objeto o como STRING JSON — hay que parsearlo.
+  private parseWebhookData(payload: Record<string, unknown>): Record<string, unknown> {
+    const raw = payload.data;
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
+      } catch {
+        return {};
+      }
+    }
+    if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+    return {};
+  }
+
+  // El ID de suscripción puede venir en varios lugares según el evento:
+  // subscription_id plano, subscription.id anidado, o data.id cuando el objeto
+  // ES la suscripción (prefijo sxn_). data.id sin prefijo sxn_ es el id del
+  // CARGO (chr_...) y no debe usarse como id de suscripción.
+  private extractSubscriptionId(data: Record<string, unknown>): string {
+    const nested = data.subscription as Record<string, unknown> | undefined;
+    const candidates = [data.subscription_id, (data as Record<string, unknown>).subscriptionId, nested?.id];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+    }
+    if (typeof data.id === 'string' && data.id.startsWith('sxn_')) return data.id;
+    return '';
+  }
+
+  private logUnmatchedWebhook(context: string, subscriptionId: string, data: Record<string, unknown>) {
+    // Solo llaves e IDs — nunca el payload completo (puede traer datos de tarjeta).
+    console.warn(`[BillingService] Webhook ${context} sin coincidencia:`, {
+      subscriptionId: subscriptionId || '(no encontrado)',
+      dataKeys: Object.keys(data).slice(0, 20),
+      dataId: typeof data.id === 'string' ? data.id : undefined,
+    });
+  }
+
   private async handleSubscriptionChargeSuccess(data: Record<string, unknown>) {
-    const subscriptionId = String(data.subscription_id || data.id || '');
-    if (!subscriptionId) return { ok: true, matched: false };
+    const subscriptionId = this.extractSubscriptionId(data);
+    if (!subscriptionId) {
+      this.logUnmatchedWebhook('charge.succeeded', subscriptionId, data);
+      return { ok: true, matched: false };
+    }
 
     const sub = await this.subscriptionRepository.findOne({
       where: { providerSubscriptionId: subscriptionId },
       relations: { user: true },
     });
 
-    if (!sub) return { ok: true, matched: false };
+    if (!sub) {
+      this.logUnmatchedWebhook('charge.succeeded', subscriptionId, data);
+      return { ok: true, matched: false };
+    }
 
     const nextPeriodEnd = this.computeNextPeriodEnd(sub.plan);
     sub.status = 'active';
@@ -167,15 +211,21 @@ export class BillingService {
   }
 
   private async handleSubscriptionChargeFailed(data: Record<string, unknown>) {
-    const subscriptionId = String(data.subscription_id || data.id || '');
-    if (!subscriptionId) return { ok: true, matched: false };
+    const subscriptionId = this.extractSubscriptionId(data);
+    if (!subscriptionId) {
+      this.logUnmatchedWebhook('charge.failed', subscriptionId, data);
+      return { ok: true, matched: false };
+    }
 
     const sub = await this.subscriptionRepository.findOne({
       where: { providerSubscriptionId: subscriptionId },
       relations: { user: true },
     });
 
-    if (!sub) return { ok: true, matched: false };
+    if (!sub) {
+      this.logUnmatchedWebhook('charge.failed', subscriptionId, data);
+      return { ok: true, matched: false };
+    }
 
     sub.status = 'past_due';
     await this.subscriptionRepository.save(sub);
@@ -185,15 +235,21 @@ export class BillingService {
   }
 
   private async handleSubscriptionCancel(data: Record<string, unknown>) {
-    const subscriptionId = String(data.id || '');
-    if (!subscriptionId) return { ok: true, matched: false };
+    const subscriptionId = this.extractSubscriptionId(data);
+    if (!subscriptionId) {
+      this.logUnmatchedWebhook('cancel', subscriptionId, data);
+      return { ok: true, matched: false };
+    }
 
     const sub = await this.subscriptionRepository.findOne({
       where: { providerSubscriptionId: subscriptionId },
       relations: { user: true },
     });
 
-    if (!sub) return { ok: true, matched: false };
+    if (!sub) {
+      this.logUnmatchedWebhook('cancel', subscriptionId, data);
+      return { ok: true, matched: false };
+    }
 
     sub.status = 'canceled';
     await this.subscriptionRepository.save(sub);
