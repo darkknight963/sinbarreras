@@ -32,7 +32,14 @@ export class BillingService {
     private readonly subscriptionRepository: Repository<BillingSubscription>,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) {
+    const rsaKey = this.getRsaPublicKey();
+    console.log('[Culqi] RSA config al arranque:', {
+      keyId: this.getRsaKeyId() || '(VACIO)',
+      publicKeyChars: rsaKey.length,
+      publicKeyOk: rsaKey.startsWith('-----BEGIN PUBLIC KEY-----'),
+    });
+  }
 
   async listPlans(): Promise<BillingPlan[]> {
     return BILLING_PLAN_CONFIGS.map((plan) => this.resolveBillingPlan(plan));
@@ -411,9 +418,17 @@ export class BillingService {
     };
 
     let payload = body ? JSON.stringify(body) : undefined;
-    if (payload && this.needsRsa(path, method)) {
-      payload = this.encryptWithRsa(payload);
-      headers['x-culqi-rsa-id'] = this.getRsaKeyId();
+    if (payload && CULQI_RSA_PATHS.some((p) => path.startsWith(p)) && method !== 'GET' && method !== 'DELETE') {
+      if (this.needsRsa(path, method)) {
+        payload = this.encryptWithRsa(payload);
+        headers['x-culqi-rsa-id'] = this.getRsaKeyId();
+        console.log(`[Culqi] ${method} ${path} → body encriptado RSA (keyId ${this.getRsaKeyId()})`);
+      } else {
+        console.error(
+          `[Culqi] ADVERTENCIA: ${method} ${path} requiere RSA pero CULQI_RSA_PUBLIC_KEY/CULQI_RSA_KEY_ID ` +
+          'están vacías para este proceso — enviando JSON plano (Culqi responderá "Ruta inválida")',
+        );
+      }
     }
 
     try {
