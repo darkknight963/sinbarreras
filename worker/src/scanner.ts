@@ -4,7 +4,7 @@ import { buildCoverageReport } from './coverageReport.js';
 import { detectPageContent } from './content-detector.js';
 import { captureFocusTraversal } from './focusTraversal.js';
 import { captureSemanticStructure } from './semanticStructure.js';
-import { uploadEvidence } from './storage.js';
+import { deleteEvidenceUrls, uploadEvidence } from './storage.js';
 import { captureVisualEvidence } from './visualEvidence.js';
 import { buildApplicability, conservativeApplicability, summarizeApplicability } from './wcag-applicability.js';
 import { validateScanTargetUrl } from './urlPolicy.js';
@@ -315,6 +315,21 @@ export async function scanUrl(url: string, options: {
     const peruvianResults = await import('./peruvianChecks.js').then((mod) => mod.runPeruvianChecks(page, url));
     await reportProgress(95);
 
+    // El screenshot 'initial' se sube ANTES de saber si habrá overlays. Si al
+    // final no entra en visualMap.states ni lo referencia ninguna violación
+    // (como fallback), quedaría huérfano en R2 — se borra aquí mismo.
+    const includeInitialState = initialOverlays.length > 0;
+    if (!includeInitialState && initialVisualEvidence?.screenshotUrl) {
+      const initialUrlUsed = formattedViolations.some(
+        (violation) => violation.screenshotUrl === initialVisualEvidence.screenshotUrl,
+      );
+      if (!initialUrlUsed) {
+        await deleteEvidenceUrls([initialVisualEvidence.screenshotUrl]).catch((err) =>
+          console.warn('No se pudo borrar el screenshot initial descartado:', err),
+        );
+      }
+    }
+
     return {
       score,
       violations: formattedViolations,
@@ -324,7 +339,7 @@ export async function scanUrl(url: string, options: {
       semanticStructure,
       visualMap: {
         states: [
-          initialOverlays.length > 0 ? initialVisualEvidence : null,
+          includeInitialState ? initialVisualEvidence : null,
           currentVisualEvidence || mandatoryVisualEvidence,
         ].filter(Boolean),
       },
