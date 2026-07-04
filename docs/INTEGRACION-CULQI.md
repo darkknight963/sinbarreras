@@ -192,7 +192,37 @@ Eventos exactos (nombres verificados):
 | `subscription.cancel.succeeded` | Estado `canceled`, limpiar plan del usuario |
 | `subscription.cancel.failed` | Tratar igual que succeeded o loguear para revisión |
 
-El payload trae `{ type, data: { subscription_id / id, ... } }` — matchea contra tu tabla de suscripciones por `providerSubscriptionId`.
+### ⚠️ Cómo leer el payload (la trampa más silenciosa de toda la integración)
+
+Verificado en producción: el webhook puede **llegar bien (200, auth OK) y aun así no hacer nada** si lo lees ingenuo. Dos trampas:
+
+1. **`data` puede venir como STRING JSON**, no como objeto. Si haces `payload.data.subscription_id` sin parsear, lees `undefined` y el evento se ignora en silencio.
+   ```ts
+   const data = typeof payload.data === 'string' ? JSON.parse(payload.data) : (payload.data ?? {});
+   ```
+2. **`data.id` es el id del CARGO (`chr_...`), NO el de la suscripción (`sxn_...`)** en los eventos de cobro. Si matcheas contra tu tabla usando `data.id`, jamás coincide. Busca el id de suscripción en este orden y solo acepta `data.id` si tiene prefijo `sxn_`:
+   ```ts
+   const subscriptionId =
+     data.subscription_id ||
+     data.subscriptionId ||
+     data.subscription?.id ||
+     (typeof data.id === 'string' && data.id.startsWith('sxn_') ? data.id : '');
+   ```
+
+**Regla de oro**: cuando un webhook no coincida con ninguna suscripción, NO lo ignores mudo — loguea `type` + las llaves del payload + los ids candidatos (nunca el payload completo: trae datos de tarjeta). Sin ese log, este bug es invisible: todo responde 200 y las renovaciones simplemente no ocurren.
+
+### ⚠️ No dependas al 100% de los webhooks: red de seguridad obligatoria
+
+Si un webhook se pierde (o el matching falla como arriba), sin defensa extra pasan dos cosas graves: un usuario con cobro rechazado conserva Pro para siempre, y nadie se entera. Diseña un **job horario** con estos casos:
+
+| Caso | Condición | Acción |
+|---|---|---|
+| Cancelación voluntaria | `active` + `cancelAtPeriodEnd` + período vencido | Revocar al vencer (sin gracia — pagó su mes, lo usa entero) |
+| Pago fallido notificado | `past_due` + período vencido | Revocar |
+| **Red de seguridad** | `active` sin cancelar + período vencido hace > 3 días sin renovarse | Revocar |
+| Activaciones manuales | usuario `active` con `periodEnd` vencido hace > 3 días (aunque no exista fila de suscripción) | Revocar |
+
+Los 3 días de gracia cubren los reintentos de cobro de Culqi y webhooks tardíos: una renovación legítima actualiza `periodEnd` vía webhook y nunca alcanza el corte. Con esto, aunque TODOS los webhooks fallen, nadie conserva Pro más de 3 días tras vencer — y los que pagan no son tocados.
 
 ---
 
@@ -236,5 +266,7 @@ Si la variable PEM llega aplanada o con `\n` literales, reconstruye el PEM extra
 - [ ] El widget se cierra tras el pago y la UI muestra el plan activo
 - [ ] El suscriptor aparece en CulqiPanel → Suscripciones → Suscriptores
 - [ ] Webhook de prueba llega y responde 200 (con Basic Auth correcta) y 401 (con credenciales malas)
+- [ ] El webhook tiene EFECTO, no solo responde 200: tras un `charge.failed` real, el usuario pasa a `past_due` en tu BD (si sigue `active`, revisa el parseo del payload — §7)
+- [ ] El job horario de expiración revoca: cancelados al vencer, y activos sin renovar tras el período de gracia (probar cambiando fechas en BD de staging)
 - [ ] Cancelación: `DELETE /recurrent/subscriptions/{id}` → el estado local pasa a cancelado
 - [ ] Ninguna clave secreta en logs, frontend ni repositorio
