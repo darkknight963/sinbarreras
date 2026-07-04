@@ -128,8 +128,11 @@ export class BillingService {
     return { ok: true, ignored: true };
   }
 
-  getWebhookSecret(): string {
-    return this.configService.get<string>('CULQI_WEBHOOK_SECRET', '').trim();
+  getWebhookCredentials(): { webhookUser: string; webhookPassword: string } {
+    return {
+      webhookUser: this.configService.get<string>('CULQI_WEBHOOK_USER', '').trim(),
+      webhookPassword: this.configService.get<string>('CULQI_WEBHOOK_PASSWORD', '').trim(),
+    };
   }
 
   private async handleSubscriptionChargeSuccess(data: Record<string, unknown>) {

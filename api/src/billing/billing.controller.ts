@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 import { BillingService } from './billing.service';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
@@ -41,25 +41,36 @@ export class BillingController {
   @Post('webhooks/culqi')
   handleWebhook(
     @Body() payload: Record<string, unknown>,
-    @Req() request: Request & { rawBody?: Buffer },
+    @Req() request: Request,
   ) {
-    const webhookSecret = this.billingService.getWebhookSecret();
+    const { webhookUser, webhookPassword } = this.billingService.getWebhookCredentials();
 
-    if (webhookSecret) {
-      const signature = String(request.headers['x-culqi-signature'] || '').trim();
+    if (webhookUser && webhookPassword) {
+      const authHeader = String(request.headers['authorization'] || '').trim();
+      if (!authHeader.startsWith('Basic ')) {
+        throw new UnauthorizedException('Credenciales de webhook requeridas');
+      }
 
-      if (signature) {
-        const rawBody = request.rawBody ?? Buffer.from(JSON.stringify(payload));
-        const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
-        const expectedBuf = Buffer.from(expected, 'hex');
-        const incomingBuf = Buffer.from(signature, 'hex');
+      const encoded = authHeader.slice(6);
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const colonIdx = decoded.indexOf(':');
+      const incomingUser = colonIdx >= 0 ? decoded.slice(0, colonIdx) : decoded;
+      const incomingPass = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : '';
 
-        if (
-          expectedBuf.length !== incomingBuf.length ||
-          !timingSafeEqual(expectedBuf, incomingBuf)
-        ) {
-          throw new UnauthorizedException('Firma de webhook inválida');
-        }
+      const expectedUser = Buffer.from(webhookUser);
+      const expectedPass = Buffer.from(webhookPassword);
+      const incomingUserBuf = Buffer.from(incomingUser);
+      const incomingPassBuf = Buffer.from(incomingPass);
+
+      const userMatch =
+        expectedUser.length === incomingUserBuf.length &&
+        timingSafeEqual(expectedUser, incomingUserBuf);
+      const passMatch =
+        expectedPass.length === incomingPassBuf.length &&
+        timingSafeEqual(expectedPass, incomingPassBuf);
+
+      if (!userMatch || !passMatch) {
+        throw new UnauthorizedException('Credenciales de webhook inválidas');
       }
     }
 
