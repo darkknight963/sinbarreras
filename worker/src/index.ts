@@ -1,6 +1,6 @@
 import { Worker, Job, Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
-import { cleanupPublicScan, expireStaleAwaitingLoginScans, processScan } from './processor.js';
+import { cleanupOrphanEvidence, cleanupPublicScan, expireStaleAwaitingLoginScans, processScan } from './processor.js';
 import { initializeStorage, cleanupExpiredEvidence } from './storage.js';
 import { createLogger } from './logger.js';
 import { browserPool } from './browser-pool.js';
@@ -69,6 +69,31 @@ async function bootstrap() {
     },
   ).catch((err) => log.warn('No se pudo programar cleanup de evidencias', { error: (err as Error)?.message }));
 
+  // Barrido semanal de evidencias huérfanas en R2 (objetos sin referencia en Postgres).
+  const ORPHAN_CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+  await scansQueue.add(
+    'cleanup-orphan-evidence',
+    {},
+    {
+      jobId: 'cleanup-orphan-evidence-recurring',
+      repeat: { every: ORPHAN_CLEANUP_INTERVAL_MS },
+      removeOnComplete: true,
+      removeOnFail: 5,
+    },
+  ).catch((err) => log.warn('No se pudo programar barrido de huérfanas', { error: (err as Error)?.message }));
+
+  // Primera pasada inmediata, UNA sola vez: el jobId fijo con removeOnComplete:false
+  // conserva el registro en Redis y evita que se re-ejecute en cada redeploy.
+  await scansQueue.add(
+    'cleanup-orphan-evidence',
+    {},
+    {
+      jobId: 'cleanup-orphan-evidence-bootstrap',
+      removeOnComplete: false,
+      removeOnFail: 5,
+    },
+  ).catch((err) => log.warn('No se pudo encolar barrido inicial de huérfanas', { error: (err as Error)?.message }));
+
   const schedulePublicScanCleanup = async (scanId: string) => {
     if (!scanId) return;
     try {
@@ -113,6 +138,8 @@ async function bootstrap() {
         if (job.name === 'cleanup-expired-evidence') {
           await cleanupExpiredEvidence();
           await expireStaleAwaitingLoginScans();
+        } else if (job.name === 'cleanup-orphan-evidence') {
+          await cleanupOrphanEvidence();
         } else if (job.name === 'cleanup-public-scan') {
           await cleanupPublicScan(String(job.data?.scanId || ''));
         } else {

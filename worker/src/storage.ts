@@ -126,6 +126,48 @@ export async function cleanupExpiredEvidence(): Promise<void> {
   }
 }
 
+// Borra objetos de R2 que NO están referenciados por ningún url_result vivo.
+// liveKeys: llaves extraídas de Postgres. minAgeMs: margen de seguridad — los
+// screenshots se suben DURANTE el scan, antes de que exista su fila en la BD,
+// así que nunca tocamos objetos recientes.
+export async function deleteOrphanEvidence(liveKeys: Set<string>, minAgeMs: number): Promise<number> {
+  const cutoffMs = Date.now() - minAgeMs;
+  let continuationToken: string | undefined;
+  let deletedObjects = 0;
+
+  do {
+    const response = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: bucketName,
+        ContinuationToken: continuationToken,
+      })
+    );
+
+    const orphans = (response.Contents || [])
+      .filter((object) =>
+        object.Key &&
+        object.LastModified &&
+        object.LastModified.getTime() < cutoffMs &&
+        !liveKeys.has(object.Key),
+      )
+      .map((object) => ({ Key: object.Key! }));
+
+    if (orphans.length > 0) {
+      await s3Client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucketName,
+          Delete: { Objects: orphans, Quiet: true },
+        })
+      );
+      deletedObjects += orphans.length;
+    }
+
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+
+  return deletedObjects;
+}
+
 import { AsyncLocalStorage } from 'async_hooks';
 
 // AsyncLocalStorage garantiza aislamiento por llamada asíncrona: con concurrencia 3,

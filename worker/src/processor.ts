@@ -2,7 +2,7 @@ import { Job } from 'bullmq';
 import pg from 'pg';
 import { scanUrl } from './scanner.js';
 import { validateScanTargetUrls } from './urlPolicy.js';
-import { deleteEvidenceUrls, runWithScanContext } from './storage.js';
+import { deleteEvidenceUrls, deleteOrphanEvidence, runWithScanContext } from './storage.js';
 import { createLogger } from './logger.js';
 import { getRedisClient } from './redis-client.js';
 
@@ -113,6 +113,70 @@ function collectEvidenceUrls(value: unknown, urls = new Set<string>()): Set<stri
     }
   }
   return urls;
+}
+
+function urlToEvidenceKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/evidence\/(.+)$/);
+    return match ? decodeURIComponent(match[1]) : '';
+  } catch {
+    const match = url.match(/\/evidence\/([^?#]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+}
+
+// Recorre TODOS los url_results en lotes y extrae las llaves R2 referenciadas
+// en cualquier columna jsonb (violations, visualMap, focusTraversal, etc.).
+async function collectLiveEvidenceKeys(): Promise<Set<string>> {
+  const keys = new Set<string>();
+  const BATCH = 200;
+  let lastId = '';
+
+  for (;;) {
+    const { rows } = await pool.query(
+      `SELECT id::text AS id, violations, "visualMap", "focusTraversal", "engineReport",
+              "semanticStructure", "manualVerifications", applicability
+       FROM url_results
+       WHERE id::text > $1
+       ORDER BY id::text
+       LIMIT $2`,
+      [lastId, BATCH],
+    );
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      lastId = row.id;
+      const urls = new Set<string>();
+      collectEvidenceUrls(row.violations, urls);
+      collectEvidenceUrls(row.visualMap, urls);
+      collectEvidenceUrls(row.focusTraversal, urls);
+      collectEvidenceUrls(row.engineReport, urls);
+      collectEvidenceUrls(row.semanticStructure, urls);
+      collectEvidenceUrls(row.manualVerifications, urls);
+      collectEvidenceUrls(row.applicability, urls);
+      for (const url of urls) {
+        const key = urlToEvidenceKey(url);
+        if (key) keys.add(key);
+      }
+    }
+
+    if (rows.length < BATCH) break;
+  }
+
+  return keys;
+}
+
+// Barrido de huérfanas: borra de R2 los objetos que ningún url_result referencia.
+// Cubre los casos donde el borrado best-effort falló (R2 caído al eliminar un scan)
+// o donde quedaron residuos históricos. Margen de 48h: los screenshots se suben
+// durante el scan, antes de que su fila exista en Postgres.
+const ORPHAN_MIN_AGE_MS = 48 * 60 * 60 * 1000;
+
+export async function cleanupOrphanEvidence(): Promise<void> {
+  const liveKeys = await collectLiveEvidenceKeys();
+  const deleted = await deleteOrphanEvidence(liveKeys, ORPHAN_MIN_AGE_MS);
+  log.info('Barrido de evidencias huérfanas completado', { liveKeys: liveKeys.size, deleted });
 }
 
 export async function cleanupPublicScan(scanId: string): Promise<void> {
