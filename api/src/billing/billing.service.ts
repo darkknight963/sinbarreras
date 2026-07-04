@@ -18,9 +18,10 @@ import * as crypto from 'crypto';
 
 const CULQI_API_BASE = 'https://api.culqi.com/v2';
 
-// Endpoints protegidos por la RSA Backend Key en CulqiOnline: con la llave
-// activa en el panel, Culqi rechaza JSON plano en ellos (401 "Petición invalida").
-const CULQI_RSA_PATHS = ['/plans', '/subscriptions', '/cards', '/customers'];
+// CulqiOnline exige body encriptado RSA solo en /plans y /subscriptions
+// (JSON plano devuelve 401 "Ruta inválida"). /customers y /cards van en JSON
+// plano: no soportan payload encriptado y responden 500 si se les envía.
+const CULQI_RSA_PATHS = ['/plans', '/subscriptions'];
 
 @Injectable()
 export class BillingService {
