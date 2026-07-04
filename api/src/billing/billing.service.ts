@@ -260,6 +260,14 @@ export class BillingService {
     planId: string,
     secretKey: string,
   ): Promise<Record<string, unknown>> {
+    // Diagnóstico: verificar que el plan exista antes de suscribir.
+    try {
+      const plan = await this.culqiRequest(`/recurrent/plans/${planId}`, 'GET', undefined, secretKey);
+      console.log('[Culqi] plan verificado:', JSON.stringify({ id: plan.id, status: (plan as any).status, name: (plan as any).name }));
+    } catch (err) {
+      console.error(`[Culqi] ADVERTENCIA: no se pudo obtener el plan ${planId}:`, err instanceof Error ? err.message : err);
+    }
+
     // Formato del SDK oficial culqi-go: card_id + plan_id + tyc (aceptación de
     // términos y condiciones). El customer se infiere de la tarjeta.
     const subscription = await this.culqiRequest('/recurrent/subscriptions/create', 'POST', {
