@@ -162,6 +162,30 @@ async function bootstrap() {
   );
   log.info('Worker iniciado', { concurrency: workerConcurrency, lockDurationMs, drainDelayMs });
 
+  // Sin listener de 'error', los fallos de conexión del worker (p.ej. contra
+  // Upstash) se pierden en silencio y la cola parece "muerta" sin explicación.
+  worker.on('error', (err) => {
+    log.error('Worker error', { error: err?.message });
+  });
+  worker.on('stalled', (jobId) => {
+    log.warn('Job stalled detectado', { jobId });
+  });
+
+  // Diagnóstico de arranque: estado de la cola y del job de barrido inicial.
+  try {
+    const counts = await scansQueue.getJobCounts('wait', 'active', 'delayed', 'completed', 'failed');
+    const bootstrapJob = await scansQueue.getJob('cleanup-orphan-evidence-bootstrap');
+    const bootstrapState = bootstrapJob ? await bootstrapJob.getState() : 'no-existe';
+    log.info('Estado de cola al arranque', { ...counts, bootstrapHuerfanas: bootstrapState });
+    // Si el barrido inicial quedó atascado en 'failed', reencolarlo.
+    if (bootstrapJob && bootstrapState === 'failed') {
+      await bootstrapJob.retry();
+      log.info('Barrido inicial de huérfanas reencolado desde failed');
+    }
+  } catch (err) {
+    log.warn('No se pudo leer el estado de la cola', { error: (err as Error)?.message });
+  }
+
   worker.on('completed', (job) => {
     log.info('Job completado', { jobId: job.id });
     if (job.data?.publicScan && job.data?.scanId) {
