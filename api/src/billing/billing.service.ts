@@ -113,7 +113,7 @@ export class BillingService {
 
     const object = (payload.data as Record<string, unknown> | undefined) || {};
 
-    if (type === 'subscription.charge.success') {
+    if (type === 'subscription.charge.succeeded') {
       return this.handleSubscriptionChargeSuccess(object);
     }
 
@@ -121,7 +121,7 @@ export class BillingService {
       return this.handleSubscriptionChargeFailed(object);
     }
 
-    if (type === 'subscription.cancel') {
+    if (type === 'subscription.cancel.succeeded' || type === 'subscription.cancel.failed') {
       return this.handleSubscriptionCancel(object);
     }
 

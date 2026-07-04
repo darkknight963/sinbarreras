@@ -28,7 +28,7 @@ describe('BillingController', () => {
     ).resolves.toEqual({ status: 'active', subscriptionId: 'sub_test_789' });
     await expect(controller.cancel({ id: 'user-1' })).resolves.toEqual({ status: 'canceled' });
 
-    const webhookPayload = { type: 'subscription.charge.success', data: { subscription_id: 'sub_test_789' } };
+    const webhookPayload = { type: 'subscription.charge.succeeded', data: { subscription_id: 'sub_test_789' } };
     const { headers, rawBody } = makeSignedRequest(webhookPayload, 'whsec_test_123');
     await expect(
       controller.handleWebhook(webhookPayload as any, { headers, rawBody } as any),
@@ -44,7 +44,7 @@ describe('BillingController', () => {
 
     expect(() =>
       controller.handleWebhook(
-        { type: 'subscription.charge.success', data: { subscription_id: 'sub_test' } } as any,
+        { type: 'subscription.charge.succeeded', data: { subscription_id: 'sub_test' } } as any,
         { headers: { 'x-culqi-signature': 'badfeed' }, rawBody: Buffer.from('{}') } as any,
       ),
     ).toThrow(UnauthorizedException);
@@ -60,7 +60,7 @@ describe('BillingController', () => {
 
     await expect(
       controller.handleWebhook(
-        { type: 'subscription.charge.success', data: { subscription_id: 'sub_test' } } as any,
+        { type: 'subscription.charge.succeeded', data: { subscription_id: 'sub_test' } } as any,
         { headers: {} } as any,
       ),
     ).resolves.toEqual({ ok: true });

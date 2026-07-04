@@ -102,7 +102,7 @@ describe('BillingService', () => {
     const service = new BillingService(userRepository, subscriptionRepository, configService, dataSource);
 
     await expect(
-      service.handleWebhook({ type: 'subscription.charge.success', data: { subscription_id: 'sub_test_789' } }),
+      service.handleWebhook({ type: 'subscription.charge.succeeded', data: { subscription_id: 'sub_test_789' } }),
     ).resolves.toEqual({ ok: true, matched: true });
   });
 
