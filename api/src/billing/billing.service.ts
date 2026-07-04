@@ -18,10 +18,12 @@ import * as crypto from 'crypto';
 
 const CULQI_API_BASE = 'https://api.culqi.com/v2';
 
-// El API de suscripciones de CulqiOnline vive bajo /recurrent/* (SDK oficial
-// culqi-go) y exige body encriptado RSA. /customers y /cards van en JSON
-// plano: no soportan payload encriptado y responden 500 si se les envía.
-const CULQI_RSA_PATHS = ['/recurrent/plans', '/recurrent/subscriptions'];
+// La encriptación RSA es opcional por petición (la llave activa solo la
+// habilita): /customers y /cards funcionan en JSON plano con los servicios
+// habilitados. Probamos /recurrent/subscriptions también en plano porque el
+// body encriptado devuelve 500 sin detalle (posible bug de desencriptado de
+// Culqi). Dejar la lista vacía = todo en JSON plano.
+const CULQI_RSA_PATHS: string[] = [];
 
 @Injectable()
 export class BillingService {
