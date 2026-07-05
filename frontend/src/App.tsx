@@ -1129,6 +1129,22 @@ export default function App() {
     }
   };
 
+  const handleToggleMonitoring = async (enabled: boolean) => {
+    if (!currentProject) return;
+    try {
+      setAppError(null);
+      const res = await fetchWithFallback(`/projects/${currentProject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monitoringEnabled: enabled }),
+      });
+      if (!res.ok) throw new Error(await readApiErrorMessage(res));
+      setCurrentProject((prev) => (prev ? { ...prev, monitoringEnabled: enabled } : prev));
+    } catch (err) {
+      handleApiError('No se pudo actualizar el monitoreo', err);
+    }
+  };
+
   const handleApplicabilityUpdate = async (criterionId: string, estado: 'aplica' | 'no_aplica') => {
     if (!selectedUrlResult) return;
 
@@ -1888,6 +1904,8 @@ export default function App() {
             hasMoreScans={hasMoreScans}
             loadingMoreScans={loadingMoreScans}
             onLoadMoreScans={loadMoreScans}
+            canUseMonitoring={canUsePaidFeatures}
+            onToggleMonitoring={authMode === 'session' ? handleToggleMonitoring : undefined}
           />
           </Suspense>
         )}

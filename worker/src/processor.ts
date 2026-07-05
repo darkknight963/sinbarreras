@@ -179,6 +179,63 @@ export async function cleanupOrphanEvidence(): Promise<void> {
   log.info('Barrido de evidencias huérfanas completado', { liveKeys: liveKeys.size, deleted });
 }
 
+// Monitoreo continuo (Pro): reescanea el dominio de los proyectos que lo
+// activaron. Corre una vez al día, pero cada proyecto solo se reescanea si su
+// último scan tiene más de 6 días (cadencia semanal efectiva). Presupuesto de
+// recursos acotado: máx 20 proyectos por corrida, solo dueños Pro activos.
+export async function runScheduledMonitoringScans(
+  enqueue: (scanId: string, url: string) => Promise<void>,
+): Promise<void> {
+  const { rows } = await pool.query<{ id: string; domain: string; vo: number }>(
+    `SELECT p.id, p.domain, p.vo
+     FROM projects p
+     JOIN users u ON u.id = p."ownerId"
+     WHERE p."monitoringEnabled" = true
+       AND p.domain IS NOT NULL
+       AND (
+         lower(u.role) IN ('admin', 'superadmin')
+         OR (u."billingStatus" = 'active' AND u."billingPlan" IS NOT NULL)
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM scans s
+         WHERE s."projectId" = p.id
+           AND (
+             s.status IN ('pending', 'running', 'awaiting_login')
+             OR s."createdAt" > NOW() - INTERVAL '6 days'
+           )
+       )
+     LIMIT 20`,
+  );
+
+  if (rows.length === 0) return;
+  log.info('Monitoreo: proyectos a reescanear', { count: rows.length });
+
+  for (const project of rows) {
+    let url: string;
+    try {
+      [url] = await validateScanTargetUrls([project.domain]);
+    } catch (err) {
+      log.warn('Monitoreo: dominio inválido, se omite', { projectId: project.id, error: (err as Error)?.message });
+      continue;
+    }
+
+    try {
+      const vo = Number.isFinite(project.vo) && project.vo > 0 ? project.vo : 4;
+      const inserted = await pool.query<{ id: string }>(
+        `INSERT INTO scans (status, "scanUrls", ux, vp, "scanMode", "projectId")
+         VALUES ('pending', $1::jsonb, 4, $2, 'estandar', $3)
+         RETURNING id`,
+        [JSON.stringify([url]), vo * 4, project.id],
+      );
+      const scanId = inserted.rows[0].id;
+      await enqueue(scanId, url);
+      log.info('Monitoreo: scan programado', { projectId: project.id, scanId });
+    } catch (err) {
+      log.error('Monitoreo: no se pudo programar el scan', { projectId: project.id, error: (err as Error)?.message });
+    }
+  }
+}
+
 export async function cleanupPublicScan(scanId: string): Promise<void> {
   await ensureUrlResultSchema();
 
