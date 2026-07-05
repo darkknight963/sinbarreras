@@ -1,3 +1,5 @@
+import { HIGH_CONFIDENCE_RULES } from './classificationPolicy.js';
+
 export interface WcagRuleInfo {
   criterion: string;
   nameEs: string;
@@ -898,16 +900,24 @@ function normalizeRuleLookupKey(ruleId: string): string {
   return id;
 }
 
+// Registro de reglas sin mapear vistas en scans reales: permite completar el
+// mapeo por demanda en vez de adivinar cuáles de las ~250 reglas axe/IBM llegan.
+const unmappedRuleIdsLogged = new Set<string>();
+
 export function getRuleDetails(axeRuleId: string): WcagRuleInfo {
   const lookupKey = normalizeRuleLookupKey(axeRuleId);
   const found = ruleMapping[lookupKey] || extraRuleMapping[lookupKey];
   if (found) {
-    const confirmedRules = new Set(['color-contrast', 'color-contrast-enhanced', 'duplicate-id', 'image-alt', 'button-name', 'label', 'link-name', 'input-image-alt']);
     return {
       ...found,
-      findingStatus: found.findingStatus || (confirmedRules.has(lookupKey) ? 'confirmed' : 'needs_review'),
+      findingStatus: found.findingStatus || (HIGH_CONFIDENCE_RULES.has(lookupKey) ? 'confirmed' : 'needs_review'),
       suggestedFix: found.suggestedFix || defaultSuggestedFix(lookupKey),
     };
+  }
+
+  if (!unmappedRuleIdsLogged.has(lookupKey)) {
+    unmappedRuleIdsLogged.add(lookupKey);
+    console.warn(`[WCAG] Regla sin mapear (agregar a ruleMapping para nombre/fix en español): ${axeRuleId}`);
   }
 
   return {

@@ -3,8 +3,16 @@ import type { FindingCategory, FindingStatus, GroupedFinding, PageState, RawFind
 export function toSeverityEs(value?: string | null): SeverityEs {
   const normalized = (value || '').toLowerCase();
   if (normalized.includes('critical')) return 'critico';
-  if (normalized.includes('serious') || normalized.includes('high') || normalized.includes('error')) return 'alto';
-  if (normalized.includes('moderate') || normalized.includes('warning') || normalized.includes('medium')) return 'medio';
+  // 'violation' exacto es el nivel de IBM Equal Access para fallas confirmadas
+  // (el chequeo exacto evita capturar 'potentialviolation').
+  if (normalized === 'violation' || normalized.includes('serious') || normalized.includes('high') || normalized.includes('error')) return 'alto';
+  if (
+    normalized.includes('potentialviolation') ||
+    normalized.includes('recommendation') ||
+    normalized.includes('moderate') ||
+    normalized.includes('warning') ||
+    normalized.includes('medium')
+  ) return 'medio';
   return 'bajo';
 }
 

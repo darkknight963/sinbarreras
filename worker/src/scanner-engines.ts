@@ -27,6 +27,13 @@ import {
 import type { GroupedFinding } from './scanner-models.js';
 
 const axeSource = axeCore.source;
+
+// Locale oficial en español de axe-core: traduce descripciones, help y los
+// mensajes por elemento (node.any/all) que alimentan "Corrección específica
+// del elemento". Los ruleIds, selectores y datos (ratios, colores) no cambian.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const axeLocaleEs = require('axe-core/locales/es.json');
+
 declare const document: any;
 declare const window: any;
 
@@ -478,12 +485,20 @@ async function detectBlockingOverlays(page: Page): Promise<RawFinding[]> {
 }
 
 async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[]> {
-  await page.evaluate((src) => {
-    if ((window as any).axe) return;
-    const script = window.document.createElement('script');
-    script.innerHTML = src;
-    window.document.head.appendChild(script);
-  }, axeSource);
+  await page.evaluate(({ src, locale }) => {
+    if (!(window as any).axe) {
+      const script = window.document.createElement('script');
+      script.innerHTML = src;
+      window.document.head.appendChild(script);
+    }
+    // Configurar el locale en cada corrida es idempotente y garantiza español
+    // aunque axe ya estuviera inyectado por una corrida anterior.
+    try {
+      (window as any).axe.configure({ locale });
+    } catch {
+      // No fatal: si el locale fallara, axe corre con mensajes en inglés.
+    }
+  }, { src: axeSource, locale: axeLocaleEs });
 
   const results = await page.evaluate((selector) => {
     const context = selector ? document.querySelector(selector) : document;
@@ -655,7 +670,7 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
         description: (ibmRevMapped ? ibmRevInfo.nameEs : null) || ibmRevRaw || 'Revision manual recomendada por IBM Equal Access',
         selector: normalizeSelector(domPath || 'document'),
         elementHtml: snippet,
-        severity: 'medio',
+        severity: toSeverityEs(v?.level || v?.impact),
         suggestedFix: ibmRevInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
       });
     }
