@@ -4,7 +4,6 @@
   domain: string | null;
   vo: number; // 2, 4, 6
   entityType: string; // Sector público, Sector privado
-  monitoringEnabled?: boolean;
   createdAt: string;
   scans?: Scan[];
 }

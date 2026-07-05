@@ -21,11 +21,6 @@ export class Project {
   @Column({ type: 'text', default: 'Sector privado' }) // Tipo entidad
   entityType!: string;
 
-  // Monitoreo continuo (Pro): el worker reescanea el dominio semanalmente
-  // para detectar regresiones de accesibilidad sin intervención del usuario.
-  @Column({ type: 'boolean', default: false })
-  monitoringEnabled!: boolean;
-
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -67,9 +67,6 @@ export class ProjectsController {
     for (const field of allowed) {
       if (field in body) updateData[field] = body[field];
     }
-    if ('monitoringEnabled' in body) {
-      updateData.monitoringEnabled = body.monitoringEnabled === true;
-    }
     return this.projectsService.update(id, updateData, scope.ownerId, scope);
   }
 

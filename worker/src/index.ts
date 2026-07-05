@@ -1,6 +1,6 @@
 import { Worker, Job, Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
-import { cleanupOrphanEvidence, cleanupPublicScan, expireStaleAwaitingLoginScans, processScan, runScheduledMonitoringScans } from './processor.js';
+import { cleanupOrphanEvidence, cleanupPublicScan, expireStaleAwaitingLoginScans, processScan } from './processor.js';
 import { initializeStorage, cleanupExpiredEvidence } from './storage.js';
 import { createLogger } from './logger.js';
 import { browserPool } from './browser-pool.js';
@@ -82,27 +82,19 @@ async function bootstrap() {
     },
   ).catch((err) => log.warn('No se pudo programar barrido de huérfanas', { error: (err as Error)?.message }));
 
-  // Monitoreo continuo: chequeo DIARIO (1 job/día = costo Redis despreciable);
-  // cada proyecto solo se reescanea si su último scan tiene >6 días.
-  const MONITORING_INTERVAL_MS = 24 * 60 * 60 * 1000;
-  await scansQueue.add(
-    'monitoring-rescan',
-    {},
-    {
-      jobId: 'monitoring-rescan-recurring',
-      repeat: { every: MONITORING_INTERVAL_MS },
-      removeOnComplete: true,
-      removeOnFail: 5,
-    },
-  ).catch((err) => log.warn('No se pudo programar el monitoreo continuo', { error: (err as Error)?.message }));
-
-  const enqueueMonitoringScan = async (scanId: string, url: string) => {
-    await scansQueue.add(
-      'process-scan',
-      { scanId, urls: [url], scanMode: 'estandar', loginMode: 'none', publicScan: false },
-      { jobId: scanId, removeOnComplete: true, removeOnFail: { count: 20 } },
-    );
-  };
+  // El reescaneo automático fue retirado (el usuario decide cuándo escanear).
+  // Eliminar el programador recurrente que un deploy anterior pudo dejar en Redis.
+  try {
+    const repeatables = await scansQueue.getRepeatableJobs();
+    for (const repeatable of repeatables) {
+      if (repeatable.name === 'monitoring-rescan') {
+        await scansQueue.removeRepeatableByKey(repeatable.key);
+        log.info('Programador de monitoreo automático eliminado de Redis');
+      }
+    }
+  } catch (err) {
+    log.warn('No se pudo limpiar el programador de monitoreo', { error: (err as Error)?.message });
+  }
 
   // Primera pasada inmediata, UNA sola vez: el jobId fijo con removeOnComplete:false
   // conserva el registro en Redis y evita que se re-ejecute en cada redeploy.
@@ -160,8 +152,6 @@ async function bootstrap() {
         if (job.name === 'cleanup-expired-evidence') {
           await cleanupExpiredEvidence();
           await expireStaleAwaitingLoginScans();
-        } else if (job.name === 'monitoring-rescan') {
-          await runScheduledMonitoringScans(enqueueMonitoringScan);
         } else if (job.name === 'cleanup-orphan-evidence') {
           await cleanupOrphanEvidence();
         } else if (job.name === 'cleanup-public-scan') {

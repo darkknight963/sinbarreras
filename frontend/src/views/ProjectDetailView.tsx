@@ -46,8 +46,6 @@ interface ProjectDetailViewProps {
   hasMoreScans?: boolean;
   loadingMoreScans?: boolean;
   onLoadMoreScans?: () => void;
-  canUseMonitoring?: boolean;
-  onToggleMonitoring?: (enabled: boolean) => Promise<void> | void;
 }
 
 const trendDateLabel = (value: string) =>
@@ -132,54 +130,6 @@ function ScoreTrend({ scans }: { scans: any[] }) {
   );
 }
 
-function MonitoringToggle({
-  project,
-  canUseMonitoring,
-  onToggle,
-}: {
-  project: any;
-  canUseMonitoring: boolean;
-  onToggle?: (enabled: boolean) => Promise<void> | void;
-}) {
-  const [busy, setBusy] = React.useState(false);
-  if (!onToggle || !project?.domain) return null;
-  const enabled = project.monitoringEnabled === true;
-
-  const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    setBusy(true);
-    try {
-      await onToggle(event.target.checked);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <label
-      style={{
-        display: 'flex', alignItems: 'flex-start', gap: 10,
-        padding: '0.75rem 1rem', borderRadius: 10,
-        background: '#f8fafc', border: '1px solid #e2e8f0',
-        cursor: canUseMonitoring ? 'pointer' : 'not-allowed',
-        opacity: canUseMonitoring ? 1 : 0.65,
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={enabled}
-        disabled={!canUseMonitoring || busy}
-        onChange={handleChange}
-        style={{ marginTop: 3, width: 16, height: 16, accentColor: '#2563eb' }}
-      />
-      <span style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-        <strong style={{ color: '#0f172a', display: 'block', fontSize: 13 }}>Monitoreo semanal automático</strong>
-        {canUseMonitoring
-          ? 'Reescaneamos tu sitio cada semana y la evolución del cumplimiento se actualiza sola. Detecta regresiones sin que tengas que acordarte.'
-          : 'Disponible en el plan Pro: reescaneo semanal automático para detectar regresiones de accesibilidad.'}
-      </span>
-    </label>
-  );
-}
 
 export function ProjectDetailView({
   currentProject,
@@ -207,8 +157,6 @@ export function ProjectDetailView({
   hasMoreScans = false,
   loadingMoreScans = false,
   onLoadMoreScans,
-  canUseMonitoring = false,
-  onToggleMonitoring,
 }: ProjectDetailViewProps) {
   const urlCount = parsedNewScanUrls.length;
   const scans = [...new Map((currentProject.scans || []).map((scan: any) => [scan.id, scan])).values()].sort((a: any, b: any) => {
@@ -553,7 +501,6 @@ export function ProjectDetailView({
             </div>
 
             <ScoreTrend scans={currentProject.scans || []} />
-            <MonitoringToggle project={currentProject} canUseMonitoring={canUseMonitoring} onToggle={onToggleMonitoring} />
 
             {!hasScans && (
               <div className="project-history-empty-state">
