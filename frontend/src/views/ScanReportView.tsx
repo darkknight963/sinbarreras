@@ -632,14 +632,16 @@ const getFindingMessageGroups = (rows: any[] = []) => {
       const statusType = getFindingGroupType(finding);
       const wcagRef = String(finding?.wcagCriterion || finding?.criterion || row?.id || '').trim();
       const ruleId = String(finding?.ruleId || '').trim();
-      // Clave: ruleId exacto + statusType, igual que ARC Toolkit "Results by messages".
-      // ruleId fusiona todas las instancias del MISMO problema técnico (ej: todas las
-      // ocurrencias de duplicate-id, o todas las de aria-labelledby inválido).
-      // Distintas reglas con el mismo título amigable (button-name vs aria-allowed-attr)
-      // quedan en filas separadas porque son problemas técnicamente diferentes.
+      // Clave: título amigable + criterio + statusType. El mismo problema detectado
+      // por motores distintos (axe vs IBM, ruleIds diferentes) o en estados de
+      // página distintos se fusiona en UNA fila — antes aparecían "duplicados"
+      // (ej: dos filas "Evitar bloques (main landmark)"). Los ruleIds de cada
+      // motor se conservan en group.rules y los elementos se deduplican en la
+      // tabla técnica por selector+html.
       const key = [
         statusType,
-        normalizeText(ruleId) || normalizeText(title),
+        normalizeText(title),
+        wcagRef.split(',')[0]?.trim() || '',
       ].join('|');
 
       const current = groupMap.get(key) || {
@@ -699,6 +701,25 @@ const getFindingMessageGroups = (rows: any[] = []) => {
       const severityDiff = getSeverityRank(b.highestSeverity) - getSeverityRank(a.highestSeverity);
       if (severityDiff !== 0) return severityDiff;
       return b.affectedElements - a.affectedElements;
+    })
+    .map((group, _index, groups) => {
+      // Contraste: 1.4.6 (AAA) siempre falla donde falla 1.4.3 (AA) — anotar que
+      // los elementos se superponen para no inflar la percepción del problema.
+      if (group.wcagRefs.includes('1.4.6') && groups.some((g) => g !== group && g.wcagRefs.includes('1.4.3'))) {
+        return { ...group, contrastIncludesAA: true };
+      }
+      return group;
+    })
+    .sort((a, b) => {
+      // El criterio AA legalmente exigible (1.4.3) va antes que su versión AAA
+      // (1.4.6) cuando ambos aparecen con el mismo estado.
+      if (a.statusType === b.statusType) {
+        const aIs146 = a.wcagRefs.includes('1.4.6');
+        const bIs143 = b.wcagRefs.includes('1.4.3');
+        if (aIs146 && bIs143) return 1;
+        if (a.wcagRefs.includes('1.4.3') && b.wcagRefs.includes('1.4.6')) return -1;
+      }
+      return 0;
     });
 };
 
@@ -756,7 +777,6 @@ interface ScanReportViewProps {
   onExport: (kind: 'pdf-executive' | 'pdf-technical' | 'excel') => void;
   canUsePaidFeatures: boolean;
   renderScoreMeter: (score: number | null | undefined, label?: string, size?: 'compact' | 'large', showCaption?: boolean) => React.ReactNode;
-  getVpCategory: (vp: number | null) => { label: string; color: string };
   applicabilityRows: any[];
   filteredApplicabilityRows: any[];
   groupedApplicabilityRows: any[];
@@ -796,7 +816,6 @@ export function ScanReportView({
   onExport,
   canUsePaidFeatures,
   renderScoreMeter,
-  getVpCategory,
   applicabilityRows,
   filteredApplicabilityRows,
   groupedApplicabilityRows,
@@ -904,13 +923,7 @@ export function ScanReportView({
             {renderScoreMeter(currentScan.globalScore, 'Score técnico', 'large')}
           </div>
 
-          <div className="xl:col-span-3 report-score-detail-grid grid md:grid-cols-2">
-            <div className="report-panel report-panel-spacious">
-              <p className="report-kicker">Fórmula de Priorización Peruana</p>
-              <p className="text-slate-700 font-semibold mt-1">(p = Vo({currentProject?.vo || 4}) + Ux({currentScan.ux})) / 16</p>
-              <p className="text-4xl font-black text-gob-blue mt-2">{currentScan.vp ?? 0}</p>
-              <span className={`${getVpCategory(currentScan.vp).color} mt-2`}>{getVpCategory(currentScan.vp).label}</span>
-            </div>
+          <div className="xl:col-span-3 report-score-detail-grid grid">
             <div className="report-panel report-panel-spacious">
               <p className="report-kicker">Criterios de Verificación</p>
               <div className="grid md:grid-cols-3 gap-3 mt-3">
@@ -1018,6 +1031,7 @@ export function ScanReportView({
                         <strong>{group.title}</strong>
                         <small>
                           {getFindingMessageStatusLabel(group.statusType)} · {group.affectedElements} elemento{group.affectedElements === 1 ? '' : 's'} afectado{group.affectedElements === 1 ? '' : 's'} · Criterio {wcagText}
+                          {group.contrastIncludesAA ? ' · Incluye los elementos que ya fallan el criterio 1.4.3 (AA)' : ''}
                         </small>
                       </span>
                       <span className={`finding-message-severity ${getSeverityClass(group.highestSeverity)}`}>{group.highestSeverity || 'medio'}</span>

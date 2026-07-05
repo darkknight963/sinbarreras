@@ -21,7 +21,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Compartido', // Redactor UX y Desarrollador
     resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
-    suggestedFix: 'Si la imagen transmite informacion, agregar alt descriptivo y breve (maximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.'
+    suggestedFix: 'Si la imagen transmite información, agregar alt descriptivo y breve (máximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.'
   },
   'color-contrast': {
     criterion: '1.4.3',
@@ -31,7 +31,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 1.4.3',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html',
-    suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relacion de contraste de al menos 4.5:1 en texto normal (menos de 18pt) o 3:1 en texto grande (18pt o 14pt negrita). Usar herramientas como WebAIM Contrast Checker para verificar.'
+    suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relación de contraste de al menos 4.5:1 en texto normal (menos de 18pt) o 3:1 en texto grande (18pt o 14pt negrita). Usar herramientas como WebAIM Contrast Checker para verificar.'
   },
   'color-contrast-enhanced': {
     criterion: '1.4.6',
@@ -41,7 +41,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 1.4.6',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-enhanced.html',
-    suggestedFix: 'Para nivel AAA ajustar contraste a minimo 7:1 en texto normal y 4.5:1 en texto grande. Especialmente critico para usuarios con baja vision severa.'
+    suggestedFix: 'Para nivel AAA ajustar contraste a mínimo 7:1 en texto normal y 4.5:1 en texto grande. Especialmente critico para usuarios con baja vision severa.'
   },
   'document-title': {
     criterion: '2.4.2',
@@ -51,7 +51,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/page-titled.html',
-    suggestedFix: 'Definir un title unico y descriptivo con formato "Nombre pagina | Sistema" (maximo 60-70 caracteres). Actualizar en cada vista de SPA.'
+    suggestedFix: 'Definir un title único y descriptivo con formato "Nombre página | Sistema" (máximo 60-70 caracteres). Actualizar en cada vista de SPA.'
   },
   'html-has-lang': {
     criterion: '3.1.1',
@@ -71,11 +71,11 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html',
-    suggestedFix: 'Verificar que el codigo de idioma sea un BCP 47 valido, por ejemplo es, es-PE, en, en-US. Codigos invalidos pueden confundir al lector de pantalla.'
+    suggestedFix: 'Verificar que el código de idioma sea un BCP 47 válido, por ejemplo es, es-PE, en, en-US. Codigos inválidos pueden confundir al lector de pantalla.'
   },
   'html-lang-missing': {
     criterion: '3.1.1',
-    nameEs: 'Idioma de la pagina',
+    nameEs: 'Idioma de la página',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
@@ -110,7 +110,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Compartido', // Desarrollador y Diseñador UX/UI
     resolutionArticle: 'Anexo 1 - Criterio 2.4.7',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html',
-    suggestedFix: 'Definir :focus-visible con outline minimo de 2px de contraste 3:1, sin eliminar el outline del navegador sin reemplazo. Evitar outline:none sin definir estilo alternativo.'
+    suggestedFix: 'Definir :focus-visible con outline mínimo de 2px de contraste 3:1, sin eliminar el outline del navegador sin reemplazo. Evitar outline:none sin definir estilo alternativo.'
   },
   'label': {
     criterion: '3.3.2',
@@ -140,7 +140,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    suggestedFix: 'Usar solo roles ARIA validos de la especificacion WAI-ARIA 1.2. Preferir elementos HTML nativos con semantica equivalente cuando existan (button, nav, main, etc.).'
+    suggestedFix: 'Usar solo roles ARIA válidos de la especificacion WAI-ARIA 1.2. Preferir elementos HTML nativos con semántica equivalente cuando existan (button, nav, main, etc.).'
   },
   'link-name': {
     criterion: '2.4.4',
@@ -150,7 +150,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.4',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html',
-    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el proposito real, por ejemplo "Ver perfil de usuario". Evitar textos genericos como "click aqui" o "leer mas".'
+    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el propósito real, por ejemplo "Ver perfil de usuario". Evitar textos genericos como "click aqui" o "leer mas".'
   },
   'input-image-alt': {
     criterion: '1.1.1',
@@ -160,7 +160,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
-    suggestedFix: 'Agregar alt al input[type=image] con el texto que describe la accion del boton (no la imagen), por ejemplo alt="Buscar". Si es decorativo, usar input[type=submit] con value descriptivo.'
+    suggestedFix: 'Agregar alt al input[type=image] con el texto que describe la accion del botón (no la imagen), por ejemplo alt="Buscar". Si es decorativo, usar input[type=submit] con value descriptivo.'
   },
   'button-name': {
     criterion: '4.1.2',
@@ -170,11 +170,11 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    suggestedFix: 'Agregar nombre accesible al boton: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente. El nombre debe describir la accion, no el elemento.'
+    suggestedFix: 'Agregar nombre accesible al botón: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente. El nombre debe describir la accion, no el elemento.'
   },
   'button-name-missing': {
     criterion: '4.1.2',
-    nameEs: 'Boton sin nombre accesible',
+    nameEs: 'Botón sin nombre accesible',
     level: 'A',
     disability: ['Sensorial visual', 'Fisica'],
     role: 'Desarrollador',
@@ -220,7 +220,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 2.5.8',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html',
-    suggestedFix: 'Asegurar que areas de interaccion tengan minimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil. Usar padding en lugar de aumentar el elemento si es necesario.'
+    suggestedFix: 'Asegurar que areas de interacción tengan mínimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil. Usar padding en lugar de aumentar el elemento si es necesario.'
   },
   'duplicate-id': {
     criterion: '4.1.2',
@@ -230,7 +230,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    suggestedFix: 'Asignar ids unicos en toda la pagina incluyendo componentes reutilizables. Actualizar todos los for, aria-labelledby, aria-controls, aria-describedby que referencian el id duplicado.'
+    suggestedFix: 'Asignar ids únicos en toda la página incluyendo componentes reutilizables. Actualizar todos los for, aria-labelledby, aria-controls, aria-describedby que referencian el id duplicado.'
   },
   'landmark-main-missing': {
     criterion: '2.4.1',
@@ -252,7 +252,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
   },
   'bypass-missing': {
     criterion: '2.4.1',
-    nameEs: 'Metodo para saltar bloques',
+    nameEs: 'Método para saltar bloques',
     level: 'A',
     disability: ['Sensorial visual', 'Fisica'],
     role: 'Desarrollador',
@@ -261,7 +261,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
   },
   'form-control-multiple-labels': {
     criterion: '3.3.2',
-    nameEs: 'Etiquetas multiples por control',
+    nameEs: 'Etiquetas múltiples por control',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
@@ -279,7 +279,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
   },
   'autocomplete-missing': {
     criterion: '1.3.5',
-    nameEs: 'Identificar proposito de entrada',
+    nameEs: 'Identificar propósito de entrada',
     level: 'AA',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
@@ -288,7 +288,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
   },
   'required-html5-indicator': {
     criterion: '3.3.2',
-    nameEs: 'Indicacion de campos requeridos',
+    nameEs: 'Indicación de campos requeridos',
     level: 'A',
     disability: ['Intelectual', 'Sensorial visual'],
     role: 'Compartido',
@@ -317,7 +317,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
   },
   'content-behind-dialog-accessible': {
     criterion: '1.3.2',
-    nameEs: 'Contenido detras del dialogo accesible',
+    nameEs: 'Contenido detras del diálogo accesible',
     level: 'A',
     disability: ['Sensorial visual', 'Fisica', 'Intelectual'],
     role: 'Desarrollador',
@@ -357,7 +357,7 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
   },
   'table-purpose-review': {
     criterion: '1.3.1',
-    nameEs: 'Proposito de tabla no claro',
+    nameEs: 'Propósito de tabla no claro',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
@@ -380,36 +380,36 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
 const extraRuleMapping: Record<string, WcagRuleInfo> = {
   'aria-dialog-name': {
     criterion: '4.1.2',
-    nameEs: 'Nombre, funcion y valor - dialogo sin nombre',
+    nameEs: 'Nombre, función y valor - diálogo sin nombre',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Agregar un nombre accesible al dialogo usando aria-labelledby con un titulo visible existente o aria-label descriptivo.'
+    suggestedFix: 'Agregar un nombre accesible al diálogo usando aria-labelledby con un título visible existente o aria-label descriptivo.'
   },
   'aria-valid-attr-value': {
     criterion: '4.1.2',
-    nameEs: 'Valores ARIA validos',
+    nameEs: 'Valores ARIA válidos',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Corregir atributos ARIA para que tengan valores validos y referencias existentes, especialmente aria-labelledby.'
+    suggestedFix: 'Corregir atributos ARIA para que tengan valores válidos y referencias existentes, especialmente aria-labelledby.'
   },
   region: {
     criterion: '1.3.1',
-    nameEs: 'Informacion y relaciones - regiones',
+    nameEs: 'Información y relaciones - regiones',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semanticos como main, nav, header, footer o regiones con nombre accesible.'
+    suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semánticos como main, nav, header, footer o regiones con nombre accesible.'
   },
   'scrollable-region-focusable': {
     criterion: '2.1.1',
@@ -435,18 +435,18 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
   },
   'select-value': {
     criterion: '4.1.2',
-    nameEs: 'Nombre, funcion y valor - select sin valor accesible',
+    nameEs: 'Nombre, función y valor - select sin valor accesible',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Verificar que el select exponga nombre y valor actual a la API de accesibilidad mediante label, option seleccionado y estado valido.'
+    suggestedFix: 'Verificar que el select exponga nombre y valor actual a la API de accesibilidad mediante label, option seleccionado y estado válido.'
   },
   'select-optgroup': {
     criterion: '1.3.1',
-    nameEs: 'Informacion y relaciones - grupos de opciones',
+    nameEs: 'Información y relaciones - grupos de opciones',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
@@ -457,7 +457,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
   },
   'label-not-form-control': {
     criterion: '1.3.1',
-    nameEs: 'Informacion y relaciones - label mal asociado',
+    nameEs: 'Información y relaciones - label mal asociado',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
@@ -468,14 +468,14 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
   },
   'table-caption-review': {
     criterion: '1.3.1',
-    nameEs: 'Informacion y relaciones - caption de tabla',
+    nameEs: 'Información y relaciones - caption de tabla',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Si es una tabla de datos, agregar un caption que identifique claramente el proposito de la tabla.'
+    suggestedFix: 'Si es una tabla de datos, agregar un caption que identifique claramente el propósito de la tabla.'
   },
   'image-ignored-review': {
     criterion: '1.1.1',
@@ -486,7 +486,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Confirmar si la imagen es decorativa. Si transmite informacion, quitar aria-hidden y agregar texto alternativo descriptivo.'
+    suggestedFix: 'Confirmar si la imagen es decorativa. Si transmite información, quitar aria-hidden y agregar texto alternativo descriptivo.'
   },
   'reflow-fixed-position': {
     criterion: '1.4.10',
@@ -501,47 +501,47 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
   },
   'heading-markup-review': {
     criterion: '1.3.1',
-    nameEs: 'Informacion y relaciones - encabezado visual',
+    nameEs: 'Información y relaciones - encabezado visual',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Si el texto funciona como encabezado, usar el elemento h1-h6 correspondiente y mantener una jerarquia logica.'
+    suggestedFix: 'Si el texto funciona como encabezado, usar el elemento h1-h6 correspondiente y mantener una jerarquía logica.'
   },
   'textarea-name': {
     criterion: '4.1.2',
-    nameEs: 'Nombre, funcion y valor - textarea sin nombre',
+    nameEs: 'Nombre, función y valor - textarea sin nombre',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Agregar un nombre accesible al textarea con label, title, aria-label o aria-labelledby valido.'
+    suggestedFix: 'Agregar un nombre accesible al textarea con label, title, aria-label o aria-labelledby válido.'
   },
   'form-field-label-missing': {
     criterion: '1.3.1',
-    nameEs: 'Informacion y relaciones - campo sin etiqueta',
+    nameEs: 'Información y relaciones - campo sin etiqueta',
     level: 'A',
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Etiquetar el campo con label asociado, title, aria-label o aria-labelledby segun corresponda.'
+    suggestedFix: 'Etiquetar el campo con label asociado, title, aria-label o aria-labelledby según corresponda.'
   },
   'iframe-title': {
     criterion: '2.4.1',
-    nameEs: 'Evitar bloques - titulo de iframe',
+    nameEs: 'Evitar bloques - título de iframe',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Agregar un atributo title no vacio al iframe que describa su contenido o proposito.'
+    suggestedFix: 'Agregar un atributo title no vacio al iframe que describa su contenido o propósito.'
   },
   'blocking-overlay-needs-review': {
     criterion: 'Revision manual',
@@ -552,7 +552,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Resolucion N 001-2025-PCM/SGTD - Revision manual',
     wcagUrl: 'https://www.w3.org/WAI/standards-guidelines/wcag/',
     findingStatus: 'needs_review',
-    suggestedFix: 'Revisar el sitio en navegador y configurar un script de pre-navegacion seguro si un modal o terminos bloquean el contenido auditado.'
+    suggestedFix: 'Revisar el sitio en navegador y configurar un script de pre-navegación seguro si un modal o terminos bloquean el contenido auditado.'
   },
 
   // ── IBM Equal Access: ruleIds frecuentes no cubiertos por axe ─────────────
@@ -562,7 +562,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Agregar manejadores de teclado (keydown/keyup) equivalentes a los manejadores de raton en elementos interactivos. Preferir elementos nativos como button o a que ya tienen soporte de teclado incorporado.'
+    suggestedFix: 'Agregar manejadores de teclado (keydown/keyup) equivalentes a los manejadores de ratón en elementos interactivos. Preferir elementos nativos como button o a que ya tienen soporte de teclado incorporado.'
   },
   'aria_widget_labelled': {
     criterion: '4.1.2', nameEs: 'Widget ARIA sin nombre accesible',
@@ -570,7 +570,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Agregar aria-label o aria-labelledby apuntando a un titulo visible para el widget ARIA.'
+    suggestedFix: 'Agregar aria-label o aria-labelledby apuntando a un título visible para el widget ARIA.'
   },
   'aria_child_tabbable': {
     criterion: '2.1.1', nameEs: 'Elemento hijo no alcanzable por teclado',
@@ -578,7 +578,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Asegurarse de que los elementos hijos interactivos dentro del widget sean alcanzables con Tab o con las teclas de cursor segun el patron de diseno ARIA.'
+    suggestedFix: 'Asegurarse de que los elementos hijos interactivos dentro del widget sean alcanzables con Tab o con las teclas de cursor según el patron de diseno ARIA.'
   },
   'aria_hidden_nontabbable': {
     criterion: '4.1.2', nameEs: 'Elemento oculto con acceso de teclado',
@@ -586,7 +586,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Si el elemento esta oculto con aria-hidden="true", agregarlo tambien al flujo de tabulacion con tabindex="-1" o eliminarlo del DOM visible.'
+    suggestedFix: 'Si el elemento esta oculto con aria-hidden="true", agregarlo también al flujo de tabulacion con tabindex="-1" o eliminarlo del DOM visible.'
   },
   'aria_role_allowed_props': {
     criterion: '4.1.2', nameEs: 'Propiedad ARIA no permitida para el rol',
@@ -610,15 +610,15 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.6',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/identify-purpose.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Agregar aria-label unico a cada landmark del mismo tipo para que los lectores de pantalla puedan distinguirlos.'
+    suggestedFix: 'Agregar aria-label único a cada landmark del mismo tipo para que los lectores de pantalla puedan distinguirlos.'
   },
   'aria_content_in_landmark': {
-    criterion: '1.3.1', nameEs: 'Contenido fuera de landmark semantico',
+    criterion: '1.3.1', nameEs: 'Contenido fuera de landmark semántico',
     level: 'A', disability: ['Visual'], role: 'Desarrollador',
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Mover el contenido dentro de un landmark semantico (main, nav, header, footer, aside, section con aria-label).'
+    suggestedFix: 'Mover el contenido dentro de un landmark semántico (main, nav, header, footer, aside, section con aria-label).'
   },
   'aria_eventhandler_role_valid': {
     criterion: '4.1.2', nameEs: 'Elemento con evento sin rol accesible',
@@ -629,7 +629,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     suggestedFix: 'Reemplazar el div o span con manejador de evento por un elemento nativo como button o a, o agregar role, tabindex y manejadores de teclado equivalentes.'
   },
   'rpt_elem_event_mouseevent': {
-    criterion: '2.1.1', nameEs: 'Evento de raton sin alternativa de teclado',
+    criterion: '2.1.1', nameEs: 'Evento de ratón sin alternativa de teclado',
     level: 'A', disability: ['Motora'], role: 'Desarrollador',
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
@@ -642,7 +642,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Usar el elemento HTML semanticamente correcto para el proposito del contenido.'
+    suggestedFix: 'Usar el elemento HTML semanticamente correcto para el propósito del contenido.'
   },
   'identical_links_same_purpose': {
     criterion: '2.4.9', nameEs: 'Enlaces identicos con distinto destino',
@@ -653,12 +653,12 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     suggestedFix: 'Diferenciar el texto visible o el aria-label de los enlaces que apuntan a destinos distintos, por ejemplo "Leer mas sobre COVID-19" en lugar de "Leer mas".'
   },
   'wcag20_a_targetsize': {
-    criterion: '2.5.8', nameEs: 'Area de interaccion demasiado pequeña',
+    criterion: '2.5.8', nameEs: 'Area de interacción demasiado pequeña',
     level: 'AA', disability: ['Motora'], role: 'Diseñador UX/UI',
     resolutionArticle: 'ISO/IEC 40500 / WCAG 2.2 - Criterio 2.5.8',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Asegurar que areas de interaccion tengan minimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil.'
+    suggestedFix: 'Asegurar que areas de interacción tengan mínimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil.'
   },
   'wcag20_input_label_exists': {
     criterion: '1.3.1', nameEs: 'Campo de formulario sin etiqueta visible',
@@ -679,11 +679,11 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Corregir el atributo headers de cada celda td para que referencie los ids correctos de los th correspondientes. Verificar que cada th tenga un id unico y que los td usen headers="id1 id2" apuntando a ellos.'
+    suggestedFix: 'Corregir el atributo headers de cada celda td para que referencie los ids correctos de los th correspondientes. Verificar que cada th tenga un id único y que los td usen headers="id1 id2" apuntando a ellos.'
   },
   'scope-attr-valid': {
     criterion: '1.3.1',
-    nameEs: 'Atributo scope de tabla invalido',
+    nameEs: 'Atributo scope de tabla inválido',
     level: 'A',
     disability: ['Sensorial visual'],
     role: 'Desarrollador',
@@ -745,7 +745,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Si el parrafo actua visualmente como titulo de seccion, cambiarlo a h1-h6 segun su nivel jerarquico. Mantener la secuencia de niveles sin saltar (h1 > h2 > h3).'
+    suggestedFix: 'Si el parrafo actua visualmente como título de seccion, cambiarlo a h1-h6 según su nivel jerarquico. Mantener la secuencia de niveles sin saltar (h1 > h2 > h3).'
   },
   'select-name': {
     criterion: '4.1.2',
@@ -756,7 +756,7 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     findingStatus: 'confirmed',
-    suggestedFix: 'Asociar un label[for] visible al select o agregar aria-label descriptivo. El nombre debe identificar el proposito del campo, no solo "Selecciona...".'
+    suggestedFix: 'Asociar un label[for] visible al select o agregar aria-label descriptivo. El nombre debe identificar el propósito del campo, no solo "Selecciona...".'
   }
 };
 
@@ -929,38 +929,38 @@ export function getRuleDetails(axeRuleId: string): WcagRuleInfo {
     resolutionArticle: 'Resolución N° 001-2025-PCM/SGTD',
     wcagUrl: 'https://www.w3.org/WAI/standards-guidelines/wcag/',
     findingStatus: 'needs_review',
-    suggestedFix: 'Revisar manualmente el hallazgo y determinar el criterio WCAG aplicable en el contexto de la pagina.'
+    suggestedFix: 'Revisar manualmente el hallazgo y determinar el criterio WCAG aplicable en el contexto de la página.'
   };
 }
 
 export function defaultSuggestedFix(ruleKey: string): string {
-  if (ruleKey === 'image-alt') return 'Si la imagen transmite informacion, agregar alt descriptivo y breve. Si es decorativa, dejar alt="" y evitar aria-hidden en imagenes informativas.';
+  if (ruleKey === 'image-alt') return 'Si la imagen transmite información, agregar alt descriptivo y breve. Si es decorativa, dejar alt="" y evitar aria-hidden en imagenes informativas.';
   if (ruleKey === 'color-contrast') return 'Ajustar los colores de texto y fondo para cumplir contraste WCAG AA: 4.5:1 en texto normal o 3:1 en texto grande.';
   if (ruleKey === 'color-contrast-enhanced') return 'Ajustar los colores de texto y fondo para cumplir contraste WCAG AAA: 7:1 en texto normal o 4.5:1 en texto grande.';
-  if (ruleKey === 'duplicate-id') return 'Usar identificadores id unicos en toda la pagina y actualizar referencias asociadas.';
-  if (ruleKey === 'document-title') return 'Definir un title unico y descriptivo que identifique la pagina actual y el sistema, por ejemplo: "Mesa de partes - Envio de documentos".';
-  if (ruleKey === 'html-has-lang' || ruleKey === 'html-lang-valid' || ruleKey === 'html-lang-missing') return 'Agregar en el elemento html un atributo lang valido segun el idioma principal, por ejemplo lang="es", y usar lang en fragmentos con otro idioma.';
-  if (ruleKey === 'landmark-main-missing') return 'Envolver el contenido principal con un unico <main id="main-content"> o role="main"; no incluir header, nav ni footer repetitivos dentro del main.';
-  if (ruleKey === 'landmark-nav-missing') return 'Marcar la navegacion principal con <nav aria-label="Navegacion principal"> o role="navigation" con nombre accesible cuando haya mas de una navegacion.';
+  if (ruleKey === 'duplicate-id') return 'Usar identificadores id únicos en toda la página y actualizar referencias asociadas.';
+  if (ruleKey === 'document-title') return 'Definir un title único y descriptivo que identifique la página actual y el sistema, por ejemplo: "Mesa de partes - Envio de documentos".';
+  if (ruleKey === 'html-has-lang' || ruleKey === 'html-lang-valid' || ruleKey === 'html-lang-missing') return 'Agregar en el elemento html un atributo lang válido según el idioma principal, por ejemplo lang="es", y usar lang en fragmentos con otro idioma.';
+  if (ruleKey === 'landmark-main-missing') return 'Envolver el contenido principal con un único <main id="main-content"> o role="main"; no incluir header, nav ni footer repetitivos dentro del main.';
+  if (ruleKey === 'landmark-nav-missing') return 'Marcar la navegación principal con <nav aria-label="Navegación principal"> o role="navigation" con nombre accesible cuando haya mas de una navegación.';
   if (ruleKey === 'bypass-missing') return 'Agregar antes del encabezado un enlace "Saltar al contenido principal" que apunte a #main-content, sea visible al recibir foco y funcione con teclado.';
   if (ruleKey === 'focus-visible') return 'Definir un indicador :focus-visible claro, de al menos 2 px y con contraste suficiente, sin eliminar el outline por defecto sin reemplazo.';
   if (ruleKey === 'label' || ruleKey === 'form-field-label-missing' || ruleKey === 'input-name-missing') return 'Asociar cada control con un <label for="id"> visible. Usar aria-labelledby si ya existe texto visible; usar aria-describedby solo para ayudas o errores.';
-  if (ruleKey === 'button-name' || ruleKey === 'button-name-missing') return 'Agregar nombre accesible al boton. Preferir texto visible; en botones solo icono usar aria-label que describa la accion, por ejemplo "Cerrar modal".';
-  if (ruleKey === 'link-name' || ruleKey === 'link-name-missing') return 'Agregar texto de enlace visible y especifico que indique destino o accion. Si es solo icono, usar aria-label que incluya el proposito visible.';
-  if (ruleKey === 'link-href-missing') return 'Si el elemento navega, usar <a href="..."> con destino valido. Si ejecuta una accion sin navegar, reemplazarlo por <button type="button"> accesible por teclado.';
-  if (ruleKey === 'form-control-multiple-labels') return 'Dejar un solo label programatico asociado al campo. Mover instrucciones, ejemplos y mensajes de error a elementos referenciados con aria-describedby.';
-  if (ruleKey === 'label-empty-text') return 'Agregar texto descriptivo al label asociado o eliminarlo si no corresponde; un label vacio no debe ser la unica etiqueta del control.';
-  if (ruleKey === 'autocomplete-missing') return 'Agregar un token autocomplete especifico segun el dato solicitado, por ejemplo name, given-name, family-name, email, tel, address-line1 o one-time-code.';
-  if (ruleKey === 'required-html5-indicator') return 'Mantener required si aplica, pero agregar una indicacion visible antes del envio, por ejemplo texto "Obligatorio", y asegurar que el error sea anunciado.';
+  if (ruleKey === 'button-name' || ruleKey === 'button-name-missing') return 'Agregar nombre accesible al botón. Preferir texto visible; en botones solo icono usar aria-label que describa la accion, por ejemplo "Cerrar modal".';
+  if (ruleKey === 'link-name' || ruleKey === 'link-name-missing') return 'Agregar texto de enlace visible y específico que indique destino o accion. Si es solo icono, usar aria-label que incluya el propósito visible.';
+  if (ruleKey === 'link-href-missing') return 'Si el elemento navega, usar <a href="..."> con destino válido. Si ejecuta una accion sin navegar, reemplazarlo por <button type="button"> accesible por teclado.';
+  if (ruleKey === 'form-control-multiple-labels') return 'Dejar un solo label programático asociado al campo. Mover instrucciones, ejemplos y mensajes de error a elementos referenciados con aria-describedby.';
+  if (ruleKey === 'label-empty-text') return 'Agregar texto descriptivo al label asociado o eliminarlo si no corresponde; un label vacio no debe ser la única etiqueta del control.';
+  if (ruleKey === 'autocomplete-missing') return 'Agregar un token autocomplete específico según el dato solicitado, por ejemplo name, given-name, family-name, email, tel, address-line1 o one-time-code.';
+  if (ruleKey === 'required-html5-indicator') return 'Mantener required si aplica, pero agregar una indicación visible antes del envio, por ejemplo texto "Obligatorio", y asegurar que el error sea anunciado.';
   if (ruleKey === 'contrast-image-background-undetermined') return 'Revisar el contraste sobre la captura real. Si no alcanza 4.5:1 en texto normal, agregar capa solida/semitransparente o cambiar texto/fondo; no depender solo de sombra.';
-  if (ruleKey === 'h1-in-header') return 'Usar el h1 para el titulo unico del contenido principal y dejar la marca del header como texto normal, p o span.';
-  if (ruleKey === 'content-behind-dialog-accessible') return 'Cuando el dialogo este abierto, ocultar o inhabilitar programaticamente el contenido de fondo con inert/aria-hidden y gestionar el foco dentro del modal.';
+  if (ruleKey === 'h1-in-header') return 'Usar el h1 para el título único del contenido principal y dejar la marca del header como texto normal, p o span.';
+  if (ruleKey === 'content-behind-dialog-accessible') return 'Cuando el diálogo este abierto, ocultar o inhabilitar programáticamente el contenido de fondo con inert/aria-hidden y gestionar el foco dentro del modal.';
   if (ruleKey === 'empty-list-item') return 'Eliminar el <li> vacio. Si se usa solo para separacion o decoracion, mover ese efecto a CSS; las listas deben contener elementos con significado.';
   if (ruleKey === 'aria-required-owned-element') return 'Corregir el patron ARIA: el contenedor debe tener los roles hijos obligatorios (por ejemplo listbox > option). Si no es un widget real, quitar el role ARIA y usar HTML nativo.';
-  if (ruleKey === 'aria-widget-name-missing' || ruleKey === 'aria-dialog-name') return 'Agregar nombre accesible al widget con aria-labelledby apuntando a un titulo visible. Usar aria-label solo si no existe texto visible adecuado.';
-  if (ruleKey === 'aria-valid-attr-value') return 'Corregir valores y referencias ARIA: los ids de aria-labelledby/aria-controls deben existir, los booleanos deben ser validos y el atributo debe ser permitido para el rol.';
+  if (ruleKey === 'aria-widget-name-missing' || ruleKey === 'aria-dialog-name') return 'Agregar nombre accesible al widget con aria-labelledby apuntando a un título visible. Usar aria-label solo si no existe texto visible adecuado.';
+  if (ruleKey === 'aria-valid-attr-value') return 'Corregir valores y referencias ARIA: los ids de aria-labelledby/aria-controls deben existir, los booleanos deben ser válidos y el atributo debe ser permitido para el rol.';
   if (ruleKey === 'scrollable-region-focusable') return 'Hacer enfocable el contenedor desplazable con tabindex="0", agregar nombre accesible si corresponde y comprobar que se pueda desplazar solo con teclado.';
-  if (ruleKey === 'table-purpose-review' || ruleKey === 'table-caption-review') return 'Determinar si la tabla es de datos o maquetacion. Si es de datos, agregar caption, th y scope; si es maquetacion, reemplazar por CSS o usar role="presentation".';
-  if (ruleKey === 'title-non-interactive') return 'No depender de title para informacion importante. Mostrar el texto de forma visible o asociarlo con aria-describedby a un control relacionado.';
-  return 'Corregir el elemento segun el criterio WCAG indicado y validar nuevamente con teclado, lector de pantalla o contraste segun corresponda.';
+  if (ruleKey === 'table-purpose-review' || ruleKey === 'table-caption-review') return 'Determinar si la tabla es de datos o maquetación. Si es de datos, agregar caption, th y scope; si es maquetación, reemplazar por CSS o usar role="presentation".';
+  if (ruleKey === 'title-non-interactive') return 'No depender de title para información importante. Mostrar el texto de forma visible o asociarlo con aria-describedby a un control relacionado.';
+  return 'Corregir el elemento según el criterio WCAG indicado y validar nuevamente con teclado, lector de pantalla o contraste según corresponda.';
 }

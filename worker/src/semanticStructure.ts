@@ -88,7 +88,7 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
         const level = Number(heading.tagName.slice(1));
         let status: SemanticStructureItem['status'] = 'ok';
         let issue = 'Encabezado presente en la estructura de lectura.';
-        let suggestedFix = 'Mantener una jerarquia progresiva y descriptiva.';
+        let suggestedFix = 'Mantener una jerarquía progresiva y descriptiva.';
         const text = getAccessibleName(heading);
 
         if (!text) {
@@ -97,7 +97,7 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           suggestedFix = 'Agregar texto visible y descriptivo al encabezado.';
         } else if (previousHeadingLevel > 0 && level > previousHeadingLevel + 1) {
           status = 'warning';
-          issue = `Salto de jerarquia: pasa de H${previousHeadingLevel} a H${level}.`;
+          issue = `Salto de jerarquía: pasa de H${previousHeadingLevel} a H${level}.`;
           suggestedFix = 'Evitar saltos de encabezado para conservar una estructura comprensible.';
         }
         previousHeadingLevel = level;
@@ -125,8 +125,8 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           accessibleName: '',
           text: 'Sin H1',
           status: 'error',
-          issue: 'La pagina no tiene un H1 visible para identificar el contenido principal.',
-          suggestedFix: 'Agregar un H1 unico y descriptivo dentro del contenido principal.',
+          issue: 'La página no tiene un H1 visible para identificar el contenido principal.',
+          suggestedFix: 'Agregar un H1 único y descriptivo dentro del contenido principal.',
         });
       } else if (h1Count > 1) {
         pushItem({
@@ -137,8 +137,8 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           accessibleName: '',
           text: `${h1Count} H1 detectados`,
           status: 'warning',
-          issue: 'La pagina tiene multiples H1 visibles.',
-          suggestedFix: 'Usar un H1 principal y bajar los demas a H2/H3 segun jerarquia.',
+          issue: 'La página tiene múltiples H1 visibles.',
+          suggestedFix: 'Usar un H1 principal y bajar los demas a H2/H3 según jerarquía.',
         });
       }
 
@@ -188,7 +188,7 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           accessibleName: '',
           text: 'Sin main',
           status: 'error',
-          issue: 'No se detecto landmark principal main/role=main.',
+          issue: 'No se detectó landmark principal main/role=main.',
           suggestedFix: 'Envolver el contenido principal con main o role="main".',
         });
       }
@@ -201,8 +201,8 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           accessibleName: '',
           text: 'Sin nav',
           status: 'warning',
-          issue: 'No se detecto navegacion principal nav/role=navigation.',
-          suggestedFix: 'Identificar la navegacion principal con nav o role="navigation".',
+          issue: 'No se detectó navegación principal nav/role=navigation.',
+          suggestedFix: 'Identificar la navegación principal con nav o role="navigation".',
         });
       }
 
@@ -244,7 +244,7 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           text: title,
           status: title ? 'ok' : 'error',
           issue: title ? 'Iframe con title.' : 'Iframe sin title descriptivo.',
-          suggestedFix: title ? 'Mantener title claro y especifico.' : 'Agregar title no vacio que describa el contenido del iframe.',
+          suggestedFix: title ? 'Mantener title claro y específico.' : 'Agregar title no vacio que describa el contenido del iframe.',
         });
       }
 
@@ -262,7 +262,7 @@ export async function captureSemanticStructure(page: Page): Promise<SemanticStru
           text: name,
           status: name ? 'ok' : 'warning',
           issue: name ? 'Elemento interactivo con nombre accesible.' : 'Elemento interactivo sin nombre accesible claro.',
-          suggestedFix: name ? 'Mantener el nombre accesible alineado con el texto visible.' : 'Agregar texto visible, label, aria-label o aria-labelledby segun corresponda.',
+          suggestedFix: name ? 'Mantener el nombre accesible alineado con el texto visible.' : 'Agregar texto visible, label, aria-label o aria-labelledby según corresponda.',
         });
       }
 

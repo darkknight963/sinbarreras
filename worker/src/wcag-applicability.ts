@@ -78,9 +78,9 @@ function appliesByDetection(id: string, d: ContentDetection): boolean {
 }
 
 function reasonForNoApply(criterion: WcagCriterion): string {
-  return criterion.condicion?.descripcion
-    ? `No se detecto contenido requerido para aplicar: ${criterion.condicion.descripcion}`
-    : 'No se detecto condicion de aplicabilidad.';
+  return criterion.condicion?.descripción
+    ? `No se detectó contenido requerido para aplicar: ${criterion.condicion.descripción}`
+    : 'No se detectó condicion de aplicabilidad.';
 }
 
 export function buildApplicability(detection: ContentDetection): CriterionApplicability[] {
@@ -94,7 +94,7 @@ export function buildApplicability(detection: ContentDetection): CriterionApplic
       return { id: criterion.id, nombre: criterion.nombre, nivel: criterion.nivel, estado: 'no_aplica', razon: reasonForNoApply(criterion) };
     }
 
-    return { id: criterion.id, nombre: criterion.nombre, nivel: criterion.nivel, estado: 'aplica', razon: criterion.condicion.descripcion };
+    return { id: criterion.id, nombre: criterion.nombre, nivel: criterion.nivel, estado: 'aplica', razon: criterion.condicion.descripción };
   });
 }
 

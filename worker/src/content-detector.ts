@@ -46,7 +46,7 @@ export async function detectPageContent(page: Page): Promise<ContentDetection> {
     });
     const hasImageText = all('img').some((img) => {
       const alt = (img.getAttribute('alt') || '').trim();
-      return alt.split(/\\s+/).length >= 4 || /texto|logo|banner|titulo|título/i.test(alt);
+      return alt.split(/\\s+/).length >= 4 || /texto|logo|banner|título|título/i.test(alt);
     });
     return {
       tiene_imagenes: q('img, [role="img"], canvas, input[type="image"]'),

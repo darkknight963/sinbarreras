@@ -201,12 +201,12 @@ function overlayFindingDescription(overlay: OverlayCandidate): string {
   const labels: Record<OverlayCandidate['kind'], string> = {
     cookie: 'banner o modal de cookies',
     terms: 'modal de terminos o condiciones',
-    age_gate: 'bloqueo de verificacion de edad',
+    age_gate: 'bloqueo de verificación de edad',
     announcement: 'popup de anuncio o bienvenida',
-    dialog: 'dialogo modal',
+    dialog: 'diálogo modal',
     overlay: 'overlay visible',
   };
-  return `Se detecto un ${labels[overlay.kind]} que bloquea o condiciona la lectura del contenido principal.`;
+  return `Se detectó un ${labels[overlay.kind]} que bloquea o condiciona la lectura del contenido principal.`;
 }
 
 function overlayReviewFinding(overlay: OverlayCandidate): RawFinding {
@@ -221,7 +221,7 @@ function overlayReviewFinding(overlay: OverlayCandidate): RawFinding {
     selector: normalizeSelector(overlay.selector),
     elementHtml: overlay.html,
     severity: overlay.blocksViewport ? 'alto' : 'medio',
-    suggestedFix: 'Asegurar que el overlay tenga nombre accesible, foco gestionado, operacion por teclado, contraste suficiente y una accion clara para cerrarlo o continuar.',
+    suggestedFix: 'Asegurar que el overlay tenga nombre accesible, foco gestionado, operación por teclado, contraste suficiente y una accion clara para cerrarlo o continuar.',
   };
 }
 
@@ -511,7 +511,7 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
       // Pedir explicitamente incomplete: axe no lo incluye por defecto.
       // incomplete = hallazgos que axe no puede confirmar al 100% pero son
       // problemas reales: referencias ARIA a IDs inexistentes, SVGs sin role,
-      // atributos ARIA invalidos. ARC Toolkit los muestra como "Alerts".
+      // atributos ARIA inválidos. ARC Toolkit los muestra como "Alerts".
       resultTypes: ['violations', 'incomplete'],
     });
   }, contextSelector);
@@ -548,7 +548,7 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
 
   // Procesar incomplete (requieren revision) — equivalente a los "Alerts" de ARC Toolkit.
   // Incluye: aria-describedby/aria-labelledby a IDs inexistentes, SVG sin role="img",
-  // atributos ARIA invalidos, y otros checks que axe no puede confirmar automaticamente.
+  // atributos ARIA inválidos, y otros checks que axe no puede confirmar automaticamente.
   for (const incomplete of results.incomplete || []) {
     const axeRuleKey = normalizeRuleId(incomplete.id || 'axe-unknown', incomplete.description || incomplete.help || '');
     const axeRuleInfo = getRuleDetails(axeRuleKey);
@@ -769,7 +769,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
     if (navCount === 0) {
       findings.push({
         ruleId: 'no-nav-landmark',
-        description: 'No se encontro landmark de navegacion (nav/role=navigation).',
+        description: 'No se encontro landmark de navegación (nav/role=navigation).',
         selector: 'body',
         html: '<body>',
         wcagCriterion: '2.4.1',
@@ -782,7 +782,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
     if (!hasBypass) {
       findings.push({
         ruleId: 'missing-bypass-method',
-        description: 'No se detecto mecanismo visible para saltar bloques repetitivos.',
+        description: 'No se detectó mecanismo visible para saltar bloques repetitivos.',
         selector: 'body',
         html: '<body>',
         wcagCriterion: '2.4.1',
@@ -795,7 +795,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (!isVisible(heading)) continue;
       findings.push({
         ruleId: 'h1-in-header',
-        description: 'Se encontro un h1 dentro del encabezado/banner. El h1 principal debe representar el contenido unico de la pagina, no la marca repetida.',
+        description: 'Se encontro un h1 dentro del encabezado/banner. El h1 principal debe representar el contenido único de la página, no la marca repetida.',
         selector: getSelector(heading),
         html: heading.outerHTML,
         wcagCriterion: '2.4.1',
@@ -850,7 +850,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (!isVisible(button) || accessibleName(button)) continue;
       findings.push({
         ruleId: 'button-name-missing',
-        description: 'El control con funcion de boton no tiene nombre programatico.',
+        description: 'El control con función de botón no tiene nombre programático.',
         selector: getSelector(button),
         html: button.outerHTML,
         wcagCriterion: '4.1.2',
@@ -905,7 +905,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (!isVisible(widget) || accessibleName(widget)) continue;
       findings.push({
         ruleId: 'aria-widget-name-missing',
-        description: 'Un widget ARIA no tiene nombre accesible programatico.',
+        description: 'Un widget ARIA no tiene nombre accesible programático.',
         selector: getSelector(widget),
         html: widget.outerHTML,
         wcagCriterion: '4.1.2',
@@ -921,7 +921,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (table.querySelector('caption, th') || table.getAttribute('aria-label') || table.getAttribute('aria-labelledby')) continue;
       findings.push({
         ruleId: 'table-purpose-review',
-        description: 'No se puede determinar si la tabla es de datos o de maquetacion.',
+        description: 'No se puede determinar si la tabla es de datos o de maquetación.',
         selector: getSelector(table),
         html: table.outerHTML,
         wcagCriterion: '1.3.1',
@@ -980,7 +980,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (backgroundChildren.length === 0) continue;
       findings.push({
         ruleId: 'content-behind-dialog-accessible',
-        description: 'Hay un dialogo u overlay visible, pero el contenido detras sigue expuesto a tecnologias de asistencia.',
+        description: 'Hay un diálogo u overlay visible, pero el contenido detras sigue expuesto a tecnologias de asistencia.',
         selector: getSelector(dialog),
         html: dialog.outerHTML,
         wcagCriterion: '1.3.2',
@@ -1054,7 +1054,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (labels.length > 1) {
         findings.push({
           ruleId: 'multiple-labels',
-          description: 'El control tiene multiples labels asociados.',
+          description: 'El control tiene múltiples labels asociados.',
           selector: getSelector(control),
           html: control.outerHTML,
           wcagCriterion: '3.3.2',
@@ -1080,7 +1080,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (control.hasAttribute('required')) {
         findings.push({
           ruleId: 'required-html5-attribute',
-          description: 'Campo requerido solo marcado por atributo required; verificar indicacion visible e instrucciones.',
+          description: 'Campo requerido solo marcado por atributo required; verificar indicación visible e instrucciones.',
           selector: getSelector(control),
           html: control.outerHTML,
           wcagCriterion: '3.3.2',
@@ -1097,7 +1097,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
         if (!autocomplete || autocomplete === 'on' || autocomplete === 'off') {
           findings.push({
             ruleId: 'autocomplete-missing',
-            description: 'Campo sin autocomplete especifico para identificar proposito de entrada.',
+            description: 'Campo sin autocomplete específico para identificar propósito de entrada.',
             selector: getSelector(control),
             html: control.outerHTML,
             wcagCriterion: '1.3.5',
@@ -1114,7 +1114,7 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       if (!title) {
         findings.push({
           ruleId: 'iframe-title',
-          description: 'El iframe no tiene atributo title que describa su contenido o proposito.',
+          description: 'El iframe no tiene atributo title que describa su contenido o propósito.',
           selector: getSelector(iframe),
           html: iframe.outerHTML.slice(0, 300),
           wcagCriterion: '2.4.1',
@@ -1271,7 +1271,7 @@ export async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
     const effectiveCriterion = finding.wcagCriterion || ruleDetails.criterion || 'Otros';
     const effectiveLevel = finding.wcagLevel || ruleDetails.level || 'A';
     const findingStatus = finding.findingStatus || ruleDetails.findingStatus || (finding.category === 'violation' ? 'confirmed' : 'needs_review');
-    const suggestedFix = ruleDetails.suggestedFix || finding.suggestedFixes[0] || 'Revisar manualmente el hallazgo y determinar la correccion segun WCAG.';
+    const suggestedFix = ruleDetails.suggestedFix || finding.suggestedFixes[0] || 'Revisar manualmente el hallazgo y determinar la corrección según WCAG.';
     const resolutionArticle = resolveLegalReference(effectiveCriterion, ruleDetails.resolutionArticle);
 
     const classification = enforceClassification({

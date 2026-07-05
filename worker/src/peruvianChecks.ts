@@ -88,7 +88,7 @@ export async function runPeruvianChecks(page: Page, url: string): Promise<Peruvi
         hasInstructives: body.includes('instructivo') || body.includes('guía') || body.includes('guia') || body.includes('manual de uso'),
         hasTutorials: body.includes('tutorial') || body.includes('video tutorial'),
         hasVirtualAssistant: body.includes('asistente virtual') || body.includes('chatbot') || !!document.querySelector('[class*="chatbot"], [class*="chat-widget"], [id*="chatbot"]'),
-        hasChat: body.includes('chat en línea') || body.includes('chat en linea') || !!document.querySelector('[class*="live-chat"], [class*="chat-online"]'),
+        hasChat: body.includes('chat en línea') || body.includes('chat en línea') || !!document.querySelector('[class*="live-chat"], [class*="chat-online"]'),
         hasPictograms: body.includes('pictograma') || !!document.querySelector('[class*="pictogram"]'),
       };
     });

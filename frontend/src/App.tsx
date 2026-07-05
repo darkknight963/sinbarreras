@@ -1364,12 +1364,6 @@ export default function App() {
     }
   };
 
-  const getVpCategory = (vpValue: number | null) => {
-    if (!vpValue) return { label: 'Prioridad Baja', color: 'report-priority-badge report-priority-low' };
-    if (vpValue >= 24) return { label: 'Prioridad Alta', color: 'report-priority-badge report-priority-high' };
-    if (vpValue >= 12) return { label: 'Prioridad Media', color: 'report-priority-badge report-priority-medium' };
-    return { label: 'Prioridad Baja', color: 'report-priority-badge report-priority-low' };
-  };
 
   const getScoreMeta = (score: number | null | undefined) => {
     const value = Math.max(0, Math.min(100, score ?? 0));
@@ -1914,7 +1908,6 @@ export default function App() {
             onExport={handleExport}
             canUsePaidFeatures={canUsePaidFeatures}
             renderScoreMeter={renderScoreMeter}
-            getVpCategory={getVpCategory}
             applicabilityRows={applicabilityRows}
             filteredApplicabilityRows={filteredApplicabilityRows}
             groupedApplicabilityRows={groupedApplicabilityRows}

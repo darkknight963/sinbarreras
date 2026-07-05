@@ -41,7 +41,6 @@ interface ProjectDetailViewProps {
   scanProgress: Record<string, number>;
   renderScoreMeter: (score: number | null | undefined, label?: string, size?: 'compact' | 'large', showCaption?: boolean) => React.ReactNode;
   renderStatusBadge: (status: string) => React.ReactNode;
-  getVpCategory?: (vp: number | null) => { label: string; color: string };
   openInspectionUrl: (url: string) => void;
   hasMoreScans?: boolean;
   loadingMoreScans?: boolean;

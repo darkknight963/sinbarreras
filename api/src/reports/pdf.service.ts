@@ -195,7 +195,7 @@ export class PdfService {
       ['Dominio', scan.project?.domain ?? '-'],
       ['Fecha', this.formatDate(scan.createdAt)],
       ['Modo', scan.scanMode ?? '-'],
-      ['Priorización Vp', `${scan.vp ?? 0} (${this.priorityLabel(scan.vp ?? 0)})`],
+      ['Estándar', scan.wcagVersion ?? 'WCAG 2.2'],
     ]);
 
     doc.moveDown(1.2);
@@ -233,7 +233,7 @@ export class PdfService {
       { label: 'Nivel de cumplimiento', value: this.scoreLabel(score), tone: this.scoreTone(score) },
       { label: 'Críticos', value: String(critical), tone: critical > 0 ? 'danger' : 'good' },
       { label: 'Altos', value: String(high), tone: high > 0 ? 'warning' : 'good' },
-      { label: 'Prioridad legal', value: this.priorityLabel(scan.vp ?? 0), tone: (scan.vp ?? 0) >= 24 ? 'danger' : (scan.vp ?? 0) >= 12 ? 'warning' : 'neutral' },
+      { label: 'En revisión', value: String(model.reviewFindings.length), tone: model.reviewFindings.length > 0 ? 'warning' : 'neutral' },
     ]);
 
     doc.moveDown(1.1);
@@ -663,12 +663,6 @@ export class PdfService {
     if (score >= 70) return 'Aceptable';
     if (score >= 50) return 'Medio';
     return 'En riesgo';
-  }
-
-  private priorityLabel(vp: number): string {
-    if (vp >= 24) return 'Alta';
-    if (vp >= 12) return 'Media';
-    return 'Baja';
   }
 
   private roleAction(role: string): string {
