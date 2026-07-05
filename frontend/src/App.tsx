@@ -589,11 +589,16 @@ export default function App() {
     if (authLoading) return;
 
     const animatedIds = new Set<string>();
+    const scanCreatedAt = new Map<string, string | undefined>();
     (currentProject?.scans || []).forEach((scan) => {
-      if (scan.status === 'running' || scan.status === 'pending') animatedIds.add(scan.id);
+      if (scan.status === 'running' || scan.status === 'pending') {
+        animatedIds.add(scan.id);
+        scanCreatedAt.set(scan.id, scan.createdAt);
+      }
     });
     if (currentScan && (currentScan.status === 'running' || currentScan.status === 'pending')) {
       animatedIds.add(currentScan.id);
+      if (!scanCreatedAt.has(currentScan.id)) scanCreatedAt.set(currentScan.id, currentScan.createdAt);
     }
 
     // Drop start timestamps for scans that are no longer in progress.
@@ -608,7 +613,13 @@ export default function App() {
 
     const now = Date.now();
     for (const id of animatedIds) {
-      if (!scanStartRef.current[id]) scanStartRef.current[id] = now;
+      if (!scanStartRef.current[id]) {
+        // Sembrar con el createdAt REAL del scan: así la barra sobrevive a un
+        // refresh de página sin "reiniciarse" (el escaneo backend nunca se
+        // reinicia — esto solo alinea la animación con el tiempo transcurrido).
+        const created = Date.parse(scanCreatedAt.get(id) || '');
+        scanStartRef.current[id] = Number.isFinite(created) && created <= now ? created : now;
+      }
     }
 
     const tick = () => {
