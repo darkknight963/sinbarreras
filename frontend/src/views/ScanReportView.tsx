@@ -1,6 +1,8 @@
 ﻿import React, { useState } from 'react';
 import {
   ArrowLeft,
+  Check,
+  Copy,
   Download,
   FileText,
   Gauge,
@@ -52,6 +54,331 @@ const getFindingReviewKey = (finding: any) =>
     finding?.selector || '',
     finding?.pageState || '',
   ].join('|');
+
+// ═══════════════════════════════════════════════════════════════════════
+// Generador de código corregido — transformaciones DETERMINÍSTICAS sobre el
+// HTML real del hallazgo. Regla de honestidad: nunca inventa contenido; los
+// valores que solo el dueño del sitio conoce van como placeholder [entre
+// corchetes]. Corre en el navegador al renderizar: cero costo de servidor,
+// retroactivo a todos los escaneos guardados.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Inserta o reemplaza un atributo en la etiqueta de apertura del fragmento.
+const setTagAttribute = (html: string, attr: string, value: string): string | null => {
+  const match = html.match(/^\s*<([a-zA-Z][\w-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/);
+  if (!match) return null;
+  let attrs = match[2];
+  const existing = new RegExp(`\\s${attr}\\s*=\\s*("[^"]*"|'[^']*')`, 'i');
+  if (existing.test(attrs)) {
+    attrs = attrs.replace(existing, ` ${attr}="${value}"`);
+  } else {
+    attrs = `${attrs} ${attr}="${value}"`;
+  }
+  return `<${match[1]}${attrs}>${html.slice(match[0].length)}`;
+};
+
+const getTagAttribute = (html: string, attr: string): string | null => {
+  const match = html.match(new RegExp(`\\s${attr}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i'));
+  return match ? (match[1] ?? match[2] ?? '') : null;
+};
+
+// ── Contraste: luminancia WCAG y búsqueda del color más cercano que cumple ──
+const hexToRgb = (hex: string): [number, number, number] | null => {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)];
+};
+
+const rgbToHex = (rgb: [number, number, number]) =>
+  '#' + rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+
+const relativeLuminance = ([r, g, b]: [number, number, number]) => {
+  const channel = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+};
+
+const contrastRatio = (a: [number, number, number], b: [number, number, number]) => {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+const mixToward = (from: [number, number, number], to: [number, number, number], t: number): [number, number, number] =>
+  [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * t) as [number, number, number];
+
+// Devuelve el color de texto más cercano al original que alcanza el ratio.
+const nearestCompliantColor = (fg: [number, number, number], bg: [number, number, number], target: number) => {
+  const directions: Array<[number, number, number]> = [[0, 0, 0], [255, 255, 255]];
+  let best: { hex: string; ratio: number; t: number } | null = null;
+  for (const dir of directions) {
+    let lo = 0;
+    let hi = 1;
+    if (contrastRatio(mixToward(fg, dir, 1), bg) < target) continue; // ni el extremo cumple
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      if (contrastRatio(mixToward(fg, dir, mid), bg) >= target) hi = mid;
+      else lo = mid;
+    }
+    const candidate = mixToward(fg, dir, hi);
+    const ratio = contrastRatio(candidate, bg);
+    if (!best || hi < best.t) best = { hex: rgbToHex(candidate), ratio: Math.round(ratio * 100) / 100, t: hi };
+  }
+  return best;
+};
+
+// Parsea los colores del mensaje de axe (español o inglés) y sugiere el ajuste.
+const buildContrastSuggestion = (finding: any, enhanced: boolean) => {
+  const message = String(finding?.elementFix || finding?.description || '');
+  const hexes = message.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g) || [];
+  const [fgHex, bgHex] = hexes;
+  if (!fgHex || !bgHex) return null;
+  const fg = hexToRgb(fgHex);
+  const bg = hexToRgb(bgHex);
+  if (!fg || !bg) return null;
+  const isLarge = /grande|large/i.test(message);
+  const target = enhanced ? (isLarge ? 4.5 : 7) : (isLarge ? 3 : 4.5);
+  const current = Math.round(contrastRatio(fg, bg) * 100) / 100;
+  if (current >= target) return null;
+  const fixed = nearestCompliantColor(fg, bg, target);
+  if (!fixed) return null;
+  return {
+    code: `color: ${fixed.hex}; /* antes ${fgHex} — ratio ${fixed.ratio}:1 sobre ${bgHex} */`,
+    note: `Color de texto más cercano al original que cumple ${target}:1. También puedes oscurecer/aclarar el fondo.`,
+  };
+};
+
+// Infiere el token de autocomplete a partir de type/name del campo (determinístico).
+const inferAutocompleteToken = (html: string): string => {
+  const type = (getTagAttribute(html, 'type') || '').toLowerCase();
+  const nameAttr = ((getTagAttribute(html, 'name') || '') + ' ' + (getTagAttribute(html, 'id') || '')).toLowerCase();
+  if (type === 'email' || /mail|correo/.test(nameAttr)) return 'email';
+  if (type === 'tel' || /tel|phone|celular|movil/.test(nameAttr)) return 'tel';
+  if (type === 'password' || /pass|clave|contrasena/.test(nameAttr)) return 'current-password';
+  if (/nombre|name/.test(nameAttr)) return 'name';
+  if (/direccion|address/.test(nameAttr)) return 'street-address';
+  return '[token: ver lista en MDN autocomplete]';
+};
+
+// Snippet de <label> para campos sin etiqueta.
+const buildLabelSnippet = (html: string) => {
+  const id = getTagAttribute(html, 'id');
+  if (id) {
+    return { code: `<label for="${id}">[Etiqueta del campo]</label>\n${html}` };
+  }
+  const withId = setTagAttribute(html, 'id', 'campo-1');
+  if (!withId) return null;
+  return {
+    code: `<label for="campo-1">[Etiqueta del campo]</label>\n${withId}`,
+    note: 'Se agregó id="campo-1" para poder asociar el label — usa un id único real.',
+  };
+};
+
+// ruleId normalizado → snippet corregido. Devuelve null si no hay transformación segura.
+const buildCorrectedSnippet = (finding: any): { code: string; note?: string } | null => {
+  const key = String(finding?.normalizedRuleId || finding?.ruleId || '').toLowerCase();
+  const html = String(finding?.elementHtml || '').trim();
+  const withAttr = (attr: string, value: string, note?: string) => {
+    if (!html) return null;
+    const code = setTagAttribute(html, attr, value);
+    return code ? { code, note } : null;
+  };
+
+  switch (key) {
+    case 'image-alt':
+    case 'image-ignored-review':
+      return withAttr('alt', '[describe qué muestra esta imagen]',
+        'Si la imagen es solo decorativa, usa alt="" (vacío) en su lugar.');
+    case 'input-image-alt':
+      return withAttr('alt', '[acción del botón, ej. Buscar]');
+    case 'area-alt':
+      return withAttr('alt', '[destino de esta área del mapa]');
+    case 'html-has-lang':
+    case 'html-lang-missing':
+      return { code: '<html lang="es">', note: 'Usa lang="es-PE" para contenido peruano. Va en la etiqueta <html> raíz.' };
+    case 'html-lang-valid':
+      return withAttr('lang', 'es', 'El valor debe ser un código BCP 47 válido: es, es-PE, en, qu (quechua)…');
+    case 'document-title':
+      return { code: '<title>[Nombre de esta página] | [Nombre del sitio]</title>', note: 'Va dentro de <head>. Máximo ~60 caracteres.' };
+    case 'iframe-title':
+    case 'frame-title':
+      return withAttr('title', '[qué contenido muestra este iframe]');
+    case 'button-name':
+    case 'button-name-missing':
+      return withAttr('aria-label', '[acción del botón, ej. Cerrar menú]',
+        'Mejor aún: agrega texto visible dentro del botón; aria-label es para botones de solo icono.');
+    case 'link-name':
+    case 'link-name-missing':
+      return withAttr('aria-label', '[a dónde lleva este enlace]',
+        'Mejor aún: agrega texto visible al enlace; evita "clic aquí" o "ver más".');
+    case 'select-name':
+    case 'textarea-name':
+    case 'input-name-missing':
+    case 'form-field-label-missing':
+    case 'label':
+      return html ? buildLabelSnippet(html) : null;
+    case 'duplicate-id': {
+      const id = getTagAttribute(html, 'id');
+      if (!id) return null;
+      const code = setTagAttribute(html, 'id', `${id}-2`);
+      return code ? { code, note: `Actualiza también los for/aria-labelledby/aria-controls que referencien "${id}" en este componente.` } : null;
+    }
+    case 'autocomplete-missing':
+      return withAttr('autocomplete', inferAutocompleteToken(html));
+    case 'color-contrast':
+      return buildContrastSuggestion(finding, false);
+    case 'color-contrast-enhanced':
+      return buildContrastSuggestion(finding, true);
+    default:
+      return null;
+  }
+};
+
+function CopySnippetButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard no disponible */ }
+  };
+  const Icon = copied ? Check : Copy;
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: 11, fontWeight: 600, color: copied ? '#15803d' : '#2563eb',
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+      }}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {copied ? 'Copiado' : 'Copiar'}
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Pasos de verificación manual por criterio WCAG — el "CÓMO comprobar" para
+// desarrolladores sin experiencia en accesibilidad. Contenido estático:
+// cero costo, retroactivo a todos los reportes.
+// ═══════════════════════════════════════════════════════════════════════
+const MANUAL_CHECK_STEPS: Record<string, string[]> = {
+  '2.1.1': [
+    'Haz clic en la barra de direcciones y presiona Tab para entrar a la página.',
+    'Recorre TODOS los elementos interactivos solo con Tab (y Shift+Tab para retroceder).',
+    'Activa botones con Enter o Espacio, y enlaces con Enter — sin usar el mouse.',
+    'Si algún botón, menú o control no se alcanza o no se activa con teclado, es un incumplimiento.',
+  ],
+  '2.1.2': [
+    'Navega con Tab hasta entrar al componente (modal, widget, reproductor).',
+    'Intenta salir de él solo con Tab, Shift+Tab o Escape.',
+    'Si el foco queda atrapado dando vueltas dentro y no puedes salir con teclado, es un incumplimiento.',
+  ],
+  '2.4.3': [
+    'Presiona Tab repetidamente y observa el orden en que se mueve el foco.',
+    'Compara ese orden con el orden visual de lectura (izquierda→derecha, arriba→abajo).',
+    'Si el foco salta de forma ilógica (del menú al footer y de vuelta al header), es un incumplimiento.',
+  ],
+  '2.4.7': [
+    'Presiona Tab por la página y observa cada elemento al recibir foco.',
+    'Debe verse SIEMPRE un indicador visible (borde, contorno, cambio de fondo).',
+    'Si en algún elemento no puedes distinguir dónde está el foco, es un incumplimiento.',
+  ],
+  '1.4.13': [
+    'Pasa el mouse sobre el elemento que muestra contenido extra (tooltip, submenú).',
+    'Mueve el puntero HACIA el contenido desplegado: no debe desaparecer antes de llegar.',
+    'Presiona Escape con el contenido visible: debería poder cerrarse.',
+    'Repite con teclado: al enfocar con Tab debe aparecer el mismo contenido.',
+  ],
+  '1.4.4': [
+    'Presiona Ctrl y + hasta llegar a 200% de zoom.',
+    'Verifica que todo el texto sigue legible y ningún contenido se corta o superpone.',
+    'Si hay texto cortado, superpuesto o funcionalidad perdida al 200%, es un incumplimiento.',
+  ],
+  '1.4.10': [
+    'Abre DevTools (F12) → modo responsive (Ctrl+Shift+M) → ancho 320px.',
+    'Verifica que NO aparece scroll horizontal y el contenido se reacomoda en una columna.',
+    'Si hay que desplazarse a los lados para leer, es un incumplimiento.',
+  ],
+  '1.2.2': [
+    'Reproduce cada video de la página.',
+    'Activa los subtítulos (botón CC) — deben existir y estar sincronizados.',
+    'Los subtítulos automáticos de YouTube sin corregir NO cumplen: verifica nombres propios y términos técnicos.',
+  ],
+  '1.2.3': [
+    'Reproduce el video sin mirar la pantalla (o con los ojos cerrados).',
+    'Todo lo importante que se VE (textos en pantalla, acciones) ¿se entiende solo con el audio?',
+    'Si no, se necesita audiodescripción o un documento alternativo equivalente.',
+  ],
+  '1.2.5': [
+    'Reproduce el video sin mirar la pantalla.',
+    'La información visual importante debe estar narrada en la pista de audio o en una audiodescripción.',
+  ],
+  '1.2.6': [
+    'Revisa cada video pregrabado de la página.',
+    'Verifica si incluye un recuadro con intérprete de Lengua de Señas Peruana (LSP).',
+    'Para entidades públicas peruanas es exigible según la Res. 001-2025-PCM/SGTD y la Ley N° 29535.',
+  ],
+  '2.2.1': [
+    'Identifica si hay límites de tiempo (cierre de sesión, formularios que expiran).',
+    'Verifica que se pueda extender, desactivar o que avise antes de expirar con al menos 20 segundos para reaccionar.',
+  ],
+  '2.2.2': [
+    'Localiza carruseles, animaciones o contenido que se mueve solo por más de 5 segundos.',
+    'Debe existir un control visible para pausar, detener u ocultar ese movimiento.',
+  ],
+  '3.2.1': [
+    'Navega con Tab por todos los controles SIN presionar Enter.',
+    'Solo recibir foco no debe abrir ventanas, cambiar de página ni enviar formularios.',
+  ],
+  '3.2.2': [
+    'Cambia valores en selects, checkboxes y radios sin presionar ningún botón.',
+    'Solo cambiar el valor no debe navegar a otra página ni enviar el formulario automáticamente.',
+  ],
+  '4.1.3': [
+    'Realiza una acción que muestre un mensaje (guardar, error de formulario, agregar al carrito).',
+    'Inspecciona el mensaje en DevTools: debe tener role="status", role="alert" o aria-live.',
+    'Sin eso, un lector de pantalla nunca anuncia el mensaje.',
+  ],
+  '2.5.7': [
+    'Identifica funciones que requieren arrastrar (sliders, reordenar, mapas).',
+    'Verifica que exista una alternativa de un solo clic/tap (botones +/-, flechas, campo numérico).',
+  ],
+  '1.3.1': [
+    'Abre DevTools (F12) y revisa que los encabezados usen h1-h6 reales (no divs con estilo).',
+    'Verifica que las listas usen ul/ol/li y las tablas de datos tengan th con scope.',
+    'Usa el Mapa de Encabezados de este reporte para ver la jerarquía detectada.',
+  ],
+  '2.4.1': [
+    'Carga la página y presiona Tab UNA vez.',
+    'Debería aparecer un enlace "Saltar al contenido principal" visible.',
+    'Actívalo con Enter: el foco debe ir al contenido, no quedarse en el menú.',
+  ],
+  '3.3.1': [
+    'Envía el formulario con un campo obligatorio vacío o con datos inválidos.',
+    'El error debe identificar QUÉ campo falló y describirse en texto (no solo borde rojo).',
+    'Verifica con Tab que el foco pueda llegar al mensaje de error.',
+  ],
+  '3.3.3': [
+    'Provoca un error de formato (ej. correo sin @).',
+    'El mensaje debe SUGERIR la corrección ("Ingresa un correo como nombre@dominio.com"), no solo decir "inválido".',
+  ],
+};
+
+const getVerificationSteps = (wcagRefs: string[] = []): { criterion: string; steps: string[] } | null => {
+  for (const ref of wcagRefs) {
+    const criterion = String(ref || '').trim();
+    if (MANUAL_CHECK_STEPS[criterion]) return { criterion, steps: MANUAL_CHECK_STEPS[criterion] };
+  }
+  return null;
+};
 
 // "Por dónde empezar": victorias rápidas. La fórmula del score es
 // passed/aplicables×100, así que cada criterio fallado vale lo mismo al
@@ -1045,6 +1372,20 @@ export function ScanReportView({
                         <div className="finding-plain-content">
                           <p className="finding-plain-label">¿Qué significa y cómo corregirlo?</p>
                           <p className="finding-plain-text">{canUsePaidFeatures ? suggestion : 'Disponible en Pro'}</p>
+                          {group.statusType === 'revision' && (() => {
+                            const verification = getVerificationSteps(group.wcagRefs);
+                            if (!verification) return null;
+                            return (
+                              <div style={{ marginTop: '0.6rem' }}>
+                                <p className="finding-plain-label" style={{ marginBottom: 4 }}>Cómo verificarlo paso a paso</p>
+                                <ol style={{ margin: 0, paddingLeft: '1.2rem', fontSize: 13, color: '#475569', display: 'grid', gap: 3 }}>
+                                  {verification.steps.map((step, stepIndex) => (
+                                    <li key={stepIndex}>{step}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            );
+                          })()}
                           <div className="finding-plain-meta">
                             <span><strong>Criterio:</strong> {wcagText}</span>
                             <span><strong>Quién lo corrige:</strong> {group.roles.length > 0 ? group.roles.join(', ') : 'Equipo técnico'}</span>
@@ -1108,7 +1449,25 @@ export function ScanReportView({
                                           )}
                                         </div>
                                         <pre className="finding-element-html"><code>{html || '(sin fragmento HTML)'}</code></pre>
-                                        <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
+                                        <div>
+                                          <p className="finding-element-fix">{canUsePaidFeatures ? elementFix : 'Disponible en Pro'}</p>
+                                          {canUsePaidFeatures && (() => {
+                                            const corrected = buildCorrectedSnippet(finding);
+                                            if (!corrected) return null;
+                                            return (
+                                              <div style={{ marginTop: 6, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Código sugerido</span>
+                                                  <CopySnippetButton code={corrected.code} />
+                                                </div>
+                                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#14532d' }}><code>{corrected.code}</code></pre>
+                                                {corrected.note && (
+                                                  <p style={{ margin: '4px 0 0', fontSize: 11, color: '#4d7c0f' }}>{corrected.note}</p>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
+                                        </div>
                                       </div>
                                     );
                                   })}
