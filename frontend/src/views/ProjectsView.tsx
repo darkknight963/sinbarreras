@@ -13,6 +13,7 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
+  User,
   X,
 } from 'lucide-react';
 
@@ -45,7 +46,16 @@ interface ProjectsViewProps {
   editProjectEntityType: string;
   onEditProjectEntityTypeChange: (value: string) => void;
   getScoreMeta: (score: number | null | undefined) => { value: number; tone: string; label: string };
+  viewerRole?: string | null;
 }
+
+// Atribución de dueño — solo se muestra a admin/superadmin, que ven proyectos
+// de otros usuarios. Un usuario normal solo ve los suyos y no necesita saberlo.
+const ownerLabel = (owner: any): string => {
+  if (!owner) return 'Público (sin dueño)';
+  return owner.fullName || owner.companyName || owner.email || 'Usuario';
+};
+
 export function ProjectsView({
   projects,
   averageScore,
@@ -73,7 +83,9 @@ export function ProjectsView({
   editProjectEntityType,
   onEditProjectEntityTypeChange,
   getScoreMeta,
+  viewerRole,
 }: ProjectsViewProps) {
+  const canSeeOwners = viewerRole === 'admin' || viewerRole === 'superadmin';
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [projectFilter, setProjectFilter] = useState<'all' | 'public' | 'private'>('all');
   const lawLabel = 'Ley Nro. 29973 (Perú)';
@@ -298,6 +310,16 @@ export function ProjectsView({
                   <p className="text-slate-500 text-sm project-card-domain">
                     {scanCount > 0 ? `${scanCount} análisis guardado${scanCount === 1 ? '' : 's'}` : 'Listo para iniciar escaneos'}
                   </p>
+                  {canSeeOwners && (
+                    <p
+                      className="text-xs"
+                      style={{ marginTop: 4, color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      title="Propietario del proyecto"
+                    >
+                      <User className="h-3.5 w-3.5" aria-hidden="true" />
+                      {ownerLabel(p.owner)}
+                    </p>
+                  )}
                 </div>
                 <div className="project-card-meta-row">
                   <span>

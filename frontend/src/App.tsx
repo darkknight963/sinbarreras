@@ -1823,6 +1823,7 @@ export default function App() {
           <Suspense fallback={<div className="p-8 text-center text-slate-500">Cargando proyectos...</div>}>
           <ProjectsView
             projects={projects}
+            viewerRole={currentUser?.role ?? null}
             averageScore={averageScore}
             projectsAtRisk={projectsAtRisk}
             runningAnalyses={runningAnalyses}

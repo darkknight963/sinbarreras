@@ -43,7 +43,10 @@ export class ProjectsService {
       .createQueryBuilder('project')
       .leftJoin('project.scans', 'scan')
       .leftJoin('scan.urlResults', 'urlResult')
-      .leftJoinAndSelect('project.owner', 'owner')
+      // Solo campos seguros del dueño — NUNCA passwordHash. leftJoinAndSelect
+      // traía la fila completa del usuario y la exponía en la respuesta.
+      .leftJoin('project.owner', 'owner')
+      .addSelect(['owner.id', 'owner.email', 'owner.fullName', 'owner.companyName', 'owner.role'])
       .addSelect(['scan.id', 'scan.status', 'scan.globalScore', 'scan.scanMode', 'scan.createdAt', 'scan.scanUrls'])
       .addSelect(['urlResult.id', 'urlResult.url', 'urlResult.score', 'urlResult.status', 'urlResult.createdAt']);
 
@@ -67,7 +70,8 @@ export class ProjectsService {
 
     const projectQuery = this.projectRepository
       .createQueryBuilder('project')
-      .leftJoinAndSelect('project.owner', 'owner')
+      .leftJoin('project.owner', 'owner')
+      .addSelect(['owner.id', 'owner.email', 'owner.fullName', 'owner.companyName', 'owner.role'])
       .where('project.id = :id', { id });
 
     if (!scope.includeAll && ownerId) {
