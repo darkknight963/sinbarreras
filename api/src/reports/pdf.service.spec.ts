@@ -69,7 +69,7 @@ describe('PdfService', () => {
   it('generates an executive PDF buffer with a PDF header', async () => {
     const service = new PdfService({ findOne: jest.fn().mockResolvedValue(scanFixture) } as any);
 
-    const buffer = await service.generatePdf('scan-1', 'executive');
+    const buffer = await service.generatePdf('scan-1', 'executive', null, true);
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
     expect(buffer.length).toBeGreaterThan(2500);
@@ -79,7 +79,7 @@ describe('PdfService', () => {
   it('generates a technical PDF buffer with a PDF header', async () => {
     const service = new PdfService({ findOne: jest.fn().mockResolvedValue(scanFixture) } as any);
 
-    const buffer = await service.generatePdf('scan-1', 'technical');
+    const buffer = await service.generatePdf('scan-1', 'technical', null, true);
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
     expect(buffer.length).toBeGreaterThan(3000);
@@ -89,6 +89,6 @@ describe('PdfService', () => {
   it('throws NotFoundException when the scan does not exist', async () => {
     const service = new PdfService({ findOne: jest.fn().mockResolvedValue(null) } as any);
 
-    await expect(service.generatePdf('missing', 'executive')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.generatePdf('missing', 'executive', null, true)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

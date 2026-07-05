@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { Scan } from '../scans/entities/scan.entity';
 import { WCAG_CHECKLIST, flattenWcagChecklist } from '../compliance/wcag-checklist.data';
+import { buildCorrectedSnippet, computeQuickWins } from './remediation.util';
 
 /**
  * Task 5.2 — Excel Report Generator
@@ -59,6 +60,9 @@ export class ExcelService {
       { metric: 'Estándar WCAG', value: scan.wcagVersion },
       { metric: 'Versión de Reglas', value: scan.ruleSetVersion },
     ]);
+
+    // ── Hoja: Por dónde empezar (victorias rápidas, misma fórmula que la web) ──
+    this.createQuickWinsSheet(workbook, scan);
 
     // ── Sheet 2: Todos los Errores ──
     this.createViolationsSheet(workbook, 'Todos los Errores', allErrors);
@@ -139,6 +143,49 @@ export class ExcelService {
     return all;
   }
 
+  private createQuickWinsSheet(workbook: ExcelJS.Workbook, scan: Scan) {
+    let wins: ReturnType<typeof computeQuickWins> = null;
+    try {
+      wins = computeQuickWins(scan as unknown as { urlResults?: Array<Record<string, unknown>> });
+    } catch {
+      wins = null;
+    }
+    if (!wins || wins.items.length === 0) return;
+
+    const sheet = workbook.addWorksheet('Por Donde Empezar');
+    sheet.columns = [
+      { header: 'Orden', key: 'orden', width: 8 },
+      { header: 'Criterio WCAG', key: 'criterio', width: 14 },
+      { header: 'Nombre', key: 'nombre', width: 42 },
+      { header: 'Nivel', key: 'nivel', width: 8 },
+      { header: 'Elementos afectados', key: 'elementos', width: 20 },
+      { header: 'Score proyectado al resolverlo', key: 'proyectado', width: 28 },
+    ];
+    this.styleHeader(sheet);
+
+    for (const [index, item] of wins.items.entries()) {
+      sheet.addRow({
+        orden: index + 1,
+        criterio: item.id,
+        nombre: item.nombre,
+        nivel: item.nivel,
+        elementos: item.elements,
+        proyectado: `${item.scoreAfter} pts`,
+      });
+    }
+    sheet.addRow({});
+    sheet.addRow({
+      criterio: 'Resumen',
+      nombre: `Resolver estos ${wins.items.length} criterios (${wins.totalElements} elementos) sube el cumplimiento de ${wins.currentScore} a ${wins.projectedScore} puntos.`,
+    });
+    if (wins.remainingFailed > 0) {
+      sheet.addRow({
+        criterio: 'Nota',
+        nombre: `Quedan ${wins.remainingFailed} criterios fallados adicionales — ver hoja "Violaciones Confirmadas".`,
+      });
+    }
+  }
+
   private createViolationsSheet(workbook: ExcelJS.Workbook, sheetName: string, violations: any[]) {
     const sheet = workbook.addWorksheet(sheetName);
     sheet.columns = [
@@ -155,12 +202,14 @@ export class ExcelService {
       { header: 'Elemento HTML', key: 'elementHtml', width: 40 },
       { header: 'Selector CSS', key: 'selector', width: 30 },
       { header: 'Solución Sugerida', key: 'suggestedFix', width: 40 },
+      { header: 'Código Sugerido', key: 'correctedSnippet', width: 55 },
     ];
     this.styleHeader(sheet);
 
     for (const v of violations) {
       const status = this.findingStatus(v);
       const result = status === 'confirmed' ? 'Falla' : this.isReviewFinding(v) ? 'Requiere revision' : 'Cumple';
+      const snippet = buildCorrectedSnippet(v);
       const vRow = sheet.addRow({
         url: v.url,
         criterion: v.criterion,
@@ -175,6 +224,7 @@ export class ExcelService {
         elementHtml: v.elementHtml,
         selector: v.selector,
         suggestedFix: v.suggestedFix,
+        correctedSnippet: snippet ? `${snippet.code}${snippet.note ? `\n${snippet.note}` : ''}` : '',
       });
       this.colorRow(vRow, result);
     }

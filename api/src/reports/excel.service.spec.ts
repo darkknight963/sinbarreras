@@ -57,13 +57,14 @@ describe('ExcelService', () => {
     } as any;
 
     const service = new ExcelService({ findOne: jest.fn().mockResolvedValue(scanFixture) } as any);
-    const buffer = await service.generateExcel('scan-1');
+    const buffer = await service.generateExcel('scan-1', null, true);
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as any);
 
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
       'Resumen Ejecutivo',
+      'Por Donde Empezar',
       'Todos los Errores',
       'Violaciones Confirmadas',
       'Revision y Cobertura',
@@ -90,6 +91,7 @@ describe('ExcelService', () => {
       'Elemento HTML',
       'Selector CSS',
       'Solución Sugerida',
+      'Código Sugerido',
     ]);
 
     const wcagSheet = workbook.getWorksheet('WCAG Completa');

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import PDFDocument from 'pdfkit';
 import { Scan } from '../scans/entities/scan.entity';
+import { buildCorrectedSnippet, computeQuickWins, QuickWinsSummary } from './remediation.util';
 
 type ReportType = 'executive' | 'technical';
 
@@ -236,6 +237,8 @@ export class PdfService {
       { label: 'En revisión', value: String(model.reviewFindings.length), tone: model.reviewFindings.length > 0 ? 'warning' : 'neutral' },
     ]);
 
+    this.drawQuickWinsSection(doc, model);
+
     doc.moveDown(1.1);
     this.drawSectionTitle(doc, 'Aplicabilidad WCAG');
     if (model.applicabilityTotals) {
@@ -315,6 +318,8 @@ export class PdfService {
       String(page.reviewCount),
     ]), [250, 60, 70, 70, 70]);
 
+    this.drawQuickWinsSection(doc, model);
+
     doc.moveDown(1.1);
     this.drawSectionTitle(doc, 'Matriz de remediación');
     const sortedFindings = [...model.findings].sort((a, b) => {
@@ -342,6 +347,41 @@ export class PdfService {
     }
   }
 
+  // "Por dónde empezar": los criterios fallados más baratos de resolver y el
+  // score proyectado — misma fórmula y priorización que el reporte web.
+  private drawQuickWinsSection(doc: PDFKit.PDFDocument, model: ReportModel) {
+    let wins: QuickWinsSummary | null = null;
+    try {
+      wins = computeQuickWins(model.scan as unknown as { urlResults?: Array<Record<string, unknown>> });
+    } catch {
+      wins = null;
+    }
+    if (!wins || wins.items.length === 0) return;
+
+    const gain = wins.projectedScore - wins.currentScore;
+    doc.moveDown(1.1);
+    this.drawSectionTitle(doc, 'Por dónde empezar — victorias rápidas');
+    this.drawParagraph(
+      doc,
+      `Resolver ${wins.items.length === 1 ? 'este criterio' : `estos ${wins.items.length} criterios`} ` +
+      `(${wins.totalElements} ${wins.totalElements === 1 ? 'elemento afectado' : 'elementos afectados'} en total) ` +
+      `eleva el cumplimiento de ${wins.currentScore} a ${wins.projectedScore} puntos (+${gain}). ` +
+      (wins.remainingFailed > 0 ? `Quedan ${wins.remainingFailed} criterios fallados adicionales en la matriz.` : ''),
+    );
+    this.drawTable(
+      doc,
+      ['#', 'Criterio', 'Nivel', 'Elementos', 'Score proyectado'],
+      wins.items.map((item, index) => [
+        String(index + 1),
+        `${item.id} — ${item.nombre}`,
+        item.nivel || '-',
+        String(item.elements),
+        `${item.scoreAfter} pts`,
+      ]),
+      [30, 250, 50, 70, 100],
+    );
+  }
+
   private drawFindingCard(doc: PDFKit.PDFDocument, finding: PdfFinding, index: number) {
     const x = doc.page.margins.left;
     const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -359,6 +399,10 @@ export class PdfService {
     const htmlSample = finding.elementHtml ? String(finding.elementHtml).slice(0, 300) : null;
     const htmlText = htmlSample ? `HTML afectado: ${htmlSample}` : null;
     const fixText = `Solución: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`;
+    const snippet = buildCorrectedSnippet(finding);
+    const snippetText = snippet
+      ? `Código sugerido: ${snippet.code.slice(0, 300)}${snippet.note ? ` — ${snippet.note}` : ''}`
+      : null;
     const refText = `Referencia: ${finding.resolutionArticle ?? '-'}`;
 
     doc.fontSize(10).font('Helvetica-Bold');
@@ -372,9 +416,11 @@ export class PdfService {
     const hHtml = htmlText ? doc.heightOfString(htmlText, { width: tw, lineGap: lg }) : 0;
     doc.font('Helvetica-Bold');
     const hFix = doc.heightOfString(fixText, { width: tw, lineGap: lg });
+    doc.font('Courier');
+    const hSnippet = snippetText ? doc.heightOfString(snippetText, { width: tw, lineGap: lg }) : 0;
     doc.font('Helvetica');
     const hRef = doc.heightOfString(refText, { width: tw, lineGap: lg });
-    const cardH = 14 + hTitle + 4 + hUrl + 3 + hMeta + 3 + hState + 3 + (descText ? hDesc + 3 : 0) + hSel + 3 + (htmlText ? hHtml + 3 : 0) + hFix + 3 + hRef + 10;
+    const cardH = 14 + hTitle + 4 + hUrl + 3 + hMeta + 3 + hState + 3 + (descText ? hDesc + 3 : 0) + hSel + 3 + (htmlText ? hHtml + 3 : 0) + hFix + 3 + (snippetText ? hSnippet + 3 : 0) + hRef + 10;
 
     this.ensureSpace(doc, cardH + 10);
 
@@ -411,6 +457,11 @@ export class PdfService {
     doc.fillColor(COLORS.slate900).font('Helvetica-Bold').fontSize(fs)
       .text(fixText, x + 14, cy, { width: tw, lineGap: lg });
     cy = doc.y + 3;
+    if (snippetText) {
+      doc.font('Courier').fillColor(COLORS.green)
+        .text(snippetText, x + 14, cy, { width: tw, lineGap: lg });
+      cy = doc.y + 3;
+    }
     doc.font('Helvetica').fillColor(COLORS.slate500)
       .text(refText, x + 14, cy, { width: tw, lineGap: lg });
 
