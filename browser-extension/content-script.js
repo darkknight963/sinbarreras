@@ -1,6 +1,6 @@
 (function () {
   const PAGE_STATE = 'interactive_state';
-  const PAGE_STATE_LABEL = 'Pestana autenticada';
+  const PAGE_STATE_LABEL = 'Pestaña autenticada';
   const MAX_HTML_SAMPLE = 360;
 
   const cssEscape = (value) => {
@@ -160,62 +160,74 @@
     return r || 'manual-review';
   };
 
-  const statusForCategory = (category) => category === 'violation' ? 'confirmed' : 'needs_review';
+  // Política de precisión — espejo de worker/src/classificationPolicy.ts:
+  // solo las reglas determinísticas (falso positivo ~0) se reportan como
+  // "error confirmado"; el resto baja a revisión para proteger la precisión.
+  const HIGH_CONFIDENCE_RULES = new Set([
+    'duplicate-id', 'image-alt', 'button-name', 'label',
+    'color-contrast', 'color-contrast-enhanced', 'link-name', 'input-image-alt',
+    'html-has-lang', 'html-lang-valid', 'html-lang-missing',
+    'document-title', 'select-name', 'aria-roles', 'aria-valid-attr-value',
+    'definition-list', 'dlitem', 'td-headers-attr',
+  ]);
+
+  const statusForCategory = (category, normalizedKey) =>
+    category === 'violation' && HIGH_CONFIDENCE_RULES.has(normalizedKey) ? 'confirmed' : 'needs_review';
 
   // Full Spanish names + fixes — mirrors worker wcagRules.ts ruleMapping + extraRuleMapping
   const RULE_DETAILS = {
-    'image-alt':                          { nameEs: 'Contenido no textual',                             criterion: '1.1.1',          level: 'A',   role: 'Compartido',     suggestedFix: 'Si la imagen transmite informacion, agregar alt descriptivo y breve (maximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.' },
-    'input-image-alt':                    { nameEs: 'Contenido no textual',                             criterion: '1.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar alt al input[type=image] con el texto que describe la accion del boton (no la imagen), por ejemplo alt="Buscar".' },
-    'image-ignored-review':               { nameEs: 'Contenido no textual - imagen ignorada',           criterion: '1.1.1',          level: 'A',   role: 'Compartido',     suggestedFix: 'Confirmar si la imagen es decorativa. Si transmite informacion, quitar aria-hidden y agregar texto alternativo descriptivo.' },
-    'color-contrast':                     { nameEs: 'Contraste minimo',                                 criterion: '1.4.3',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relacion de contraste de al menos 4.5:1 en texto normal o 3:1 en texto grande. Usar herramientas como WebAIM Contrast Checker para verificar.' },
-    'color-contrast-enhanced':            { nameEs: 'Contraste mejorado',                               criterion: '1.4.6',          level: 'AAA', role: 'Diseñador UX/UI', suggestedFix: 'Para nivel AAA ajustar contraste a minimo 7:1 en texto normal y 4.5:1 en texto grande. Especialmente critico para usuarios con baja vision severa.' },
-    'contrast-image-background-undetermined': { nameEs: 'Contraste sobre fondo imagen (revision)',      criterion: '1.4.3',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Revisar el contraste sobre la captura real. Si no alcanza 4.5:1 en texto normal, agregar capa solida/semitransparente o cambiar texto/fondo; no depender solo de sombra.' },
+    'image-alt':                          { nameEs: 'Contenido no textual',                             criterion: '1.1.1',          level: 'A',   role: 'Compartido',     suggestedFix: 'Si la imagen transmite información, agregar alt descriptivo y breve (máximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.' },
+    'input-image-alt':                    { nameEs: 'Contenido no textual',                             criterion: '1.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar alt al input[type=image] con el texto que describe la acción del botón (no la imagen), por ejemplo alt="Buscar".' },
+    'image-ignored-review':               { nameEs: 'Contenido no textual - imagen ignorada',           criterion: '1.1.1',          level: 'A',   role: 'Compartido',     suggestedFix: 'Confirmar si la imagen es decorativa. Si transmite información, quitar aria-hidden y agregar texto alternativo descriptivo.' },
+    'color-contrast':                     { nameEs: 'Contraste mínimo',                                 criterion: '1.4.3',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relacion de contraste de al menos 4.5:1 en texto normal o 3:1 en texto grande. Usar herramientas como WebAIM Contrast Checker para verificar.' },
+    'color-contrast-enhanced':            { nameEs: 'Contraste mejorado',                               criterion: '1.4.6',          level: 'AAA', role: 'Diseñador UX/UI', suggestedFix: 'Para nivel AAA ajustar contraste a mínimo 7:1 en texto normal y 4.5:1 en texto grande. Especialmente critico para usuarios con baja vision severa.' },
+    'contrast-image-background-undetermined': { nameEs: 'Contraste sobre fondo imagen (revisión)',      criterion: '1.4.3',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Revisar el contraste sobre la captura real. Si no alcanza 4.5:1 en texto normal, agregar capa solida/semitransparente o cambiar texto/fondo; no depender solo de sombra.' },
     'reflow-fixed-position':              { nameEs: 'Reflow - posicion fija',                           criterion: '1.4.10',         level: 'AA',  role: 'Desarrollador',  suggestedFix: 'Verificar que el elemento fijo no obligue a desplazamiento en dos dimensiones y sea usable a 320 CSS px de ancho.' },
-    'region':                             { nameEs: 'Informacion y relaciones - regiones',              criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semanticos como main, nav, header, footer o regiones con nombre accesible.' },
+    'region':                             { nameEs: 'Información y relaciones - regiones',              criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semánticos como main, nav, header, footer o regiones con nombre accesible.' },
     'empty-list-item':                    { nameEs: 'Elemento de lista vacio',                          criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Eliminar el <li> vacio. Si se usa solo para separacion o decoracion, mover ese efecto a CSS; las listas deben contener elementos con significado.' },
-    'heading-markup-review':              { nameEs: 'Informacion y relaciones - encabezado visual',     criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si el texto funciona como encabezado, usar el elemento h1-h6 correspondiente y mantener una jerarquia logica.' },
-    'table-purpose-review':               { nameEs: 'Proposito de tabla no claro',                      criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Determinar si la tabla es de datos o maquetacion. Si es de datos, agregar caption, th y scope; si es maquetacion, reemplazar por CSS o usar role="presentation".' },
-    'table-caption-review':               { nameEs: 'Informacion y relaciones - caption de tabla',      criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si es una tabla de datos, agregar un caption que identifique claramente el proposito de la tabla.' },
-    'select-optgroup':                    { nameEs: 'Informacion y relaciones - grupos de opciones',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si la lista contiene grupos de opciones relacionadas, agruparlas con optgroup y etiquetas descriptivas.' },
-    'label-not-form-control':             { nameEs: 'Informacion y relaciones - label mal asociado',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Corregir el atributo for para que apunte al id de un control de formulario real o asociar el texto mediante aria-describedby si es ayuda.' },
-    'form-field-label-missing':           { nameEs: 'Informacion y relaciones - campo sin etiqueta',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Etiquetar el campo con label asociado, title, aria-label o aria-labelledby segun corresponda.' },
-    'content-behind-dialog-accessible':   { nameEs: 'Contenido detras del dialogo accesible',           criterion: '1.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Cuando el dialogo este abierto, ocultar o inhabilitar programaticamente el contenido de fondo con inert/aria-hidden y gestionar el foco dentro del modal.' },
-    'autocomplete-missing':               { nameEs: 'Identificar proposito de entrada',                 criterion: '1.3.5',          level: 'AA',  role: 'Desarrollador',  suggestedFix: 'Agregar un token autocomplete especifico segun el dato solicitado, por ejemplo name, given-name, family-name, email, tel, address-line1 o one-time-code.' },
+    'heading-markup-review':              { nameEs: 'Información y relaciones - encabezado visual',     criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si el texto funciona como encabezado, usar el elemento h1-h6 correspondiente y mantener una jerarquía logica.' },
+    'table-purpose-review':               { nameEs: 'Propósito de tabla no claro',                      criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Determinar si la tabla es de datos o maquetación. Si es de datos, agregar caption, th y scope; si es maquetación, reemplazar por CSS o usar role="presentation".' },
+    'table-caption-review':               { nameEs: 'Información y relaciones - caption de tabla',      criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si es una tabla de datos, agregar un caption que identifique claramente el propósito de la tabla.' },
+    'select-optgroup':                    { nameEs: 'Información y relaciones - grupos de opciones',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si la lista contiene grupos de opciones relacionadas, agruparlas con optgroup y etiquetas descriptivas.' },
+    'label-not-form-control':             { nameEs: 'Información y relaciones - label mal asociado',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Corregir el atributo for para que apunte al id de un control de formulario real o asociar el texto mediante aria-describedby si es ayuda.' },
+    'form-field-label-missing':           { nameEs: 'Información y relaciones - campo sin etiqueta',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Etiquetar el campo con label asociado, title, aria-label o aria-labelledby según corresponda.' },
+    'content-behind-dialog-accessible':   { nameEs: 'Contenido detras del diálogo accesible',           criterion: '1.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Cuando el diálogo este abierto, ocultar o inhabilitar programáticamente el contenido de fondo con inert/aria-hidden y gestionar el foco dentro del modal.' },
+    'autocomplete-missing':               { nameEs: 'Identificar propósito de entrada',                 criterion: '1.3.5',          level: 'AA',  role: 'Desarrollador',  suggestedFix: 'Agregar un token autocomplete específico según el dato solicitado, por ejemplo name, given-name, family-name, email, tel, address-line1 o one-time-code.' },
     'bypass':                             { nameEs: 'Evitar bloques',                                   criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar antes del primer elemento interactivo un enlace "Saltar al contenido" visible al foco que apunte a id="main-content". Confirmar que el destino existe y recibe foco.' },
-    'bypass-missing':                     { nameEs: 'Metodo para saltar bloques',                       criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar antes del encabezado un enlace "Saltar al contenido principal" que apunte a #main-content, sea visible al recibir foco y funcione con teclado.' },
-    'landmark-main-missing':              { nameEs: 'Evitar bloques (main landmark)',                   criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Envolver el contenido principal con un unico <main id="main-content"> o role="main"; no incluir header, nav ni footer repetitivos dentro del main.' },
-    'landmark-nav-missing':               { nameEs: 'Evitar bloques (nav landmark)',                    criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Marcar la navegacion principal con <nav aria-label="Navegacion principal"> o role="navigation" con nombre accesible cuando haya mas de una navegacion.' },
-    'iframe-title':                       { nameEs: 'Evitar bloques - titulo de iframe',                criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar un atributo title no vacio al iframe que describa su contenido o proposito.' },
-    'h1-in-header':                       { nameEs: 'H1 dentro del encabezado',                        criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Usar el h1 para el titulo unico del contenido principal y dejar la marca del header como texto normal, p o span.' },
-    'document-title':                     { nameEs: 'Titulado de paginas',                              criterion: '2.4.2',          level: 'A',   role: 'Redactor UX',    suggestedFix: 'Definir un title unico y descriptivo con formato "Nombre pagina | Sistema" (maximo 60-70 caracteres). Actualizar en cada vista de SPA.' },
-    'link-name':                          { nameEs: 'Proposito de los enlaces',                         criterion: '2.4.4',          level: 'A',   role: 'Redactor UX',    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el proposito real. Evitar textos genericos como "click aqui" o "leer mas".' },
-    'link-name-missing':                  { nameEs: 'Enlace sin texto o nombre accesible',              criterion: '2.4.4',          level: 'A',   role: 'Redactor UX',    suggestedFix: 'Agregar texto de enlace visible y especifico que indique destino o accion. Si es solo icono, usar aria-label que incluya el proposito visible.' },
-    'focus-visible':                      { nameEs: 'Foco visible',                                     criterion: '2.4.7',          level: 'AA',  role: 'Compartido',     suggestedFix: 'Definir :focus-visible con outline minimo de 2px de contraste 3:1, sin eliminar el outline del navegador sin reemplazo. Evitar outline:none sin definir estilo alternativo.' },
-    'link-href-missing':                  { nameEs: 'Enlace sin href',                                  criterion: '2.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si el elemento navega, usar <a href="..."> con destino valido. Si ejecuta una accion sin navegar, reemplazarlo por <button type="button"> accesible por teclado.' },
+    'bypass-missing':                     { nameEs: 'Método para saltar bloques',                       criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar antes del encabezado un enlace "Saltar al contenido principal" que apunte a #main-content, sea visible al recibir foco y funcione con teclado.' },
+    'landmark-main-missing':              { nameEs: 'Evitar bloques (main landmark)',                   criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Envolver el contenido principal con un único <main id="main-content"> o role="main"; no incluir header, nav ni footer repetitivos dentro del main.' },
+    'landmark-nav-missing':               { nameEs: 'Evitar bloques (nav landmark)',                    criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Marcar la navegación principal con <nav aria-label="Navegación principal"> o role="navigation" con nombre accesible cuando haya mas de una navegación.' },
+    'iframe-title':                       { nameEs: 'Evitar bloques - título de iframe',                criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar un atributo title no vacio al iframe que describa su contenido o propósito.' },
+    'h1-in-header':                       { nameEs: 'H1 dentro del encabezado',                        criterion: '2.4.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Usar el h1 para el título único del contenido principal y dejar la marca del header como texto normal, p o span.' },
+    'document-title':                     { nameEs: 'Titulado de páginas',                              criterion: '2.4.2',          level: 'A',   role: 'Redactor UX',    suggestedFix: 'Definir un title único y descriptivo con formato "Nombre página | Sistema" (máximo 60-70 caracteres). Actualizar en cada vista de SPA.' },
+    'link-name':                          { nameEs: 'Propósito de los enlaces',                         criterion: '2.4.4',          level: 'A',   role: 'Redactor UX',    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el propósito real. Evitar textos genericos como "click aqui" o "leer mas".' },
+    'link-name-missing':                  { nameEs: 'Enlace sin texto o nombre accesible',              criterion: '2.4.4',          level: 'A',   role: 'Redactor UX',    suggestedFix: 'Agregar texto de enlace visible y específico que indique destino o acción. Si es solo icono, usar aria-label que incluya el propósito visible.' },
+    'focus-visible':                      { nameEs: 'Foco visible',                                     criterion: '2.4.7',          level: 'AA',  role: 'Compartido',     suggestedFix: 'Definir :focus-visible con outline mínimo de 2px de contraste 3:1, sin eliminar el outline del navegador sin reemplazo. Evitar outline:none sin definir estilo alternativo.' },
+    'link-href-missing':                  { nameEs: 'Enlace sin href',                                  criterion: '2.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si el elemento navega, usar <a href="..."> con destino válido. Si ejecuta una acción sin navegar, reemplazarlo por <button type="button"> accesible por teclado.' },
     'scrollable-region-focusable':        { nameEs: 'Teclado - region desplazable',                     criterion: '2.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Hacer enfocable el contenedor desplazable con tabindex="0", agregar nombre accesible si corresponde y comprobar que se pueda desplazar solo con teclado.' },
-    'target-size':                        { nameEs: 'Tamano del area de interaccion minimo',            criterion: '2.5.8',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Asegurar que areas de interaccion tengan minimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil.' },
+    'target-size':                        { nameEs: 'Tamano del area de interacción mínimo',            criterion: '2.5.8',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Asegurar que areas de interacción tengan mínimo 24x24 CSS px (WCAG 2.2 AA) o preferiblemente 44x44 CSS px para mejor usabilidad movil.' },
     'label':                              { nameEs: 'Etiquetas o instrucciones',                        criterion: '3.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Asociar cada control con label[for="id"] visible. Priorizar texto visible sobre aria-label. Usar aria-describedby para instrucciones adicionales, no como etiqueta principal.' },
-    'form-control-multiple-labels':       { nameEs: 'Etiquetas multiples por control',                  criterion: '3.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Dejar un solo label programatico asociado al campo. Mover instrucciones, ejemplos y mensajes de error a elementos referenciados con aria-describedby.' },
-    'label-empty-text':                   { nameEs: 'Etiqueta vacia',                                   criterion: '3.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar texto descriptivo al label asociado o eliminarlo si no corresponde; un label vacio no debe ser la unica etiqueta del control.' },
-    'required-html5-indicator':           { nameEs: 'Indicacion de campos requeridos',                  criterion: '3.3.2',          level: 'A',   role: 'Compartido',     suggestedFix: 'Mantener required si aplica, pero agregar una indicacion visible antes del envio, por ejemplo texto "Obligatorio", y asegurar que el error sea anunciado.' },
-    'title-non-interactive':              { nameEs: 'Title en elemento no interactivo',                 criterion: '3.3.2',          level: 'A',   role: 'Compartido',     suggestedFix: 'No depender de title para informacion importante. Mostrar el texto de forma visible o asociarlo con aria-describedby a un control relacionado.' },
-    'html-has-lang':                      { nameEs: 'Idioma de la pagina',                              criterion: '3.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar lang="es" o el BCP 47 correspondiente en el elemento html. Para contenido peruano usar lang="es-PE".' },
-    'html-lang-valid':                    { nameEs: 'Idioma de la pagina (Valido)',                     criterion: '3.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Verificar que el codigo de idioma sea un BCP 47 valido, por ejemplo es, es-PE, en, en-US.' },
-    'html-lang-missing':                  { nameEs: 'Idioma de la pagina',                              criterion: '3.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar en el elemento html un atributo lang valido segun el idioma principal, por ejemplo lang="es". Si hay fragmentos en otro idioma, marcarlos con lang propio.' },
-    'valid-lang':                         { nameEs: 'Idioma de las partes de la pagina',                criterion: '3.1.2',          level: 'AA',  role: 'Compartido',     suggestedFix: 'Usar codigos de idioma BCP 47 validos en todos los atributos lang de la pagina.' },
-    'button-name':                        { nameEs: 'Nombre, funcion y valor',                          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar nombre accesible al boton: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente.' },
-    'button-name-missing':                { nameEs: 'Boton sin nombre accesible',                       criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar nombre accesible al boton. Preferir texto visible; en botones solo icono usar aria-label que describa la accion, por ejemplo "Cerrar modal".' },
+    'form-control-multiple-labels':       { nameEs: 'Etiquetas múltiples por control',                  criterion: '3.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Dejar un solo label programático asociado al campo. Mover instrucciones, ejemplos y mensajes de error a elementos referenciados con aria-describedby.' },
+    'label-empty-text':                   { nameEs: 'Etiqueta vacia',                                   criterion: '3.3.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar texto descriptivo al label asociado o eliminarlo si no corresponde; un label vacio no debe ser la única etiqueta del control.' },
+    'required-html5-indicator':           { nameEs: 'Indicación de campos requeridos',                  criterion: '3.3.2',          level: 'A',   role: 'Compartido',     suggestedFix: 'Mantener required si aplica, pero agregar una indicación visible antes del envio, por ejemplo texto "Obligatorio", y asegurar que el error sea anunciado.' },
+    'title-non-interactive':              { nameEs: 'Title en elemento no interactivo',                 criterion: '3.3.2',          level: 'A',   role: 'Compartido',     suggestedFix: 'No depender de title para información importante. Mostrar el texto de forma visible o asociarlo con aria-describedby a un control relacionado.' },
+    'html-has-lang':                      { nameEs: 'Idioma de la página',                              criterion: '3.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar lang="es" o el BCP 47 correspondiente en el elemento html. Para contenido peruano usar lang="es-PE".' },
+    'html-lang-valid':                    { nameEs: 'Idioma de la página (Valido)',                     criterion: '3.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Verificar que el código de idioma sea un BCP 47 válido, por ejemplo es, es-PE, en, en-US.' },
+    'html-lang-missing':                  { nameEs: 'Idioma de la página',                              criterion: '3.1.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar en el elemento html un atributo lang válido según el idioma principal, por ejemplo lang="es". Si hay fragmentos en otro idioma, marcarlos con lang propio.' },
+    'valid-lang':                         { nameEs: 'Idioma de las partes de la página',                criterion: '3.1.2',          level: 'AA',  role: 'Compartido',     suggestedFix: 'Usar codigos de idioma BCP 47 válidos en todos los atributos lang de la página.' },
+    'button-name':                        { nameEs: 'Nombre, función y valor',                          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar nombre accesible al botón: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente.' },
+    'button-name-missing':                { nameEs: 'Botón sin nombre accesible',                       criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar nombre accesible al botón. Preferir texto visible; en botones solo icono usar aria-label que describa la acción, por ejemplo "Cerrar modal".' },
     'input-name-missing':                 { nameEs: 'Campo sin nombre accesible',                       criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Asociar cada control con un <label for="id"> visible. Usar aria-labelledby si ya existe texto visible; usar aria-describedby solo para ayudas o errores.' },
-    'aria-allowed-attr':                  { nameEs: 'Nombre, funcion y valor',                          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Eliminar atributos ARIA no permitidos para el rol del elemento. Consultar la especificacion ARIA para ver que atributos acepta cada rol y preferir HTML nativo.' },
-    'aria-roles':                         { nameEs: 'Nombre, funcion y valor',                          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Usar solo roles ARIA validos de la especificacion WAI-ARIA 1.2. Preferir elementos HTML nativos con semantica equivalente cuando existan.' },
-    'duplicate-id':                       { nameEs: 'Nombre, funcion y valor - ids unicos',             criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Asignar ids unicos en toda la pagina incluyendo componentes reutilizables. Actualizar todos los for, aria-labelledby, aria-controls que referencian el id duplicado.' },
+    'aria-allowed-attr':                  { nameEs: 'Nombre, función y valor',                          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Eliminar atributos ARIA no permitidos para el rol del elemento. Consultar la especificacion ARIA para ver que atributos acepta cada rol y preferir HTML nativo.' },
+    'aria-roles':                         { nameEs: 'Nombre, función y valor',                          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Usar solo roles ARIA válidos de la especificacion WAI-ARIA 1.2. Preferir elementos HTML nativos con semántica equivalente cuando existan.' },
+    'duplicate-id':                       { nameEs: 'Nombre, función y valor - ids únicos',             criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Asignar ids únicos en toda la página incluyendo componentes reutilizables. Actualizar todos los for, aria-labelledby, aria-controls que referencian el id duplicado.' },
     'aria-required-owned-element':        { nameEs: 'Widget ARIA sin elemento hijo requerido',          criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Corregir el patron ARIA: el contenedor debe tener los roles hijos obligatorios (por ejemplo listbox > option). Si no es un widget real, quitar el role ARIA y usar HTML nativo.' },
-    'aria-widget-name-missing':           { nameEs: 'Widget ARIA sin nombre accesible',                 criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar nombre accesible al widget con aria-labelledby apuntando a un titulo visible. Usar aria-label solo si no existe texto visible adecuado.' },
-    'aria-dialog-name':                   { nameEs: 'Nombre, funcion y valor - dialogo sin nombre',     criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar un nombre accesible al dialogo usando aria-labelledby con un titulo visible existente o aria-label descriptivo.' },
-    'aria-valid-attr-value':              { nameEs: 'Valores ARIA validos',                             criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Corregir atributos ARIA para que tengan valores validos y referencias existentes, especialmente aria-labelledby.' },
-    'select-value':                       { nameEs: 'Nombre, funcion y valor - select sin valor',       criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Verificar que el select exponga nombre y valor actual a la API de accesibilidad mediante label, option seleccionado y estado valido.' },
-    'textarea-name':                      { nameEs: 'Nombre, funcion y valor - textarea sin nombre',    criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar un nombre accesible al textarea con label, title, aria-label o aria-labelledby valido.' },
-    'frame-tested':                       { nameEs: 'Contenido embebido no evaluado',                   criterion: 'Revision manual', level: 'A',  role: 'Compartido',     suggestedFix: 'Escanear directamente la URL del iframe o revisar manualmente su contenido para confirmar incumplimientos WCAG aplicables.' },
+    'aria-widget-name-missing':           { nameEs: 'Widget ARIA sin nombre accesible',                 criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar nombre accesible al widget con aria-labelledby apuntando a un título visible. Usar aria-label solo si no existe texto visible adecuado.' },
+    'aria-dialog-name':                   { nameEs: 'Nombre, función y valor - diálogo sin nombre',     criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar un nombre accesible al diálogo usando aria-labelledby con un título visible existente o aria-label descriptivo.' },
+    'aria-valid-attr-value':              { nameEs: 'Valores ARIA válidos',                             criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Corregir atributos ARIA para que tengan valores válidos y referencias existentes, especialmente aria-labelledby.' },
+    'select-value':                       { nameEs: 'Nombre, función y valor - select sin valor',       criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Verificar que el select exponga nombre y valor actual a la API de accesibilidad mediante label, option seleccionado y estado válido.' },
+    'textarea-name':                      { nameEs: 'Nombre, función y valor - textarea sin nombre',    criterion: '4.1.2',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Agregar un nombre accesible al textarea con label, title, aria-label o aria-labelledby válido.' },
+    'frame-tested':                       { nameEs: 'Contenido embebido no evaluado',                   criterion: 'Revisión manual', level: 'A',  role: 'Compartido',     suggestedFix: 'Escanear directamente la URL del iframe o revisar manualmente su contenido para confirmar incumplimientos WCAG aplicables.' },
   };
 
   const getRuleDetails = (ruleId, description = '') => {
@@ -228,12 +240,12 @@
     if (details && details.suggestedFix) return details.suggestedFix;
     const k = normalizeRuleId(ruleId, description);
     if (k.includes('color-contrast')) return 'Ajustar los colores de texto y fondo para cumplir contraste WCAG AA: 4.5:1 en texto normal o 3:1 en texto grande.';
-    if (k.includes('image-alt')) return 'Si la imagen transmite informacion, agregar alt descriptivo y breve. Si es decorativa, dejar alt="" y evitar aria-hidden en imagenes informativas.';
+    if (k.includes('image-alt')) return 'Si la imagen transmite información, agregar alt descriptivo y breve. Si es decorativa, dejar alt="" y evitar aria-hidden en imagenes informativas.';
     if (k.includes('aria')) return 'Corregir nombre, rol, valor y referencias ARIA. Preferir HTML nativo cuando sea posible y validar con lector de pantalla o arbol de accesibilidad.';
     const fallback = String(description || '');
     return fallback.length > 30
       ? 'Revisar el elemento concreto y aplicar la correccion indicada por el criterio WCAG asociado.'
-      : 'Corregir el elemento segun el criterio WCAG indicado y validar nuevamente con teclado, lector de pantalla o contraste segun corresponda.';
+      : 'Corregir el elemento según el criterio WCAG indicado y validar nuevamente con teclado, lector de pantalla o contraste según corresponda.';
   };
 
   const querySelectorSafe = (selector) => {
@@ -266,8 +278,8 @@
     } catch {
       rect = null;
     }
-    const status = statusForCategory(category);
     const normKey = normalizeRuleId(rule.id, rule.description || rule.help);
+    const status = statusForCategory(category, normKey);
     const details = getRuleDetails(rule.id, rule.description || rule.help);
     const rawDesc = (rule.description || rule.help || '').replace(/https?:\/\/\S+/g, '').replace(/\s{2,}/g, ' ').trim();
     const nameEs = (details && details.nameEs) ? details.nameEs : (rule.help || rule.id);
@@ -292,7 +304,7 @@
       severity: impactToSeverity(rule.impact),
       findingStatus: status,
       status,
-      statusLabel: status === 'confirmed' ? 'Confirmado' : 'Requiere revision',
+      statusLabel: status === 'confirmed' ? 'Confirmado' : 'Requiere revisión',
       pageState: PAGE_STATE,
       pageStateLabel: PAGE_STATE_LABEL,
       description: rawDesc || rule.id,
@@ -301,7 +313,7 @@
       screenshotUrl: '',
       suggestedFix: suggestedFixForRule(rule.id, rule.description || rule.help || ''),
       elementFix: elementFix || undefined,
-      resolutionArticle: ruleCriterion && ruleCriterion !== 'N/A' && ruleCriterion !== 'Revision manual' ? `Anexo 1 - Criterio ${ruleCriterion}` : 'ISO/IEC 40500 / WCAG 2.2',
+      resolutionArticle: ruleCriterion && ruleCriterion !== 'N/A' && ruleCriterion !== 'Revisión manual' ? `Anexo 1 - Criterio ${ruleCriterion}` : 'ISO/IEC 40500 / WCAG 2.2',
       wcagUrl: rule.helpUrl || '',
       affectedElements: [target || 'document'],
       affectedHtmlSamples: node.html ? [node.html.slice(0, MAX_HTML_SAMPLE)] : [],
@@ -324,7 +336,7 @@
   }) => {
     const targetElement = element || querySelectorSafe(selector);
     const target = selector || selectorFor(targetElement);
-    const status = statusForCategory(category);
+    const status = statusForCategory(category, normalizeRuleId(ruleId, description || nameEs));
     return {
       tool: 'heuristic-dom-extension',
       ruleId,
@@ -341,7 +353,7 @@
       severity,
       findingStatus: status,
       status,
-      statusLabel: status === 'confirmed' ? 'Confirmado' : 'Requiere revision',
+      statusLabel: status === 'confirmed' ? 'Confirmado' : 'Requiere revisión',
       pageState: PAGE_STATE,
       pageStateLabel: PAGE_STATE_LABEL,
       description,
@@ -379,7 +391,7 @@
         category: 'violation',
         criterion: '3.1.1',
         level: 'A',
-        nameEs: 'Idioma de pagina no definido',
+        nameEs: 'Idioma de página no definido',
         description: 'El elemento html no tiene atributo lang definido.',
         element: document.documentElement,
         severity: 'alto',
@@ -394,7 +406,7 @@
         criterion: '2.4.1',
         level: 'A',
         nameEs: 'No hay landmark main',
-        description: 'La pagina no identifica explicitamente el contenido principal con main o role="main".',
+        description: 'La página no identifica explicitamente el contenido principal con main o role="main".',
         element: document.body,
         severity: 'medio',
         suggestedFix: 'Agregar un elemento main o role="main" alrededor del contenido principal.',
@@ -408,10 +420,10 @@
         criterion: '2.4.1',
         level: 'A',
         nameEs: 'No hay landmark nav',
-        description: 'La pagina no identifica explicitamente la navegacion principal con nav o role="navigation".',
+        description: 'La página no identifica explicitamente la navegación principal con nav o role="navigation".',
         element: document.body,
         severity: 'medio',
-        suggestedFix: 'Encerrar la navegacion principal en nav o agregar role="navigation".',
+        suggestedFix: 'Encerrar la navegación principal en nav o agregar role="navigation".',
       });
     }
 
@@ -426,8 +438,8 @@
         category: 'manual_check',
         criterion: '2.4.1',
         level: 'A',
-        nameEs: 'Falta metodo para saltar bloques',
-        description: 'La pagina parece no tener un enlace para saltar al contenido principal.',
+        nameEs: 'Falta método para saltar bloques',
+        description: 'La página parece no tener un enlace para saltar al contenido principal.',
         element: document.body,
         severity: 'medio',
         suggestedFix: 'Agregar un enlace visible al foco que permita saltar directamente al contenido principal.',
@@ -446,7 +458,7 @@
         description: 'La lista contiene un li vacio o sin contenido discernible.',
         element,
         severity: 'medio',
-        suggestedFix: 'Eliminar el li vacio o marcarlo como decorativo si no transmite informacion.',
+        suggestedFix: 'Eliminar el li vacio o marcarlo como decorativo si no transmite información.',
       });
     });
 
@@ -463,7 +475,7 @@
         description: 'Un elemento a parece interactivo pero no tiene atributo href.',
         element,
         severity: 'medio',
-        suggestedFix: 'Usar href valido para enlaces o cambiarlo por button si ejecuta una accion.',
+        suggestedFix: 'Usar href válido para enlaces o cambiarlo por button si ejecuta una acción.',
       });
     });
 
@@ -489,11 +501,11 @@
         category: 'violation',
         criterion: '4.1.2',
         level: 'A',
-        nameEs: 'Boton sin nombre accesible',
-        description: 'El control con funcion de boton no tiene nombre programatico.',
+        nameEs: 'Botón sin nombre accesible',
+        description: 'El control con función de botón no tiene nombre programático.',
         element,
         severity: 'alto',
-        suggestedFix: 'Agregar texto visible, aria-label o aria-labelledby que describa la accion.',
+        suggestedFix: 'Agregar texto visible, aria-label o aria-labelledby que describa la acción.',
       });
     });
 
@@ -535,10 +547,10 @@
             criterion: '1.3.5',
             level: 'AA',
             nameEs: 'Autocomplete faltante',
-            description: 'Un campo que solicita datos del usuario no tiene autocomplete especifico.',
+            description: 'Un campo que solicita datos del usuario no tiene autocomplete específico.',
             element,
             severity: 'medio',
-            suggestedFix: 'Agregar autocomplete apropiado segun el proposito del campo, por ejemplo name, email, tel o address-line1.',
+            suggestedFix: 'Agregar autocomplete apropiado según el propósito del campo, por ejemplo name, email, tel o address-line1.',
           });
         }
       }
@@ -548,11 +560,11 @@
           category: 'alert',
           criterion: '3.3.2',
           level: 'A',
-          nameEs: 'Control con multiples etiquetas',
+          nameEs: 'Control con múltiples etiquetas',
           description: 'El control tiene mas de un label asociado.',
           element,
           severity: 'medio',
-          suggestedFix: 'Mantener un solo label programatico y mover ayudas adicionales a aria-describedby.',
+          suggestedFix: 'Mantener un solo label programático y mover ayudas adicionales a aria-describedby.',
         });
       }
     });
@@ -594,10 +606,10 @@
         criterion: '4.1.2',
         level: 'A',
         nameEs: 'Widget ARIA sin nombre accesible',
-        description: 'Un widget ARIA no tiene nombre accesible programatico.',
+        description: 'Un widget ARIA no tiene nombre accesible programático.',
         element,
         severity: 'alto',
-        suggestedFix: 'Agregar aria-label o aria-labelledby apuntando a un titulo visible.',
+        suggestedFix: 'Agregar aria-label o aria-labelledby apuntando a un título visible.',
       });
     });
 
@@ -611,11 +623,11 @@
         category: 'manual_check',
         criterion: '1.3.1',
         level: 'A',
-        nameEs: 'Proposito de tabla no claro',
-        description: 'No se puede determinar si la tabla es de datos o de maquetacion.',
+        nameEs: 'Propósito de tabla no claro',
+        description: 'No se puede determinar si la tabla es de datos o de maquetación.',
         element,
         severity: 'medio',
-        suggestedFix: 'Si es tabla de datos, agregar th/caption. Si es maquetacion, reemplazar por CSS o usar role="presentation".',
+        suggestedFix: 'Si es tabla de datos, agregar th/caption. Si es maquetación, reemplazar por CSS o usar role="presentation".',
       });
     });
 
@@ -630,7 +642,7 @@
         description: 'Un elemento no interactivo usa title; puede no estar disponible para teclado o tecnologias de asistencia.',
         element,
         severity: 'bajo',
-        suggestedFix: 'Mover la informacion a texto visible o a una descripcion programatica adecuada.',
+        suggestedFix: 'Mover la información a texto visible o a una descripción programatica adecuada.',
       });
     });
 
@@ -644,7 +656,7 @@
         criterion: '1.4.3',
         level: 'AA',
         nameEs: 'Contraste sobre imagen no determinado',
-        description: 'El contraste del texto sobre una imagen de fondo requiere revision humana.',
+        description: 'El contraste del texto sobre una imagen de fondo requiere revisión humana.',
         element,
         severity: 'medio',
         role: 'Disenador UX/UI',
@@ -667,10 +679,10 @@
           criterion: '4.1.2',
           level: 'A',
           nameEs: 'ID duplicado',
-          description: `El id "${element.id}" aparece mas de una vez en la pagina.`,
+          description: `El id "${element.id}" aparece mas de una vez en la página.`,
           element,
           severity: 'alto',
-          suggestedFix: 'Asignar ids unicos y actualizar las referencias for, aria-labelledby o aria-controls.',
+          suggestedFix: 'Asignar ids únicos y actualizar las referencias for, aria-labelledby o aria-controls.',
         });
       });
     });
@@ -684,8 +696,8 @@
           category: 'violation',
           criterion: '2.4.1',
           level: 'A',
-          nameEs: 'Iframe sin titulo',
-          description: 'El iframe no tiene atributo title que describa su contenido o proposito a lectores de pantalla.',
+          nameEs: 'Iframe sin título',
+          description: 'El iframe no tiene atributo title que describa su contenido o propósito a lectores de pantalla.',
           element,
           severity: 'alto',
           suggestedFix: 'Agregar title descriptivo al iframe, por ejemplo title="Mapa de ubicacion de la oficina" o title="Video tutorial de registro".',
@@ -694,10 +706,10 @@
         push({
           ruleId: 'frame-tested',
           category: 'manual_check',
-          criterion: 'Revision manual',
+          criterion: 'Revisión manual',
           level: 'A',
           nameEs: 'Contenido de iframe sin evaluar',
-          description: 'El iframe "' + title + '" tiene titulo pero su contenido interno no puede ser auditado automaticamente desde la extension.',
+          description: 'El iframe "' + title + '" tiene título pero su contenido interno no puede ser auditado automaticamente desde la extension.',
           element,
           severity: 'medio',
           suggestedFix: 'Abrir la URL del iframe directamente y ejecutar el escaner sobre ella, o revisar manualmente contraste, teclado y texto alternativo dentro del iframe.',
@@ -762,7 +774,7 @@
           severity: ibmSeverity(v0),
           findingStatus: status,
           status,
-          statusLabel: status === 'confirmed' ? 'Confirmado' : 'Requiere revision',
+          statusLabel: status === 'confirmed' ? 'Confirmado' : 'Requiere revisión',
           pageState: PAGE_STATE,
           pageStateLabel: PAGE_STATE_LABEL,
           description: rawMsg || (result.ruleId || 'Hallazgo de IBM Equal Access'),
@@ -908,7 +920,7 @@
       });
     }
 
-    // Restaurar foco al elemento original para no dejar la pagina en estado extrano
+    // Restaurar foco al elemento original para no dejar la página en estado extrano
     try {
       if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
         previousActiveElement.focus();
@@ -951,7 +963,7 @@
         text: textOf(element).slice(0, 180),
         status: warning ? 'warning' : 'ok',
         issue: warning ? 'Elemento estructural sin nombre accesible.' : 'Estructura detectada.',
-        suggestedFix: warning ? 'Agregar nombre accesible mediante titulo visible, aria-label o aria-labelledby.' : 'Mantener la estructura semantica.',
+        suggestedFix: warning ? 'Agregar nombre accesible mediante título visible, aria-label o aria-labelledby.' : 'Mantener la estructura semántica.',
       });
     };
 
@@ -993,7 +1005,7 @@
     });
     const hasImageText = all('img').some((img) => {
       const alt = (img.getAttribute('alt') || '').trim();
-      return alt.split(/\s+/).length >= 4 || /texto|logo|banner|titulo|title/i.test(alt);
+      return alt.split(/\s+/).length >= 4 || /texto|logo|banner|título|title/i.test(alt);
     });
 
     return {
@@ -1184,8 +1196,14 @@
 
   window.__sinBarrerasAuditCurrentPage = async () => {
     if (!window.axe) {
-      throw new Error('axe-core no esta disponible en la pestana.');
+      throw new Error('axe-core no esta disponible en la pestaña.');
     }
+
+    // Locale español (inyectado por popup.js como axe-locale-es.js). Si falla,
+    // axe corre con mensajes en inglés — nunca bloquea la auditoría.
+    try {
+      if (window.__SB_AXE_LOCALE_ES) window.axe.configure({ locale: window.__SB_AXE_LOCALE_ES });
+    } catch (_) { /* fallback inglés */ }
 
     const axeResult = await window.axe.run(document, {
       runOnly: {
@@ -1204,7 +1222,7 @@
     const heuristicFindings = collectHeuristicDomFindings();
     const ibmResult = await collectIbmFindings();
     // Tab-walk ANTES de los triggers interactivos: los triggers hacen click() en el DOM
-    // y pueden dejar modales abiertos o cambiar el estado de foco de la pagina.
+    // y pueden dejar modales abiertos o cambiar el estado de foco de la página.
     // El Tab-walk necesita el DOM en estado inicial limpio para ser preciso.
     const focusTraversalResult = await collectFocusTraversal();
     const interactiveFindings = await collectInteractiveStateFindings();

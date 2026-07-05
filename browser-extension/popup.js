@@ -47,6 +47,10 @@ const clearScanSession = async () => {
 
 const injectAuditScripts = async (tabId) => {
   await chrome.scripting.executeScript({ target: { tabId }, files: ['axe.min.js'] });
+  // Locale español: traduce descripciones y mensajes por elemento de axe.
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['axe-locale-es.js'] });
+  } catch (_) { /* sin locale, axe corre en inglés */ }
   // IBM Equal Access engine — injected best-effort; content-script guards with window.ace check
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['ace.js'] });
@@ -118,7 +122,7 @@ const postAudit = async (audit) => {
 const runAudit = async () => {
   const tab = await getActiveTab();
   if (!tab?.id || !tab.url) {
-    setStatus('No se pudo detectar la pestana activa.', 'error');
+    setStatus('No se pudo detectar la pestaña activa.', 'error');
     return;
   }
 
@@ -128,13 +132,13 @@ const runAudit = async () => {
   }
 
   runButton.disabled = true;
-  setStatus('Analizando DOM autenticado de la pestana actual...');
+  setStatus('Analizando DOM autenticado de la pestaña actual...');
 
   try {
     await saveSettings();
     await injectAuditScripts(tab.id);
     const audit = await collectAudit(tab.id);
-    if (!audit) throw new Error('La pagina no devolvio resultados de auditoria.');
+    if (!audit) throw new Error('La página no devolvió resultados de auditoría.');
 
     const screenshot = await captureVisibleScreenshot();
     const auditWithScreenshot = attachScreenshot(audit, screenshot);
@@ -160,7 +164,7 @@ const runAudit = async () => {
       ibmWarning ? 'warning' : 'success'
     );
   } catch (error) {
-    setStatus(error instanceof Error ? error.message : 'Ocurrio un error durante la auditoria.', 'error');
+    setStatus(error instanceof Error ? error.message : 'Ocurrió un error durante la auditoría.', 'error');
   } finally {
     runButton.disabled = false;
   }
