@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   ArrowLeft,
   Download,
@@ -52,6 +52,114 @@ const getFindingReviewKey = (finding: any) =>
     finding?.selector || '',
     finding?.pageState || '',
   ].join('|');
+
+// "Por dónde empezar": victorias rápidas. La fórmula del score es
+// passed/aplicables×100, así que cada criterio fallado vale lo mismo al
+// resolverse — la priorización honesta es por ESFUERZO: los criterios con
+// menos elementos afectados dan la misma subida de nota con menos trabajo.
+const severityOrder: Record<string, number> = { critico: 4, alto: 3, medio: 2, bajo: 1 };
+
+const getQuickWins = (rows: any[]) => {
+  const applicable = rows.filter((row) => row.estado === 'aplica');
+  if (applicable.length === 0) return null;
+
+  const failedRows = applicable.filter((row) => row.uiStatus === 'falla');
+  if (failedRows.length === 0) return null;
+
+  const reviewCount = applicable.filter((row) => row.uiStatus === 'revision').length;
+  const den = applicable.length;
+  const passed = den - failedRows.length - reviewCount;
+  const scoreFor = (passedCount: number) => Math.max(0, Math.round((passedCount / den) * 100));
+  const currentScore = scoreFor(passed);
+
+  const effortOf = (row: any) =>
+    Number(row.affectedFindingCount) || row.confirmedFindings?.length || row.findings?.length || 1;
+  const severityOf = (row: any) => {
+    const raw = String(row.primaryFinding?.severity || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return severityOrder[raw] || 0;
+  };
+
+  const ranked = [...failedRows].sort((a, b) =>
+    effortOf(a) - effortOf(b) || severityOf(b) - severityOf(a) || String(a.id).localeCompare(String(b.id)),
+  );
+
+  const top = ranked.slice(0, 3).map((row, index) => ({
+    row,
+    elements: effortOf(row),
+    scoreAfter: scoreFor(passed + index + 1),
+  }));
+
+  return {
+    currentScore,
+    projectedScore: top[top.length - 1].scoreAfter,
+    totalElements: top.reduce((sum, item) => sum + item.elements, 0),
+    remainingFailed: failedRows.length - top.length,
+    reviewCount,
+    reviewPotential: reviewCount > 0 ? scoreFor(passed + top.length + reviewCount) : null,
+    top,
+  };
+};
+
+function QuickWinsPanel({ rows }: { rows: any[] }) {
+  const wins = getQuickWins(rows);
+  if (!wins) return null;
+  const gain = wins.projectedScore - wins.currentScore;
+
+  return (
+    <section className="report-panel report-panel-spacious" aria-labelledby="quick-wins-title">
+      <p className="report-kicker">Por dónde empezar</p>
+      <h3 id="quick-wins-title" className="report-section-title">
+        Victorias rápidas: de {wins.currentScore} a {wins.projectedScore} puntos
+      </h3>
+      <p style={{ fontSize: 14, color: '#475569', maxWidth: 640 }}>
+        {wins.top.length === 1
+          ? `Resolver este criterio (${wins.totalElements} ${wins.totalElements === 1 ? 'elemento' : 'elementos'})`
+          : `Resolver estos ${wins.top.length} criterios — los de menor esfuerzo, ${wins.totalElements} ${wins.totalElements === 1 ? 'elemento afectado' : 'elementos afectados'} en total —`}
+        {' '}sube tu cumplimiento <strong style={{ color: '#15803d' }}>+{gain} puntos</strong>.
+      </p>
+      <ol style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0', display: 'grid', gap: 10 }}>
+        {wins.top.map((item, index) => (
+          <li
+            key={item.row.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+              padding: '0.85rem 1rem', borderRadius: 10,
+              background: '#f8fafc', border: '1px solid #e2e8f0',
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: 14,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {index + 1}
+            </span>
+            <span style={{ flex: 1, minWidth: 220 }}>
+              <strong style={{ color: '#0f172a', fontSize: 14 }}>{item.row.id} — {item.row.nombre}</strong>
+              <span style={{ display: 'block', fontSize: 12, color: '#64748b' }}>
+                Nivel {item.row.nivel} · {item.elements} {item.elements === 1 ? 'elemento afectado' : 'elementos afectados'}
+              </span>
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
+              → {item.scoreAfter} pts
+            </span>
+          </li>
+        ))}
+      </ol>
+      {(wins.remainingFailed > 0 || wins.reviewCount > 0) && (
+        <p style={{ fontSize: 12, color: '#94a3b8', marginTop: '0.75rem' }}>
+          {wins.remainingFailed > 0 && `Quedan ${wins.remainingFailed} criterios fallados adicionales en la matriz de abajo. `}
+          {wins.reviewCount > 0 && wins.reviewPotential !== null &&
+            `Verificar los ${wins.reviewCount} criterios en revisión manual podría llevarte hasta ${wins.reviewPotential} pts.`}
+        </p>
+      )}
+    </section>
+  );
+}
 
 const getWcagLevelDashboard = (rows: any[]) => {
   const levels = ['A', 'AA', 'AAA'];
@@ -858,6 +966,8 @@ export function ScanReportView({
             ))}
           </div>
         </section>
+
+        <QuickWinsPanel rows={applicabilityRows} />
 
         <section className="report-panel report-panel-spacious finding-message-dashboard" aria-labelledby="finding-message-dashboard-title">
           <div className="finding-message-dashboard-header">
