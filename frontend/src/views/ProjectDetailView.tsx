@@ -51,16 +51,38 @@ interface ProjectDetailViewProps {
 const trendDateLabel = (value: string) =>
   new Date(value).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
 
+// Clave de comparación: mismas URLs (sin importar orden ni mayúsculas).
+// Solo tiene sentido comparar scores entre escaneos del MISMO objetivo:
+// dentro de un proyecto pueden convivir escaneos de URLs distintas.
+const scanTargetKey = (scan: any) =>
+  JSON.stringify(
+    [...(Array.isArray(scan.scanUrls) ? scan.scanUrls : [])]
+      .map((url: any) => String(url).trim().toLowerCase().replace(/\/+$/, ''))
+      .sort(),
+  );
+
 // Línea de tendencia del score (serie única, 0-100). Los datos ya vienen en
 // currentProject.scans — cero requests adicionales. La lista de historial
 // debajo actúa como vista de tabla accesible de la misma serie.
 function ScoreTrend({ scans }: { scans: any[] }) {
-  const points = [...scans]
+  const completed = [...scans]
     .filter((scan) => scan.status === 'completed' && typeof scan.globalScore === 'number')
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    .slice(-12);
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  if (completed.length < 2) return null;
+
+  // La serie sigue al objetivo del análisis más reciente: solo scans de esas
+  // mismas URLs. Comparar sitios distintos produciría "caídas" falsas.
+  const latest = completed[completed.length - 1];
+  const targetKey = scanTargetKey(latest);
+  const points = completed.filter((scan) => scanTargetKey(scan) === targetKey).slice(-12);
 
   if (points.length < 2) return null;
+
+  const targetUrls: string[] = Array.isArray(latest.scanUrls) ? latest.scanUrls : [];
+  const targetLabel = targetUrls.length > 0
+    ? `${targetUrls[0].replace(/^https?:\/\//, '')}${targetUrls.length > 1 ? ` +${targetUrls.length - 1} más` : ''}`
+    : '';
 
   const width = 560;
   const height = 132;
@@ -86,7 +108,12 @@ function ScoreTrend({ scans }: { scans: any[] }) {
   return (
     <div className="score-trend" style={{ marginBottom: '0.5rem' }}>
       <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h4 className="font-semibold text-sm text-gob-dark" style={{ margin: 0 }}>Evolución del cumplimiento</h4>
+        <div>
+          <h4 className="font-semibold text-sm text-gob-dark" style={{ margin: 0 }}>Evolución del cumplimiento</h4>
+          {targetLabel && (
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>{targetLabel} · {points.length} análisis comparables</span>
+          )}
+        </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: deltaTone }}>
           <DeltaIcon className="h-4 w-4" aria-hidden="true" />
           {deltaLabel}
