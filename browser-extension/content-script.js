@@ -168,7 +168,7 @@
     'color-contrast', 'color-contrast-enhanced', 'link-name', 'input-image-alt',
     'html-has-lang', 'html-lang-valid', 'html-lang-missing',
     'document-title', 'select-name', 'aria-roles', 'aria-valid-attr-value',
-    'definition-list', 'dlitem', 'td-headers-attr',
+    'definition-list', 'dlitem', 'td-headers-attr', 'empty-heading',
   ]);
 
   const statusForCategory = (category, normalizedKey) =>
@@ -186,6 +186,8 @@
     'region':                             { nameEs: 'Información y relaciones - regiones',              criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semánticos como main, nav, header, footer o regiones con nombre accesible.' },
     'empty-list-item':                    { nameEs: 'Elemento de lista vacio',                          criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Eliminar el <li> vacio. Si se usa solo para separacion o decoracion, mover ese efecto a CSS; las listas deben contener elementos con significado.' },
     'heading-markup-review':              { nameEs: 'Información y relaciones - encabezado visual',     criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si el texto funciona como encabezado, usar el elemento h1-h6 correspondiente y mantener una jerarquía logica.' },
+    'empty-heading':                      { nameEs: 'Encabezado vacío',                                 criterion: '2.4.6',          level: 'AA',  role: 'Compartido',     suggestedFix: 'Agregar texto descriptivo al encabezado o eliminarlo si no corresponde. Un lector de pantalla anuncia "encabezado" sin contenido. Si el título llega por datos dinámicos, validar que nunca se renderice vacío.' },
+    'duplicate-headings':                 { nameEs: 'Encabezados duplicados',                           criterion: '2.4.6',          level: 'AA',  role: 'Redactor UX',    suggestedFix: 'Varios encabezados del mismo nivel comparten texto idéntico: quien navega por encabezados no puede distinguir las secciones. Diferenciarlos con texto específico.' },
     'table-purpose-review':               { nameEs: 'Propósito de tabla no claro',                      criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Determinar si la tabla es de datos o maquetación. Si es de datos, agregar caption, th y scope; si es maquetación, reemplazar por CSS o usar role="presentation".' },
     'table-caption-review':               { nameEs: 'Información y relaciones - caption de tabla',      criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si es una tabla de datos, agregar un caption que identifique claramente el propósito de la tabla.' },
     'select-optgroup':                    { nameEs: 'Información y relaciones - grupos de opciones',    criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si la lista contiene grupos de opciones relacionadas, agruparlas con optgroup y etiquetas descriptivas.' },
@@ -424,6 +426,36 @@
         element: document.body,
         severity: 'medio',
         suggestedFix: 'Encerrar la navegación principal en nav o agregar role="navigation".',
+      });
+    }
+
+    // Encabezados duplicados (2.4.6) — regla que axe no tiene (paridad con ARC
+    // Toolkit): mismo nivel + mismo texto accesible confunde la navegación por
+    // encabezados. Los VACÍOS los detecta axe (empty-heading, confirmada).
+    const headingTextCount = new Map();
+    for (const heading of Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"]'))) {
+      if (!isVisible(heading) || heading.getAttribute('aria-hidden') === 'true') continue;
+      const name = accessibleName(heading);
+      if (!name) continue;
+      const level = heading.getAttribute('aria-level') || (heading.tagName.match(/^H([1-6])$/i) || [])[1] || '2';
+      const key = 'H' + level + '::' + name.toLowerCase().slice(0, 120);
+      const entry = headingTextCount.get(key) || { count: 0, first: heading };
+      entry.count += 1;
+      headingTextCount.set(key, entry);
+    }
+    for (const [key, entry] of headingTextCount.entries()) {
+      if (entry.count < 2) continue;
+      const label = (key.split('::')[1] || '').slice(0, 80);
+      push({
+        ruleId: 'duplicate-headings',
+        category: 'alert',
+        criterion: '2.4.6',
+        level: 'AA',
+        nameEs: 'Encabezados duplicados',
+        description: 'Hay ' + entry.count + ' encabezados del mismo nivel con el texto idéntico "' + label + '".',
+        element: entry.first,
+        severity: 'medio',
+        suggestedFix: 'Diferenciar los encabezados repetidos con texto específico para que cada sección sea distinguible al navegar por encabezados.',
       });
     }
 

@@ -804,6 +804,37 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       });
     }
 
+    // Encabezados duplicados (criterio 2.4.6) — regla que axe NO tiene
+    // (paridad con ARC Toolkit): mismo nivel + mismo texto accesible = quien
+    // navega por encabezados no puede distinguir las secciones. Los encabezados
+    // VACÍOS los cubre axe (empty-heading, ya mapeada y confirmada) — no se
+    // duplican aquí para no contar dos veces el mismo elemento.
+    const headingTextCount = new Map();
+    const headingElements = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"]'));
+    for (const heading of headingElements) {
+      if (!isVisible(heading) || heading.getAttribute('aria-hidden') === 'true') continue;
+      const name = accessibleName(heading);
+      if (!name) continue;
+      const level = heading.getAttribute('aria-level') || (heading.tagName.match(/^H([1-6])$/i) || [])[1] || '2';
+      const key = 'H' + level + '::' + name.toLowerCase().slice(0, 120);
+      const entry = headingTextCount.get(key) || { count: 0, first: heading };
+      entry.count += 1;
+      headingTextCount.set(key, entry);
+    }
+    for (const [key, entry] of headingTextCount.entries()) {
+      if (entry.count < 2) continue;
+      const label = key.split('::')[1] || '';
+      findings.push({
+        ruleId: 'duplicate-headings',
+        description: 'Hay ' + entry.count + ' encabezados del mismo nivel con el texto identico "' + label.slice(0, 80) + '".',
+        selector: getSelector(entry.first),
+        html: entry.first.outerHTML.slice(0, 300),
+        wcagCriterion: '2.4.6',
+        wcagLevel: 'AA',
+        category: 'alert',
+      });
+    }
+
     for (const item of Array.from(document.querySelectorAll('li'))) {
       if (!isVisible(item) || item.getAttribute('aria-hidden') === 'true') continue;
       if (textOf(item) || item.querySelector(interactiveSelector)) continue;

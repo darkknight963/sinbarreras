@@ -43,6 +43,7 @@ export const HIGH_CONFIDENCE_RULES = new Set([
   'definition-list',      // <dl> con hijos no permitidos
   'dlitem',               // <dt>/<dd> fuera de un <dl>
   'td-headers-attr',      // headers apunta a ids inexistentes en la tabla
+  'empty-heading',        // h1-h6 visible sin texto accesible
 ]);
 
 export function enforceClassification(input: ClassificationInput): ClassificationOutput {

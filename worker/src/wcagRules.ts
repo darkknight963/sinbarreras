@@ -315,6 +315,27 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
     findingStatus: 'needs_review'
   },
+  'empty-heading': {
+    criterion: '2.4.6',
+    nameEs: 'Encabezado vacío',
+    level: 'AA',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Compartido', // Redactor UX (contenido) y Desarrollador (plantilla)
+    resolutionArticle: 'Anexo 1 - Criterio 2.4.6',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html',
+    suggestedFix: 'Agregar texto descriptivo al encabezado o eliminarlo si no corresponde. Un lector de pantalla anuncia "encabezado" sin contenido, desorientando la navegación por encabezados. Si el título llega por datos dinámicos, validar que nunca se renderice vacío.'
+  },
+  'duplicate-headings': {
+    criterion: '2.4.6',
+    nameEs: 'Encabezados duplicados',
+    level: 'AA',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Redactor UX',
+    resolutionArticle: 'Anexo 1 - Criterio 2.4.6',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Varios encabezados del mismo nivel comparten texto idéntico: quien navega por encabezados no puede distinguir las secciones. Diferenciarlos con texto específico (ej. "Requisitos — Diseñador UX" en vez de repetir "Requisitos").'
+  },
   'content-behind-dialog-accessible': {
     criterion: '1.3.2',
     nameEs: 'Contenido detras del diálogo accesible',
