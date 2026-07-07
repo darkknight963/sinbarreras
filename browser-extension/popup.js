@@ -1,10 +1,17 @@
 // La URL base se lee del manifest para que cambiar de host no requiera publicar
 // una nueva versión de la extensión — solo actualizar host_permissions en manifest.json.
+//
+// IMPORTANTE: debe apuntar a la raíz del API (Railway), NO al dominio del
+// frontend (Vercel). Vercel solo reenvía /api/* hacia Railway (ver
+// frontend/vercel.json); cualquier otra ruta como /scans/... la sirve el
+// propio Vercel y responde 404 NOT_FOUND. Por eso se prioriza el host de
+// Railway explícitamente en vez de tomar "el primero que no sea localhost".
 const getApiBase = () => {
   const hosts = chrome.runtime.getManifest().host_permissions || [];
-  // Usa el primer host que no sea localhost ni 127.0.0.1
+  const railwayHost = hosts.find(h => h.includes('.up.railway.app'));
+  if (railwayHost) return railwayHost.replace(/\/\*$/, '');
   const prodHost = hosts.find(h => !h.includes('localhost') && !h.includes('127.0.0.1'));
-  return prodHost ? prodHost.replace(/\/\*$/, '') : 'https://sinbarreras.gzakgroup.com';
+  return prodHost ? prodHost.replace(/\/\*$/, '') : 'https://sinbarreras-production.up.railway.app';
 };
 const API_BASE = getApiBase();
 
