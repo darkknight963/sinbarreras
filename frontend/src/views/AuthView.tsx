@@ -498,7 +498,7 @@ export function AuthView({
                     )}
                   </button>
                   <p className="auth-login-switch">
-                    {authFormMode === 'register' ? '\u00bfYa tienes cuenta?' : '\u00bfNo tienes cuenta?'}
+                    {authFormMode === 'register' ? '\u00bfYa tienes cuenta? ' : '\u00bfNo tienes cuenta? '}
                     <button type="button" onClick={onToggleMode}>
                       {authFormMode === 'register' ? 'Iniciar sesi\u00f3n' : 'Crear cuenta'}
                     </button>
