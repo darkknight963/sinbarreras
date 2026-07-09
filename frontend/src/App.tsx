@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, Component } from 'react';
-import type { ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   CheckCircle,
   X,
@@ -9,44 +8,19 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { Project, Scan, UrlResult } from './types';
-import { API_BASE_URL, API_FALLBACK_BASE_URL, isLocalRuntimeHost, CHROME_EXTENSION_ID } from './config';
+import { CHROME_EXTENSION_ID } from './config';
 import type { BillingCurrency, BillingPlan, BillingState } from './billing';
 import { AuthView } from './views/AuthView';
 import { CulqiCheckoutModal } from './CulqiCheckoutModal';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
+import { apiUrl, fetchWithFallback, readApiErrorMessage, normalizeApiErrorDetail, readApiJson } from './lib/api';
+import { parseScanUrls, canonicalizePlanUrl, isScanInProgress, getProjectReservedFreeUrl } from './lib/scanUtils';
 const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
 const ProjectsView = lazy(() => import('./views/ProjectsView').then(m => ({ default: m.ProjectsView })));
 const ProjectDetailView = lazy(() => import('./views/ProjectDetailView').then(m => ({ default: m.ProjectDetailView })));
 const ScanReportView = lazy(() => import('./views/ScanReportView').then(m => ({ default: m.ScanReportView })));
 const AdminView = lazy(() => import('./views/AdminView').then(m => ({ default: m.AdminView })));
 
-class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; message: string }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, message: '' };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, message: error?.message || 'Error inesperado' };
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[AppErrorBoundary]', error, info.componentStack);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 16, padding: 32 }}>
-          <p style={{ fontWeight: 600, fontSize: 18 }}>Algo salió mal</p>
-          <p style={{ color: '#64748b', textAlign: 'center', maxWidth: 400 }}>{this.state.message}</p>
-          <button onClick={() => window.location.reload()} style={{ padding: '8px 20px', background: '#2563eb', color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer' }}>
-            Recargar página
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-let runtimeApiBaseUrl = API_BASE_URL;
 const BRAND_NAME = 'Sin Barreras';
 const BRAND_SLOGAN = 'Convierte tu web en un lugar para todos';
 
@@ -66,124 +40,6 @@ type AuthUser = {
   billingCurrency?: string | null;
   billingPeriodEnd?: string | null;
 };
-
-const apiUrl = (path: string) => `${runtimeApiBaseUrl}${path}`;
-
-// La sesión viaja en una cookie httpOnly establecida por el servidor.
-// El navegador la envía automáticamente con credentials: 'include' — el frontend
-// nunca lee ni escribe el token directamente.
-const withAuthHeaders = (headers?: HeadersInit): HeadersInit => new Headers(headers);
-
-const parseScanUrls = (value: string) =>
-  value
-    .split(/[\n,]+/)
-    .map((url) => url.trim())
-    .filter(Boolean);
-
-const canonicalizePlanUrl = (value: string) => {
-  try {
-    const parsed = new URL(value);
-    parsed.hash = '';
-    parsed.hostname = parsed.hostname.toLowerCase();
-    if (
-      (parsed.protocol === 'http:' && parsed.port === '80') ||
-      (parsed.protocol === 'https:' && parsed.port === '443')
-    ) {
-      parsed.port = '';
-    }
-    parsed.pathname = parsed.pathname.replace(/\/+$/, '') || '/';
-    return parsed.toString();
-  } catch {
-    return value.trim();
-  }
-};
-
-const isScanInProgress = (scan: Scan) => scan.status === 'pending' || scan.status === 'awaiting_login' || scan.status === 'running';
-
-const getProjectReservedFreeUrl = (project: Project | null) => {
-  if (!project) return null;
-  if (project.domain) return project.domain;
-
-  for (const scan of project.scans || []) {
-    for (const result of scan.urlResults || []) {
-      if (result.url) return result.url;
-    }
-  }
-
-  return null;
-};
-
-const fetchWithFallback = async (path: string, init?: RequestInit) => {
-  const requestInit: RequestInit = {
-    ...init,
-    headers: withAuthHeaders(init?.headers),
-    credentials: 'include', // envía la cookie httpOnly sb_session automáticamente
-  };
-  const first = await fetch(apiUrl(path), requestInit);
-
-  if (
-    first.status === 404 &&
-    runtimeApiBaseUrl === '/api' &&
-    isLocalRuntimeHost(window.location.hostname)
-  ) {
-    runtimeApiBaseUrl = API_FALLBACK_BASE_URL;
-    return fetch(apiUrl(path), requestInit);
-  }
-
-  return first;
-};
-
-const readApiErrorMessage = async (res: Response) => {
-  const fallback = `HTTP ${res.status}`;
-
-  try {
-    const body = await res.clone().json();
-    const message = Array.isArray(body?.message) ? body.message.join(' ') : body?.message;
-    return message || body?.error || body?.detail || fallback;
-  } catch {
-    const text = await res.text();
-    return text || fallback;
-  }
-};
-
-const normalizeApiErrorDetail = (message: string) => {
-  const trimmed = message.trim();
-  if (!trimmed) return '';
-
-  try {
-    const body = JSON.parse(trimmed) as {
-      message?: string | string[];
-      error?: string;
-      detail?: string;
-      remainingAttempts?: number;
-      retryAfterMs?: number;
-    };
-    const primaryMessage = Array.isArray(body?.message) ? body.message.join(' ') : body?.message;
-    const detail = primaryMessage || body?.error || body?.detail || trimmed;
-    const metadata: string[] = [];
-
-    if (typeof body?.remainingAttempts === 'number') {
-      metadata.push(`Intentos restantes: ${body.remainingAttempts}.`);
-    }
-
-    if (typeof body?.retryAfterMs === 'number' && body.retryAfterMs > 0) {
-      const retryAfterMinutes = Math.ceil(body.retryAfterMs / 60000);
-      metadata.push(`Reintenta en ${retryAfterMinutes} min.`);
-    }
-
-    return [detail, ...metadata].join(' ').trim();
-  } catch {
-    return trimmed;
-  }
-};
-
-const readApiJson = async <T,>(res: Response): Promise<T | null> => {
-  const text = await res.text();
-  if (!text.trim()) return null;
-  return JSON.parse(text) as T;
-};
-
-
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
