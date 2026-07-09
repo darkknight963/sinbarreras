@@ -589,6 +589,8 @@ export class AuthService {
     });
 
     if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      console.error(`[OAuth] Token exchange failed (${response.status}): ${errorBody}`);
       throw new UnauthorizedException('No se pudo completar el inicio de sesion social');
     }
 

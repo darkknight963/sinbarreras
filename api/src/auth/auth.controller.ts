@@ -182,6 +182,7 @@ export class AuthController {
       setSessionCookie(res, session.token);
       return res.redirect(302, this.authService.buildFrontendOAuthSuccessRedirect(provider));
     } catch (error) {
+      console.error(`[OAuth] ${provider} callback failed:`, error);
       const isExpected = error instanceof Error && (
         error.message.includes('expiro') ||
         error.message.includes('invalido') ||
