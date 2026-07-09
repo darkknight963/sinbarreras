@@ -1363,27 +1363,39 @@ export async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
     if (screenshotsTaken < MAX_ELEMENT_SCREENSHOTS) {
       try {
         const locator = page.locator(selector).first();
-        await locator.evaluate((el) => {
-          el.style.outline = '3px solid #D3141A';
-          el.style.outlineOffset = '2px';
+        // El marcador se dibuja y se captura el VIEWPORT completo, no el
+        // recorte del elemento: locator.screenshot() recorta al bounding box
+        // y el outline (que se pinta fuera del box) quedaba invisible, además
+        // de perder todo el contexto de dónde está el elemento en la página.
+        const isRenderable = await locator.evaluate((el) => {
           el.scrollIntoView({ behavior: 'auto', block: 'center' });
+          const rect = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          const visible = rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+          if (visible) {
+            el.style.outline = '3px solid #D3141A';
+            el.style.outlineOffset = '2px';
+          }
+          return visible;
         });
 
-        const buffer = await locator.screenshot({ timeout: 2000 });
-        screenshotUrl = await uploadEvidence(`scan-${Date.now()}-${violationIndex}.png`, buffer, 'image/png');
-        screenshotsTaken++;
-
-        await locator.evaluate((el) => {
-          el.style.outline = '';
-          el.style.outlineOffset = '';
-        });
-      } catch {
-        try {
-          const buffer = await page.screenshot({ fullPage: false });
+        if (isRenderable) {
+          // Pequeña espera para que el scroll y el repaint del outline se asienten.
+          await page.waitForTimeout(120);
+          const buffer = await page.screenshot({ fullPage: false, timeout: 3000 });
           screenshotUrl = await uploadEvidence(`scan-${Date.now()}-${violationIndex}.png`, buffer, 'image/png');
           screenshotsTaken++;
-        } catch {
+
+          await locator.evaluate((el) => {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+          });
         }
+        // Elemento oculto/sin área: no capturar un viewport arbitrario como si
+        // fuera evidencia del elemento — el hallazgo usará el screenshot global
+        // de página como fallback (scanner.ts), que no finge ser específico.
+      } catch {
+        // Selector inválido o timeout: mismo criterio, dejar el fallback global.
       }
     }
 
