@@ -30,10 +30,14 @@
 
 
       <button id="run-audit" type="button" class="extension-primary">
-        Analizar pestana y enviar
+        Escanear estado actual
       </button>
 
-      <p id="status" class="extension-status" role="status">No se guardan contrasenas, cookies ni sesiones.</p>
+      <button id="send-results" type="button" class="extension-secondary" disabled>
+        Enviar resultados al sistema
+      </button>
+
+      <p id="status" class="extension-status" role="status">Escanea la página; puedes abrir menús o modales y volver a escanear para cubrir más estados. Al final, envía todo junto.</p>
       <p class="extension-footer"><a href="https://sinbarreras.gzakgroup.com/privacy.html" target="_blank" rel="noopener">Politica de privacidad</a></p>
     </main>
     <script src="popup.js"></script>

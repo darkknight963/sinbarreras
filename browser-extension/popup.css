@@ -116,6 +116,22 @@ input:focus {
   opacity: .65;
 }
 
+.extension-secondary {
+  min-height: 42px;
+  border: 1.5px solid var(--primary);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.extension-secondary:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
 .extension-status {
   min-height: 42px;
   margin: 0;

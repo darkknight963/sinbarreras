@@ -1161,91 +1161,11 @@
     return results;
   };
 
-  // Interactive state exploration — clicks triggers to reveal hidden states and re-scans with axe
-  // Mirrors worker runInteractiveStateAccessibilityEngines but without Playwright keyboard API.
-  // Solo se clickean disclosures (menús, acordeones, dropdowns) — nunca botones
-  // genéricos: en apps autenticadas un click puede enviar formularios, navegar
-  // (matando este contexto y toda la auditoría) o disparar acciones destructivas.
-  const isSafeTrigger = (el) => {
-    if (el.closest('a[href]')) return false; // los enlaces navegan
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if (type === 'submit' || type === 'reset') return false;
-    // <button> sin type dentro de <form> es submit implícito.
-    if (el.tagName === 'BUTTON' && !type && el.closest('form')) return false;
-    const text = `${el.getAttribute('aria-label') || ''} ${el.textContent || ''}`.toLowerCase();
-    if (/cerrar sesi|logout|log out|salir|sign out|eliminar|borrar|delete|remove|quitar|guardar|save|enviar|submit|confirmar|pagar|comprar|checkout|descargar|download|imprimir|print|recargar|reload|actualizar/.test(text)) return false;
-    return true;
-  };
-
-  const collectInteractiveStateFindings = async () => {
-    const findings = [];
-    const TRIGGER_SELECTOR = [
-      '[aria-haspopup]:not([disabled])',
-      '[aria-expanded="false"]:not([disabled])',
-      'summary',
-      'a[data-toggle]',
-      'button[data-toggle]:not([disabled])',
-      'button[data-bs-toggle]:not([disabled])',
-    ].join(',');
-
-    const triggers = Array.from(document.querySelectorAll(TRIGGER_SELECTOR))
-      .filter((el) => isVisible(el) && isSafeTrigger(el))
-      .slice(0, 15);
-
-    if (!window.axe || triggers.length === 0) return findings;
-
-    const snapshotHtml = document.documentElement.innerHTML;
-
-    // En DOMs grandes cada axe.run puede tardar varios segundos; sin tope la
-    // fase interactiva se alarga minutos y el popup parece colgado.
-    const INTERACTIVE_BUDGET_MS = 25_000;
-    const startedAt = Date.now();
-
-    for (const trigger of triggers) {
-      if (Date.now() - startedAt > INTERACTIVE_BUDGET_MS) break;
-      const label = (trigger.getAttribute('aria-label') || trigger.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-      try {
-        trigger.click();
-        await new Promise((r) => setTimeout(r, 400));
-
-        const axeAfter = await window.axe.run(document, {
-          runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag22a', 'wcag22aa'] },
-          resultTypes: ['violations'],
-        });
-
-        const newFindings = axeAfter.violations.flatMap((rule) =>
-          rule.nodes.map((node) => {
-            const f = buildFinding(rule, node, 'violation');
-            f.pageState = 'interactive_trigger';
-            f.pageStateLabel = `Estado tras clic en: "${label || trigger.tagName.toLowerCase()}"`;
-            f.tool = 'axe-extension-interactive';
-            return f;
-          })
-        );
-        findings.push(...newFindings);
-
-        // Attempt to restore: click again to close (toggles), or press Escape
-        try {
-          trigger.click();
-        } catch {
-          // ignore
-        }
-        try {
-          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-          document.activeElement && document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        } catch {
-          // ignore
-        }
-        await new Promise((r) => setTimeout(r, 200));
-      } catch {
-        // Trigger click failed — skip
-      }
-    }
-
-    // Dedupe against base findings by ruleId+selector
-    return findings;
-  };
-
+  // Sin exploración interactiva automática: los scanners líderes (axe DevTools,
+  // WAVE, Lighthouse, IBM) nunca clickean la página por su cuenta — en apps
+  // autenticadas un click automático puede enviar formularios, navegar (matando
+  // este contexto) o disparar acciones reales. Los estados dinámicos se cubren
+  // con el flujo multi-estado: el usuario abre el menú/modal y escanea de nuevo.
   window.__sinBarrerasAuditCurrentPage = async () => {
     if (!window.axe) {
       throw new Error('axe-core no esta disponible en la pestaña.');
@@ -1277,13 +1197,7 @@
     // y pueden dejar modales abiertos o cambiar el estado de foco de la página.
     // El Tab-walk necesita el DOM en estado inicial limpio para ser preciso.
     const focusTraversalResult = await collectFocusTraversal();
-    // La fase interactiva es la más frágil (clicks reales sobre la página);
-    // si falla, la auditoría base igual debe llegar al sistema.
-    let interactiveFindings = [];
-    try {
-      interactiveFindings = await collectInteractiveStateFindings();
-    } catch (_) { /* degradar sin perder la auditoría base */ }
-    const allFindings = dedupeFindings([...axeViolations, ...axeManualVerifications, ...heuristicFindings, ...ibmResult.findings, ...interactiveFindings]);
+    const allFindings = dedupeFindings([...axeViolations, ...axeManualVerifications, ...heuristicFindings, ...ibmResult.findings]);
     const violations = allFindings.filter((finding) => finding.findingStatus === 'confirmed');
     const manualVerifications = allFindings.filter((finding) => finding.findingStatus !== 'confirmed');
     const peruvianChecks = collectPeruvianChecks();
@@ -1354,14 +1268,7 @@
           ...(ibmResult.available ? {} : { reason: 'ace.js no fue inyectado en esta pestaña' }),
           ...(ibmResult.error ? { errorMessage: ibmResult.error } : {}),
         },
-        {
-          engine: 'axe-extension-interactive',
-          pageState: 'interactive_trigger',
-          status: 'ok',
-          durationMs: 0,
-          findingsCount: interactiveFindings.length,
-        },
-        {
+          {
           engine: 'peruvian-checks-extension',
           pageState: PAGE_STATE,
           status: 'ok',
