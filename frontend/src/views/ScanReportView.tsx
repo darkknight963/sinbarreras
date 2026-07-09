@@ -1432,7 +1432,9 @@ export function ScanReportView({
                                   {dedupedFindings.map(({ finding, contexts }, findingIndex) => {
                                     const selector = finding?.selector || 'Sin selector';
                                     const html = finding?.elementHtml || '';
-                                    const elementFix = finding?.elementFix || finding?.suggestedFix || suggestion;
+                                    const elementFix = finding?.fixScope === 'page'
+                                      ? 'Se resuelve con una corrección única a nivel de página (ver la solución sugerida del grupo).'
+                                      : (finding?.elementFix || finding?.suggestedFix || suggestion);
                                     const visibleText = getVisibleTextFromHtml(html);
                                     return (
                                       <div key={`${group.key}-el-${findingIndex}`} className="finding-element-row">
@@ -1943,6 +1945,17 @@ export function ScanReportView({
                                             <div><span>Descripción</span><p>{canUsePaidFeatures ? (getFindingDescriptionSummary([item]) || 'Sin descripción técnica disponible.') : 'Disponible en Pro'}</p></div>
                                             <div><span>Selector principal</span>{item.selector ? <code className="report-code">{item.selector}</code> : <p>Sin selector disponible.</p>}</div>
                                             <div><span>Solución sugerida</span><p>{canUsePaidFeatures ? (item.suggestedFix || 'Sin solución sugerida registrada.') : 'Disponible en Pro'}</p></div>
+                                            {canUsePaidFeatures && item.fixScope === 'page' && (
+                                              <div className="report-page-fix-note" role="note">
+                                                <strong>Corrección única a nivel de página:</strong> un solo cambio estructural resuelve todos los elementos listados en este grupo — no es necesario corregirlos uno por uno.
+                                              </div>
+                                            )}
+                                            {canUsePaidFeatures && item.fixExample && (
+                                              <div>
+                                                <span>Ejemplo de código</span>
+                                                <pre className="report-html-block report-fix-example"><code>{item.fixExample}</code></pre>
+                                              </div>
+                                            )}
                                             {item.wcagUrl && <a href={item.wcagUrl} target="_blank" rel="noreferrer" className="report-reference-link">Ver criterio WCAG oficial</a>}
                                           </div>
 
@@ -1962,7 +1975,11 @@ export function ScanReportView({
                                                 {occurrenceItems.slice(0, 20).map((occurrence: string, occurrenceIndex: number) => {
                                                   const htmlSample = affectedSamples[occurrenceIndex] || item.elementHtml || '';
                                                   const visibleText = getVisibleTextFromHtml(htmlSample);
-                                                  const elementFix = item.elementFix || item.suggestedFix || 'Revisar contexto WCAG.';
+                                                  // En reglas page-level no repetir la misma frase por elemento:
+                                                  // la corrección es una sola y ya se explicó arriba.
+                                                  const elementFix = item.fixScope === 'page'
+                                                    ? 'Se resuelve con la corrección única a nivel de página indicada arriba.'
+                                                    : (item.elementFix || item.suggestedFix || 'Revisar contexto WCAG.');
                                                   return (
                                                     <div key={`${row.id}-${itemIndex}-${occurrenceIndex}`} className="report-occurrence-table-row">
                                                       <span className="report-occurrence-num">{occurrenceIndex + 1}</span>

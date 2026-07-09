@@ -10,6 +10,12 @@ export interface WcagRuleInfo {
   wcagUrl: string;
   findingStatus?: 'confirmed' | 'needs_review' | 'not_evaluated' | 'not_applicable';
   suggestedFix?: string;
+  // 'page': una sola corrección estructural resuelve todos los elementos del
+  // grupo (ej. envolver el contenido en <main>). 'element': cada elemento
+  // listado requiere su propio arreglo. Ausente = 'element'.
+  fixScope?: 'page' | 'element';
+  // Snippet de código antes/después que muestra la corrección concreta.
+  fixExample?: string;
 }
 
 export const ruleMapping: Record<string, WcagRuleInfo> = {
@@ -21,7 +27,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Compartido', // Redactor UX y Desarrollador
     resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
-    suggestedFix: 'Si la imagen transmite información, agregar alt descriptivo y breve (máximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.'
+    suggestedFix: 'Si la imagen transmite información, agregar alt descriptivo y breve (máximo 150 caracteres). Si es decorativa, usar alt="" y no agregar aria-hidden salvo en svgs decorativos.',
+    fixExample: `<!-- Imagen informativa -->
+<img src="grafico-ventas.png" alt="Ventas del primer trimestre: 45% de crecimiento">
+
+<!-- Imagen decorativa -->
+<img src="adorno.png" alt="">`
   },
   'color-contrast': {
     criterion: '1.4.3',
@@ -31,7 +42,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 1.4.3',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html',
-    suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relación de contraste de al menos 4.5:1 en texto normal (menos de 18pt) o 3:1 en texto grande (18pt o 14pt negrita). Usar herramientas como WebAIM Contrast Checker para verificar.'
+    suggestedFix: 'Ajustar los colores de texto y fondo para alcanzar una relación de contraste de al menos 4.5:1 en texto normal (menos de 18pt) o 3:1 en texto grande (18pt o 14pt negrita). Usar herramientas como WebAIM Contrast Checker para verificar.',
+    fixExample: `/* Antes: gris claro sobre blanco (2.8:1 — insuficiente) */
+.texto { color: #999999; background: #ffffff; }
+
+/* Después: gris oscuro sobre blanco (7:1 — cumple AA y AAA) */
+.texto { color: #595959; background: #ffffff; }`
   },
   'color-contrast-enhanced': {
     criterion: '1.4.6',
@@ -51,7 +67,11 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/page-titled.html',
-    suggestedFix: 'Definir un title único y descriptivo con formato "Nombre página | Sistema" (máximo 60-70 caracteres). Actualizar en cada vista de SPA.'
+    suggestedFix: 'Definir un title único y descriptivo con formato "Nombre página | Sistema" (máximo 60-70 caracteres). Actualizar en cada vista de SPA.',
+    fixScope: 'page',
+    fixExample: `<head>
+  <title>Inicio de sesión | Mesa de Ayuda CONADIS</title>
+</head>`
   },
   'html-has-lang': {
     criterion: '3.1.1',
@@ -61,7 +81,13 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html',
-    suggestedFix: 'Agregar lang="es" o el BCP 47 correspondiente en el elemento html. Para contenido peruano usar lang="es-PE". Marcar fragmentos en otro idioma con lang propio.'
+    suggestedFix: 'Agregar lang="es" o el BCP 47 correspondiente en el elemento html. Para contenido peruano usar lang="es-PE". Marcar fragmentos en otro idioma con lang propio.',
+    fixScope: 'page',
+    fixExample: `<!-- Antes -->
+<html>
+
+<!-- Después -->
+<html lang="es-PE">`
   },
   'html-lang-valid': {
     criterion: '3.1.1',
@@ -100,7 +126,17 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Agregar antes del primer elemento interactivo un enlace "Saltar al contenido" visible al foco que apunte a id="main-content". Confirmar que el destino existe y recibe foco.'
+    suggestedFix: 'Agregar antes del primer elemento interactivo un enlace "Saltar al contenido" visible al foco que apunte a id="main-content". Confirmar que el destino existe y recibe foco.',
+    fixScope: 'page',
+    fixExample: `<body>
+  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+  <header>...</header>
+  <main id="main-content" tabindex="-1">...</main>
+</body>
+
+/* CSS: visible solo al recibir foco */
+.skip-link { position: absolute; left: -9999px; }
+.skip-link:focus { left: 8px; top: 8px; }`
   },
   'focus-visible': {
     criterion: '2.4.7',
@@ -120,7 +156,13 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.3.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html',
-    suggestedFix: 'Asociar cada control con label[for="id"] visible. Priorizar texto visible sobre aria-label. Usar aria-describedby para instrucciones adicionales, no como etiqueta principal.'
+    suggestedFix: 'Asociar cada control con label[for="id"] visible. Priorizar texto visible sobre aria-label. Usar aria-describedby para instrucciones adicionales, no como etiqueta principal.',
+    fixExample: `<!-- Antes: campo sin etiqueta asociada -->
+<input type="text" name="email" placeholder="Correo">
+
+<!-- Después: label visible asociado por for/id -->
+<label for="email">Correo electrónico</label>
+<input type="text" id="email" name="email">`
   },
   'aria-allowed-attr': {
     criterion: '4.1.2',
@@ -150,7 +192,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.4',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html',
-    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el propósito real, por ejemplo "Ver perfil de usuario". Evitar textos genericos como "click aqui" o "leer mas".'
+    suggestedFix: 'Agregar texto visible descriptivo al enlace. Si solo tiene icono, usar aria-label con el propósito real, por ejemplo "Ver perfil de usuario". Evitar textos genericos como "click aqui" o "leer mas".',
+    fixExample: `<!-- Antes: enlace solo con icono -->
+<a href="/perfil"><i class="icon-user"></i></a>
+
+<!-- Después -->
+<a href="/perfil" aria-label="Ver perfil de usuario"><i class="icon-user" aria-hidden="true"></i></a>`
   },
   'input-image-alt': {
     criterion: '1.1.1',
@@ -170,7 +217,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    suggestedFix: 'Agregar nombre accesible al botón: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente. El nombre debe describir la accion, no el elemento.'
+    suggestedFix: 'Agregar nombre accesible al botón: texto visible preferente, aria-label para botones icono o aria-labelledby apuntando a texto existente. El nombre debe describir la accion, no el elemento.',
+    fixExample: `<!-- Antes: botón solo con icono -->
+<button><svg>...</svg></button>
+
+<!-- Después -->
+<button aria-label="Cerrar ventana"><svg aria-hidden="true">...</svg></button>`
   },
   'button-name-missing': {
     criterion: '4.1.2',
@@ -239,7 +291,15 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Fisica'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
+    fixScope: 'page',
+    fixExample: `<body>
+  <header>...</header>
+  <main id="main-content">
+    <!-- todo el contenido principal aquí -->
+  </main>
+  <footer>...</footer>
+</body>`
   },
   'landmark-nav-missing': {
     criterion: '2.4.1',
@@ -248,7 +308,13 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Fisica'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
+    fixScope: 'page',
+    fixExample: `<!-- Antes -->
+<div class="menu"><ul>...</ul></div>
+
+<!-- Después -->
+<nav aria-label="Navegación principal"><ul>...</ul></nav>`
   },
   'bypass-missing': {
     criterion: '2.4.1',
@@ -257,7 +323,17 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Fisica'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
+    fixScope: 'page',
+    fixExample: `<body>
+  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+  <header>...</header>
+  <main id="main-content" tabindex="-1">...</main>
+</body>
+
+/* CSS: visible solo al recibir foco */
+.skip-link { position: absolute; left: -9999px; }
+.skip-link:focus { left: 8px; top: 8px; }`
   },
   'form-control-multiple-labels': {
     criterion: '3.3.2',
@@ -430,7 +506,23 @@ const extraRuleMapping: Record<string, WcagRuleInfo> = {
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
     findingStatus: 'needs_review',
-    suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semánticos como main, nav, header, footer o regiones con nombre accesible.'
+    suggestedFix: 'Todo el contenido de la página debe estar dentro de landmarks semánticos (main, nav, header, footer). Es UNA sola corrección estructural: envolver el contenido principal en <main> resuelve todos los elementos listados de este grupo a la vez.',
+    fixScope: 'page',
+    fixExample: `<!-- Antes: contenido suelto en divs -->
+<body>
+  <div class="rich_text_container">...</div>
+  <div class="card">...formulario...</div>
+</body>
+
+<!-- Después: un solo cambio envuelve todo -->
+<body>
+  <header>...logo / título...</header>
+  <main>
+    <div class="rich_text_container">...</div>
+    <div class="card">...formulario...</div>
+  </main>
+  <footer>...créditos...</footer>
+</body>`
   },
   'scrollable-region-focusable': {
     criterion: '2.1.1',

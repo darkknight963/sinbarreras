@@ -27,6 +27,9 @@ export interface RawFinding {
   severity: SeverityEs;
   suggestedFix: string;
   elementFix?: string;
+  // 'page': una corrección estructural única resuelve todos los elementos del grupo.
+  fixScope?: 'page' | 'element';
+  fixExample?: string;
 }
 
 export interface GroupedFinding {

@@ -1839,6 +1839,21 @@ select {
   word-break: break-all;
 }
 
+.report-fix-example code {
+  word-break: normal;
+}
+
+.report-page-fix-note {
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+  background: #eff6ff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #1e3a8a;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .report-no-evidence {
   border: 1px dashed #d1d5db;
   border-radius: 10px;

@@ -13,6 +13,7 @@ import type {
   PageState,
   RawFinding,
   ScannerEngineName,
+  SeverityEs,
 } from './scanner-models.js';
 import {
   labelPageState,
@@ -542,6 +543,8 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
         severity: toSeverityEs(violation.impact),
         suggestedFix: axeRuleInfo.suggestedFix || elementFix || 'Asegurar cumplimiento WCAG.',
         elementFix: elementFix || undefined,
+        fixScope: axeRuleInfo.fixScope,
+        fixExample: axeRuleInfo.fixExample,
       });
     }
   }
@@ -572,6 +575,8 @@ async function runAxe(page: Page, contextSelector?: string): Promise<RawFinding[
         severity: toSeverityEs(incomplete.impact),
         suggestedFix: axeRuleInfo.suggestedFix || elementFix || 'Revisar el elemento y confirmar cumplimiento WCAG.',
         elementFix: elementFix || undefined,
+        fixScope: axeRuleInfo.fixScope,
+        fixExample: axeRuleInfo.fixExample,
       });
     }
   }
@@ -652,6 +657,8 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
         elementHtml: snippet,
         severity: toSeverityEs(v?.level || v?.impact),
         suggestedFix: ibmViolInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-unknown'),
+        fixScope: ibmViolInfo.fixScope,
+        fixExample: ibmViolInfo.fixExample,
       });
     }
 
@@ -672,6 +679,8 @@ export async function runIbmEqualAccessUrl(url: string): Promise<RawFinding[]> {
         elementHtml: snippet,
         severity: toSeverityEs(v?.level || v?.impact),
         suggestedFix: ibmRevInfo.suggestedFix || defaultSuggestedFix(v?.ruleId || v?.id || 'ibm-needs-review'),
+        fixScope: ibmRevInfo.fixScope,
+        fixExample: ibmRevInfo.fixExample,
       });
     }
 
@@ -1176,19 +1185,24 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
     category: FindingCategory;
   }>;
 
-  return checks.map((c) => ({
-    tool: 'heuristic-dom',
-    ruleId: c.ruleId,
-    normalizedRuleId: normalizeRuleId(c.ruleId, c.description),
-    category: c.category,
-    wcagCriterion: c.wcagCriterion,
-    wcagLevel: c.wcagLevel,
-    description: c.description,
-    selector: normalizeSelector(c.selector),
-    elementHtml: c.html || '',
-    severity: c.category === 'violation' ? 'alto' : c.category === 'alert' ? 'medio' : 'bajo',
-    suggestedFix: getRuleDetails(c.ruleId).suggestedFix || defaultSuggestedFix(c.ruleId),
-  }));
+  return checks.map((c) => {
+    const ruleInfo = getRuleDetails(c.ruleId);
+    return {
+      tool: 'heuristic-dom' as const,
+      ruleId: c.ruleId,
+      normalizedRuleId: normalizeRuleId(c.ruleId, c.description),
+      category: c.category,
+      wcagCriterion: c.wcagCriterion,
+      wcagLevel: c.wcagLevel,
+      description: c.description,
+      selector: normalizeSelector(c.selector),
+      elementHtml: c.html || '',
+      severity: (c.category === 'violation' ? 'alto' : c.category === 'alert' ? 'medio' : 'bajo') as SeverityEs,
+      suggestedFix: ruleInfo.suggestedFix || defaultSuggestedFix(c.ruleId),
+      fixScope: ruleInfo.fixScope,
+      fixExample: ruleInfo.fixExample,
+    };
+  });
 }
 
 export async function runStatefulPageEngines(page: Page, pageState: PageState): Promise<EngineRunResult<RawFinding[]>> {

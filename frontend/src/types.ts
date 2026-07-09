@@ -43,6 +43,9 @@ export interface Violation {
   selector: string;
   screenshotUrl: string;
   suggestedFix: string;
+  // 'page': una corrección estructural única resuelve todos los elementos del grupo.
+  fixScope?: 'page' | 'element';
+  fixExample?: string;
   resolutionArticle: string;
   wcagUrl: string;
   affectedElements?: string[];

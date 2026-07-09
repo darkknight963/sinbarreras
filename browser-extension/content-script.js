@@ -183,7 +183,7 @@
     'color-contrast-enhanced':            { nameEs: 'Contraste mejorado',                               criterion: '1.4.6',          level: 'AAA', role: 'Diseñador UX/UI', suggestedFix: 'Para nivel AAA ajustar contraste a mínimo 7:1 en texto normal y 4.5:1 en texto grande. Especialmente critico para usuarios con baja vision severa.' },
     'contrast-image-background-undetermined': { nameEs: 'Contraste sobre fondo imagen (revisión)',      criterion: '1.4.3',          level: 'AA',  role: 'Diseñador UX/UI', suggestedFix: 'Revisar el contraste sobre la captura real. Si no alcanza 4.5:1 en texto normal, agregar capa solida/semitransparente o cambiar texto/fondo; no depender solo de sombra.' },
     'reflow-fixed-position':              { nameEs: 'Reflow - posicion fija',                           criterion: '1.4.10',         level: 'AA',  role: 'Desarrollador',  suggestedFix: 'Verificar que el elemento fijo no obligue a desplazamiento en dos dimensiones y sea usable a 320 CSS px de ancho.' },
-    'region':                             { nameEs: 'Información y relaciones - regiones',              criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Ubicar el contenido relevante dentro de landmarks semánticos como main, nav, header, footer o regiones con nombre accesible.' },
+    'region':                             { nameEs: 'Información y relaciones - regiones',              criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Todo el contenido debe estar dentro de landmarks semánticos (main, nav, header, footer). Es UNA sola corrección estructural: envolver el contenido principal en <main> resuelve todos los elementos de este grupo a la vez.' },
     'empty-list-item':                    { nameEs: 'Elemento de lista vacio',                          criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Eliminar el <li> vacio. Si se usa solo para separacion o decoracion, mover ese efecto a CSS; las listas deben contener elementos con significado.' },
     'heading-markup-review':              { nameEs: 'Información y relaciones - encabezado visual',     criterion: '1.3.1',          level: 'A',   role: 'Desarrollador',  suggestedFix: 'Si el texto funciona como encabezado, usar el elemento h1-h6 correspondiente y mantener una jerarquía logica.' },
     'empty-heading':                      { nameEs: 'Encabezado vacío',                                 criterion: '2.4.6',          level: 'AA',  role: 'Compartido',     suggestedFix: 'Agregar texto descriptivo al encabezado o eliminarlo si no corresponde. Un lector de pantalla anuncia "encabezado" sin contenido. Si el título llega por datos dinámicos, validar que nunca se renderice vacío.' },
@@ -270,6 +270,50 @@
     };
   };
 
+  // Correcciones con ejemplo de código y alcance. fixScope 'page' = una sola
+  // corrección estructural resuelve todos los elementos del grupo.
+  const RULE_FIX_DETAILS = {
+    region: {
+      fixScope: 'page',
+      fixExample: '<!-- Antes: contenido suelto en divs -->\n<body>\n  <div class="contenido">...</div>\n</body>\n\n<!-- Después: un solo cambio envuelve todo -->\n<body>\n  <header>...</header>\n  <main>\n    <div class="contenido">...</div>\n  </main>\n  <footer>...</footer>\n</body>',
+    },
+    'landmark-one-main': {
+      fixScope: 'page',
+      fixExample: '<body>\n  <header>...</header>\n  <main id="main-content">\n    <!-- todo el contenido principal aquí -->\n  </main>\n  <footer>...</footer>\n</body>',
+    },
+    bypass: {
+      fixScope: 'page',
+      fixExample: '<body>\n  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>\n  <header>...</header>\n  <main id="main-content" tabindex="-1">...</main>\n</body>\n\n/* CSS: visible solo al recibir foco */\n.skip-link { position: absolute; left: -9999px; }\n.skip-link:focus { left: 8px; top: 8px; }',
+    },
+    'html-has-lang': {
+      fixScope: 'page',
+      fixExample: '<!-- Antes -->\n<html>\n\n<!-- Después -->\n<html lang="es-PE">',
+    },
+    'document-title': {
+      fixScope: 'page',
+      fixExample: '<head>\n  <title>Inicio de sesión | Nombre del sistema</title>\n</head>',
+    },
+    'page-has-heading-one': {
+      fixScope: 'page',
+      fixExample: '<main>\n  <h1>Título principal de la página</h1>\n  ...\n</main>',
+    },
+    'image-alt': {
+      fixExample: '<!-- Imagen informativa -->\n<img src="grafico.png" alt="Ventas del trimestre: 45% de crecimiento">\n\n<!-- Imagen decorativa -->\n<img src="adorno.png" alt="">',
+    },
+    label: {
+      fixExample: '<!-- Antes: campo sin etiqueta -->\n<input type="text" name="email" placeholder="Correo">\n\n<!-- Después -->\n<label for="email">Correo electrónico</label>\n<input type="text" id="email" name="email">',
+    },
+    'link-name': {
+      fixExample: '<!-- Antes: enlace solo con icono -->\n<a href="/perfil"><i class="icon-user"></i></a>\n\n<!-- Después -->\n<a href="/perfil" aria-label="Ver perfil de usuario"><i class="icon-user" aria-hidden="true"></i></a>',
+    },
+    'button-name': {
+      fixExample: '<!-- Antes: botón solo con icono -->\n<button><svg>...</svg></button>\n\n<!-- Después -->\n<button aria-label="Cerrar ventana"><svg aria-hidden="true">...</svg></button>',
+    },
+    'color-contrast': {
+      fixExample: '/* Antes: gris claro sobre blanco (2.8:1 — insuficiente) */\n.texto { color: #999999; background: #ffffff; }\n\n/* Después: gris oscuro sobre blanco (7:1 — cumple AA y AAA) */\n.texto { color: #595959; background: #ffffff; }',
+    },
+  };
+
   const buildFinding = (rule, node, category) => {
     const { criterion, level } = parseWcag(rule.tags || []);
     const target = Array.isArray(node.target) ? node.target.join(', ') : selectorFor(node.element);
@@ -315,6 +359,8 @@
       screenshotUrl: '',
       suggestedFix: suggestedFixForRule(rule.id, rule.description || rule.help || ''),
       elementFix: elementFix || undefined,
+      fixScope: (RULE_FIX_DETAILS[normKey] || RULE_FIX_DETAILS[rule.id] || {}).fixScope,
+      fixExample: (RULE_FIX_DETAILS[normKey] || RULE_FIX_DETAILS[rule.id] || {}).fixExample,
       resolutionArticle: ruleCriterion && ruleCriterion !== 'N/A' && ruleCriterion !== 'Revisión manual' ? `Anexo 1 - Criterio ${ruleCriterion}` : 'ISO/IEC 40500 / WCAG 2.2',
       wcagUrl: rule.helpUrl || '',
       affectedElements: [target || 'document'],
