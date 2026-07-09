@@ -21,6 +21,7 @@ const renderAuthView = () =>
       onSubmit={vi.fn()}
       onStartGuest={vi.fn()}
       onViewPlans={vi.fn()}
+      onGoogleLogin={vi.fn()}
       appError={null}
       useDemoCredentials={vi.fn()}
       onSubmitComplaint={vi.fn(async () => undefined)}

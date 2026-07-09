@@ -4059,6 +4059,34 @@ html body .scan-launch-grid {
   border-radius: 8px;
 }
 
+.auth-google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--sb-border);
+  background: var(--sb-surface);
+  color: var(--sb-text-strong);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-google-button:hover {
+  background: var(--sb-surface-muted);
+  border-color: var(--sb-text-muted);
+}
+
+.auth-google-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;

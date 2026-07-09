@@ -1683,6 +1683,7 @@ export default function App() {
         onSubmit={handleAuthSubmit}
         onStartGuest={handleStartGuest}
         onViewPlans={handleViewPlansFromLanding}
+        onGoogleLogin={() => { window.location.href = apiUrl('/auth/google'); }}
         appError={appError}
         useDemoCredentials={useDemoCredentials}
         onSubmitComplaint={handleSubmitComplaint}
