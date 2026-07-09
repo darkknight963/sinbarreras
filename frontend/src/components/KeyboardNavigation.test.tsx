@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { ActionButton, GhostButton } from './Button'
 import { Modal } from './Modal'
 import { Sidebar } from './Sidebar'
-import { Header } from './Header'
 import { Table } from './Table'
 
 /**
@@ -173,21 +172,6 @@ describe('Keyboard Navigation', () => {
       expect(button).toHaveFocus()
     })
 
-    it('should show focus on header interactive elements', async () => {
-      const user = userEvent.setup()
-      const { container } = render(
-        <div>
-          <Header />
-          <ActionButton>Action</ActionButton>
-        </div>
-      )
-
-      const button = container.querySelector('button')
-
-      // Tab to button
-      await user.tab()
-      expect(button).toHaveFocus()
-    })
   })
 
   describe('Modal Focus Trap', () => {

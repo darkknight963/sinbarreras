@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Header } from './Header'
 import { ActionButton, GhostButton } from './Button'
 import { SeverityChip, StatusBadge } from './Badge'
 import { Table } from './Table'
@@ -16,49 +15,6 @@ import { Sidebar } from './Sidebar'
  */
 
 describe('Accessibility: Semantic HTML and ARIA', () => {
-  describe('Header Component - Semantic Structure', () => {
-    it('should render header with semantic <header> element', () => {
-      const { container } = render(<Header />)
-      const header = container.querySelector('header')
-      
-      expect(header).toBeInTheDocument()
-      expect(header?.tagName).toBe('HEADER')
-    })
-
-    it('should render main title with semantic <h1> element', () => {
-      render(<Header />)
-      const h1 = screen.getByRole('heading', { level: 1 })
-      
-      expect(h1).toBeInTheDocument()
-      expect(h1.textContent).toBe('sin barreras')
-    })
-
-    it('should have proper heading hierarchy in header', () => {
-      const { container } = render(<Header />)
-      const h1 = container.querySelector('h1')
-      
-      expect(h1).toBeInTheDocument()
-      expect(h1?.textContent).toBe('sin barreras')
-    })
-
-    it('should render subtitle as paragraph element', () => {
-      const { container } = render(<Header />)
-      const paragraph = container.querySelector('p')
-      
-      expect(paragraph).toBeInTheDocument()
-      expect(paragraph?.textContent).toContain('Convierte tu web en un lugar para todos')
-    })
-
-    it('should have proper semantic structure with flex layout', () => {
-      const { container } = render(<Header />)
-      const header = container.querySelector('header')
-      
-      expect(header).toHaveClass('flex')
-      expect(header).toHaveClass('items-center')
-      expect(header).toHaveClass('justify-between')
-    })
-  })
-
   describe('Button Component - ARIA Labels and Roles', () => {
     it('should render ActionButton as button element with proper role', () => {
       render(<ActionButton>Click me</ActionButton>)
@@ -473,18 +429,6 @@ describe('Accessibility: Semantic HTML and ARIA', () => {
   })
 
   describe('Overall Accessibility - Semantic HTML Best Practices', () => {
-    it('should use semantic elements instead of divs for structure', () => {
-      const { container } = render(<Header />)
-      
-      // Header should use <header> not <div>
-      const header = container.querySelector('header')
-      expect(header).toBeInTheDocument()
-      
-      // Should have heading hierarchy
-      const h1 = container.querySelector('h1')
-      expect(h1).toBeInTheDocument()
-    })
-
     it('should use proper button elements for interactive controls', () => {
       render(
         <>

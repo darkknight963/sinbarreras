@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { ReportCardEntity, ReportPanel } from './Card'
-import { Header } from './Header'
 import { Modal } from './Modal'
 
 /**

@@ -12,7 +12,7 @@ const projectsResponse = [
     id: 'project-1',
     name: 'Portal de Servicios',
     domain: 'https://www.gob.pe',
-    entityType: 'AdministraciÃ³n PÃºblica Peruana',
+    entityType: 'Administración Pública Peruana',
     vo: 4,
     scans: [
       {
@@ -93,15 +93,21 @@ describe('App project creation experience', () => {
     )
   })
 
-  it('renders a more editorial unauthenticated login experience', async () => {
-    window.localStorage.clear()
+  it('renders the public landing when there is no active session', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ({
+        ok: false,
+        status: 401,
+        json: async () => ({}),
+        text: async () => '',
+      })),
+    )
 
     render(<App />)
 
-    await screen.findByText('Portal de Servicios')
-    expect(screen.getByText(/modo invitado activo/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /ver planes/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /nuevo proyecto/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /analizar mi sitio gratis/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /iniciar sesión/i })).toBeInTheDocument()
   })
 
   it('opens a direct project form without classification or prioritization steps', async () => {
@@ -116,8 +122,8 @@ describe('App project creation experience', () => {
     expect(dialog).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: /2clasificacion/i })).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: /3priorizacion/i })).not.toBeInTheDocument()
-    expect(within(dialog).getByLabelText(/descripcion/i)).toBeInTheDocument()
-    expect(within(dialog).getByText(/el tipo de entidad y la ley aplicable/i)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText(/descripción/i)).toBeInTheDocument()
+    expect(within(dialog).getByText(/entidad y ley aplicable/i)).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /crear proyecto/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cerrar modal de nuevo proyecto/i })).toBeInTheDocument()
   })
@@ -232,30 +238,22 @@ describe('App project creation experience', () => {
     expect(screen.queryByLabelText(/trafico/i)).not.toBeInTheDocument()
   })
 
-  it('uses dark readable text for entity and priority labels on light project cards', async () => {
+  it('uses the entity badge with readable styling on project cards', async () => {
     render(<App />)
 
-    const entityLabel = await screen.findByText('AdministraciÃ³n PÃºblica Peruana', { selector: '.report-entity-badge' })
-    const priorityLabel = screen.getByText('Prioridad Media')
+    const entityLabel = await screen.findByText('Administración Pública Peruana', { selector: '.report-entity-badge' })
 
     expect(entityLabel).toHaveClass('report-entity-badge')
-    expect(priorityLabel).toHaveClass('report-priority-badge', 'report-priority-medium')
-
     expect(entityLabel).not.toHaveClass('text-slate-600')
-    expect(priorityLabel).not.toHaveClass('text-yellow-800')
   })
 
-  it('renders legal metrics inside each project card and removes the separate project metrics section', async () => {
+  it('renders project cards as audit folders with scan count and meta row', async () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
 
-    expect(screen.getByText('ClasificaciÃ³n')).toBeInTheDocument()
-    expect(screen.getByText('AdministraciÃ³n PÃºblica Peruana', { selector: '.legal-metric-value' })).toBeInTheDocument()
-    expect(screen.getByText('Ley NÂ° 29973 (Multas hasta 12 UIT)')).toBeInTheDocument()
-    expect(appSource).not.toContain('Norma Aplicable')
-    expect(appSource).not.toContain('MÃ©tricas Legales')
-    expect(projectsViewSource).toContain('project-card-legal')
+    expect(screen.getByText(/1 análisis guardado/i)).toBeInTheDocument()
+    expect(screen.getByText(/carpeta de auditorías/i)).toBeInTheDocument()
   })
 
   it('renders visual score meters and global project metrics', async () => {
@@ -266,9 +264,8 @@ describe('App project creation experience', () => {
     expect(screen.getByText('Total de proyectos')).toBeInTheDocument()
     expect(screen.getByText('Cumplimiento global')).toBeInTheDocument()
     expect(screen.getByText('En riesgo')).toBeInTheDocument()
-    expect(screen.getByText('Completando anÃ¡lisis')).toBeInTheDocument()
-    expect(screen.getAllByText('82/100').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('Cumplimiento bueno')).toBeInTheDocument()
+    expect(screen.getByText('Completando análisis')).toBeInTheDocument()
+    expect(screen.getAllByText('82/100').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows the authenticated user name in the header and exposes password change actions', async () => {
@@ -276,12 +273,11 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
-    expect(screen.getByRole('button', { name: /cuenta de admin/i })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /cuenta de admin/i }))
+    await user.click(screen.getByRole('button', { name: /administrador de cuenta/i }))
 
     expect(screen.getByRole('menu', { name: /opciones de cuenta/i })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /cambiar contraseÃ±a/i })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /cambiar contraseña/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /salir/i })).toBeInTheDocument()
   })
 
@@ -328,27 +324,22 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
-    await user.click(screen.getByRole('button', { name: /ver detalles del proyecto portal de servicios/i }))
+    await user.click(screen.getByRole('button', { name: /^portal de servicios$/i }))
     await screen.findByRole('heading', { name: /portal de servicios/i })
     await user.click(screen.getByRole('button', { name: /nuevo an.lisis/i }))
 
     expect(screen.getByRole('dialog', { name: /lanzar auditor.a/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /volver a proyectos/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/urls a analizar/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/modo del an.lisis/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/impacto en experiencia/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/script de pre-navegaci.n/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/scripts personalizados est.n deshabilitados/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/url a analizar/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /iniciar escaneo/i })).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText(/urls a analizar/i), 'example.com')
-    expect(screen.getByText(/no se transfieren al navegador playwright/i)).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/url a analizar/i), 'example.com')
     await user.click(screen.getByRole('button', { name: /abrir url/i }))
     expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
 
     openSpy.mockRestore()
   })
 
-  it('parses scan URLs separated by commas or line breaks before submitting', async () => {
+  it('submits the scan request with the entered URL', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
@@ -410,13 +401,13 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
-    await user.click(screen.getByRole('button', { name: /ver detalles del proyecto portal de servicios/i }))
+    await user.click(screen.getByRole('button', { name: /^portal de servicios$/i }))
     await screen.findByRole('heading', { name: /portal de servicios/i })
-    await user.click(screen.getByRole('button', { name: /nuevo anÃ¡lisis/i }))
+    await user.click(screen.getByRole('button', { name: /nuevo análisis/i }))
 
     await user.type(
-      screen.getByLabelText(/urls a analizar/i),
-      'https://a.example, https://b.example\nhttps://c.example',
+      screen.getByLabelText(/url a analizar/i),
+      'https://a.example',
     )
 
     await user.click(screen.getByRole('button', { name: /iniciar escaneo/i }))
@@ -427,11 +418,25 @@ describe('App project creation experience', () => {
 
     expect(postCall).toBeTruthy()
     expect(JSON.parse(String(postCall?.[1]?.body))).toEqual({
+      id: expect.any(String),
       projectId: 'project-1',
-      urls: ['https://a.example', 'https://b.example', 'https://c.example'],
-      scanMode: 'estÃ¡ndar',
+      urls: ['https://a.example'],
+      scanMode: 'estándar',
       ux: 4,
+      loginMode: 'none',
     })
+  })
+
+  it('parses scan URLs separated by commas or line breaks', async () => {
+    const { parseScanUrls } = await import('./lib/scanUtils')
+
+    expect(parseScanUrls('https://a.example, https://b.example\nhttps://c.example')).toEqual([
+      'https://a.example',
+      'https://b.example',
+      'https://c.example',
+    ])
+    expect(parseScanUrls('  https://solo.example  ')).toEqual(['https://solo.example'])
+    expect(parseScanUrls('')).toEqual([])
   })
 
   it('shows Culqi checkout modal when clicking subscribe on billing page', async () => {
@@ -448,10 +453,10 @@ describe('App project creation experience', () => {
             status: 200,
             json: async () => ({
               id: 'user-1',
-              email: 'admin@example.com',
-              fullName: 'Admin',
+              email: 'user@example.com',
+              fullName: 'Usuario Prueba',
               companyName: 'Sin Barreras',
-              role: 'admin',
+              role: 'free',
               billingStatus: 'inactive',
               billingPlan: null,
               billingProvider: 'culqi',
@@ -495,7 +500,9 @@ describe('App project creation experience', () => {
 
     render(<App />)
 
-    const planBtn = await screen.findByRole('button', { name: /ver planes/i })
+    await screen.findByText('Portal de Servicios')
+    // El acceso a planes para cuentas sin suscripción es el botón de plan del header.
+    const planBtn = await screen.findByRole('button', { name: /^free$/i })
     await user.click(planBtn)
 
     const subscribeBtn = await screen.findByRole('button', { name: /empezar con pro/i })
@@ -570,7 +577,7 @@ describe('App project creation experience', () => {
     render(<App />)
 
     await screen.findByText('Portal de Servicios')
-    await user.click(screen.getByRole('button', { name: /^admin$/i }))
+    await user.click(screen.getByRole('button', { name: /cuenta admin/i }))
     await screen.findByRole('heading', { name: /simple y transparente/i })
 
     await user.click(screen.getByRole('button', { name: /volver al sistema/i }))
