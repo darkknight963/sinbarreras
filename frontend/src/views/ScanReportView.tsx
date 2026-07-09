@@ -1952,7 +1952,7 @@ export function ScanReportView({
                                             )}
                                             {canUsePaidFeatures && item.fixExample && (
                                               <div>
-                                                <span>Ejemplo de código</span>
+                                                <span>Ejemplo de código (ilustrativo — adaptar a las clases y estructura de tu proyecto)</span>
                                                 <pre className="report-html-block report-fix-example"><code>{item.fixExample}</code></pre>
                                               </div>
                                             )}
