@@ -1163,26 +1163,46 @@
 
   // Interactive state exploration — clicks triggers to reveal hidden states and re-scans with axe
   // Mirrors worker runInteractiveStateAccessibilityEngines but without Playwright keyboard API.
+  // Solo se clickean disclosures (menús, acordeones, dropdowns) — nunca botones
+  // genéricos: en apps autenticadas un click puede enviar formularios, navegar
+  // (matando este contexto y toda la auditoría) o disparar acciones destructivas.
+  const isSafeTrigger = (el) => {
+    if (el.closest('a[href]')) return false; // los enlaces navegan
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    if (type === 'submit' || type === 'reset') return false;
+    // <button> sin type dentro de <form> es submit implícito.
+    if (el.tagName === 'BUTTON' && !type && el.closest('form')) return false;
+    const text = `${el.getAttribute('aria-label') || ''} ${el.textContent || ''}`.toLowerCase();
+    if (/cerrar sesi|logout|log out|salir|sign out|eliminar|borrar|delete|remove|quitar|guardar|save|enviar|submit|confirmar|pagar|comprar|checkout|descargar|download|imprimir|print|recargar|reload|actualizar/.test(text)) return false;
+    return true;
+  };
+
   const collectInteractiveStateFindings = async () => {
     const findings = [];
     const TRIGGER_SELECTOR = [
-      'button:not([disabled])',
-      '[role="button"]:not([disabled])',
       '[aria-haspopup]:not([disabled])',
+      '[aria-expanded="false"]:not([disabled])',
       'summary',
-      '[aria-expanded="false"]',
       'a[data-toggle]',
+      'button[data-toggle]:not([disabled])',
+      'button[data-bs-toggle]:not([disabled])',
     ].join(',');
 
     const triggers = Array.from(document.querySelectorAll(TRIGGER_SELECTOR))
-      .filter((el) => isVisible(el))
-      .slice(0, 50);
+      .filter((el) => isVisible(el) && isSafeTrigger(el))
+      .slice(0, 15);
 
     if (!window.axe || triggers.length === 0) return findings;
 
     const snapshotHtml = document.documentElement.innerHTML;
 
+    // En DOMs grandes cada axe.run puede tardar varios segundos; sin tope la
+    // fase interactiva se alarga minutos y el popup parece colgado.
+    const INTERACTIVE_BUDGET_MS = 25_000;
+    const startedAt = Date.now();
+
     for (const trigger of triggers) {
+      if (Date.now() - startedAt > INTERACTIVE_BUDGET_MS) break;
       const label = (trigger.getAttribute('aria-label') || trigger.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
       try {
         trigger.click();
@@ -1257,7 +1277,12 @@
     // y pueden dejar modales abiertos o cambiar el estado de foco de la página.
     // El Tab-walk necesita el DOM en estado inicial limpio para ser preciso.
     const focusTraversalResult = await collectFocusTraversal();
-    const interactiveFindings = await collectInteractiveStateFindings();
+    // La fase interactiva es la más frágil (clicks reales sobre la página);
+    // si falla, la auditoría base igual debe llegar al sistema.
+    let interactiveFindings = [];
+    try {
+      interactiveFindings = await collectInteractiveStateFindings();
+    } catch (_) { /* degradar sin perder la auditoría base */ }
     const allFindings = dedupeFindings([...axeViolations, ...axeManualVerifications, ...heuristicFindings, ...ibmResult.findings, ...interactiveFindings]);
     const violations = allFindings.filter((finding) => finding.findingStatus === 'confirmed');
     const manualVerifications = allFindings.filter((finding) => finding.findingStatus !== 'confirmed');
