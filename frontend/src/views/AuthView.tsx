@@ -76,12 +76,53 @@ export function AuthView({
   const [complaintNotice, setComplaintNotice] = useState<string | null>(null);
   const [complaintError, setComplaintError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const accessPanelRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (forceOpenAccessPanel) {
       setShowAccessPanel(true);
     }
   }, [forceOpenAccessPanel]);
+
+  // Focus trap + Escape en el modal de acceso (criterios 2.1.2 y 2.4.3):
+  // el foco no debe escapar al contenido de fondo y el modal debe poder
+  // cerrarse con teclado. Al abrir, enfoca el primer campo; al cerrar,
+  // el foco vuelve de forma natural al documento.
+  React.useEffect(() => {
+    if (!showAccessPanel) return;
+
+    const panel = accessPanelRef.current;
+    if (!panel) return;
+
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const firstField = panel.querySelector<HTMLElement>('input, button');
+    firstField?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowAccessPanel(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector))
+        .filter((el) => el.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (event.shiftKey && (active === first || !panel.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showAccessPanel, authFormMode]);
 
   const openAccessPanel = () => setShowAccessPanel(true);
 
@@ -369,6 +410,7 @@ export function AuthView({
           <div className="auth-access-modal-overlay" role="presentation">
             <section
               id="auth-access-panel"
+              ref={accessPanelRef}
               className={`auth-access-panel auth-access-modal ${authFormMode === 'login' ? 'auth-access-modal-login' : 'auth-access-modal-register'}`}
               aria-label="Acceso a cuenta"
               aria-modal="true"

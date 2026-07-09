@@ -4887,6 +4887,21 @@ html body main#main-content.app-main-content.projects-page-main .project-overvie
   .auth-field-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Modal de acceso en móvil: aprovechar el ancho y evitar que la barra del
+     navegador tape el contenido (dvh sigue al viewport dinámico). */
+  .auth-access-modal-overlay {
+    padding: 12px;
+  }
+
+  .auth-access-panel {
+    max-height: calc(100dvh - 24px);
+  }
+
+  /* iOS hace zoom automático al enfocar inputs con fuente menor a 16px. */
+  .auth-input {
+    font-size: 16px;
+  }
 }
 
 /* ============================================================================
