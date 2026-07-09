@@ -189,6 +189,7 @@ export class AuthService {
       user = this.userRepository.create({
         email,
         passwordHash: this.hashPassword(randomBytes(32).toString('hex')),
+        hasPassword: false,
         fullName: profile.fullName?.trim() || null,
         companyName: null,
         role: 'free',
@@ -326,6 +327,7 @@ export class AuthService {
     const guestUser = this.userRepository.create({
       email,
       passwordHash: this.hashPassword(randomBytes(24).toString('hex')),
+      hasPassword: false,
       fullName: 'Invitado',
       companyName: 'Sin Barreras',
       role: 'guest',
@@ -360,15 +362,20 @@ export class AuthService {
       throw new UnauthorizedException('Sesion invalida');
     }
 
-    if (!this.verifyPassword(dto.currentPassword, user.passwordHash)) {
-      throw new UnauthorizedException('La contrasena actual no es valida');
-    }
+    // Cuentas OAuth/guest sin contraseña propia (hasPassword === false) pueden
+    // definirla sin conocer la actual: la sesión activa ya acredita al titular.
+    if (user.hasPassword !== false) {
+      if (!dto.currentPassword || !this.verifyPassword(dto.currentPassword, user.passwordHash)) {
+        throw new UnauthorizedException('La contrasena actual no es valida');
+      }
 
-    if (dto.currentPassword === dto.newPassword) {
-      throw new BadRequestException('La nueva contrasena debe ser distinta a la actual');
+      if (dto.currentPassword === dto.newPassword) {
+        throw new BadRequestException('La nueva contrasena debe ser distinta a la actual');
+      }
     }
 
     user.passwordHash = this.hashPassword(dto.newPassword);
+    user.hasPassword = true;
 
     // Revocar todas las sesiones excepto la actual para forzar re-login
     // en cualquier otro dispositivo donde la cuenta pudiera estar comprometida.
@@ -464,6 +471,7 @@ export class AuthService {
       fullName: user.fullName,
       companyName: user.companyName,
       role,
+      hasPassword: user.hasPassword !== false,
       createdAt: user.createdAt,
       billingStatus: user.billingStatus,
       billingPlan: user.billingPlan,

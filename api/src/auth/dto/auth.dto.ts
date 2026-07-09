@@ -26,9 +26,12 @@ export class LoginDto {
 }
 
 export class ChangePasswordDto {
+  // Opcional: las cuentas creadas vía OAuth no tienen contraseña propia todavía.
+  // El servicio la exige cuando el usuario sí definió una (hasPassword).
+  @IsOptional()
   @IsString()
   @MinLength(8)
-  currentPassword!: string;
+  currentPassword?: string;
 
   @IsString()
   @MinLength(8)

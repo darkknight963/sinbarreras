@@ -59,6 +59,7 @@ type AuthUser = {
   fullName: string | null;
   companyName: string | null;
   role: string;
+  hasPassword?: boolean;
   billingStatus?: string;
   billingPlan?: string | null;
   billingProvider?: string;
@@ -470,11 +471,15 @@ export default function App() {
     .join('')
     .slice(0, 2) || 'SB';
 
+  // Cuentas creadas vía Google/OAuth no tienen contraseña propia: pueden crearla
+  // sin ingresar la actual (la sesión activa ya acredita al titular).
+  const needsPasswordSetup = currentUser?.hasPassword === false;
+
   const handleChangePasswordSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setPasswordMessage(null);
 
-    if (!currentPassword || !nextPassword || !confirmPassword) {
+    if ((!needsPasswordSetup && !currentPassword) || !nextPassword || !confirmPassword) {
       setPasswordMessage('Completa todos los campos.');
       return;
     }
@@ -491,7 +496,7 @@ export default function App() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          currentPassword,
+          ...(needsPasswordSetup ? {} : { currentPassword }),
           newPassword: nextPassword,
         }),
       });
@@ -501,14 +506,17 @@ export default function App() {
         throw new Error(text || `HTTP ${res.status}`);
       }
 
-      setPasswordMessage('Contraseña actualizada correctamente.');
+      setPasswordMessage(needsPasswordSetup
+        ? 'Contraseña creada correctamente. Ya puedes iniciar sesión con tu correo y contraseña.'
+        : 'Contraseña actualizada correctamente.');
+      setCurrentUser((prev) => (prev ? { ...prev, hasPassword: true } : prev));
       setCurrentPassword('');
       setNextPassword('');
       setConfirmPassword('');
       setShowAccountMenu(false);
     } catch (err) {
-      handleApiError('No se pudo cambiar la contraseña', err);
-      setPasswordMessage('No se pudo cambiar la contraseña. Verifica tus datos e intenta nuevamente.');
+      handleApiError('No se pudo guardar la contraseña', err);
+      setPasswordMessage('No se pudo guardar la contraseña. Verifica tus datos e intenta nuevamente.');
     } finally {
       setPasswordSubmitting(false);
     }
@@ -1760,7 +1768,7 @@ export default function App() {
                         }}
                       >
                         <KeyRound className="h-4 w-4" aria-hidden="true" />
-                        <span>Cambiar contraseña</span>
+                        <span>{needsPasswordSetup ? 'Crear contraseña' : 'Cambiar contraseña'}</span>
                       </button>
                     )}
                     {isMasterAccount && (
@@ -1991,8 +1999,12 @@ export default function App() {
               <div className="account-modal-header">
                 <div>
                   <p className="account-modal-kicker">Cuenta</p>
-                  <h2 id="change-password-title">Cambiar contraseña</h2>
-                  <p>Protege el acceso de {currentUserLabel}.</p>
+                  <h2 id="change-password-title">{needsPasswordSetup ? 'Crear contraseña' : 'Cambiar contraseña'}</h2>
+                  <p>
+                    {needsPasswordSetup
+                      ? `Tu cuenta ingresa con Google. Crea una contraseña para también poder entrar con tu correo.`
+                      : `Protege el acceso de ${currentUserLabel}.`}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -2010,18 +2022,20 @@ export default function App() {
                 </button>
               </div>
               <div className="account-modal-body">
-                <label className="account-modal-field">
-                  <span>Contraseña actual</span>
-                  <input
-                    type="password"
-                    required
-                    minLength={8}
-                    autoComplete="current-password"
-                    className="create-project-control"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                  />
-                </label>
+                {!needsPasswordSetup && (
+                  <label className="account-modal-field">
+                    <span>Contraseña actual</span>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      autoComplete="current-password"
+                      className="create-project-control"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                    />
+                  </label>
+                )}
                 <label className="account-modal-field">
                   <span>Nueva contraseña</span>
                   <input

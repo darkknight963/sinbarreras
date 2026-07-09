@@ -15,6 +15,11 @@ export class User {
   @Column({ type: 'text' })
   passwordHash!: string;
 
+  // Falso cuando la cuenta se creó vía OAuth/guest y el usuario aún no define
+  // una contraseña propia; en ese caso puede establecerla sin conocer la actual.
+  @Column({ type: 'boolean', default: true })
+  hasPassword!: boolean;
+
   @Column({ type: 'text', nullable: true })
   fullName!: string | null;
 

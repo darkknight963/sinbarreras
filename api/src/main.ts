@@ -4,6 +4,7 @@ import { json, urlencoded } from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -84,6 +85,12 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
+  // No hay infraestructura de migraciones y DB_SYNCHRONIZE puede estar apagado en
+  // producción; sin esta columna los SELECT de TypeORM sobre users fallarían.
+  await app.get(DataSource).query(
+    'ALTER TABLE users ADD COLUMN IF NOT EXISTS "hasPassword" boolean NOT NULL DEFAULT true',
+  );
+
   const port = Number(process.env.PORT || 3000);
   await app.listen(port, '0.0.0.0');
   console.log(`API listening on 0.0.0.0:${port}`);
