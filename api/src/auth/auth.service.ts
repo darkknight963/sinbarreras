@@ -614,7 +614,8 @@ export class AuthService {
       return {
         email: typeof profile.email === 'string' ? profile.email : null,
         fullName: typeof profile.name === 'string' ? profile.name : null,
-        emailVerified: profile.email_verified === true,
+        // El endpoint v2/userinfo devuelve "verified_email"; el claim OIDC es "email_verified".
+        emailVerified: profile.verified_email === true || profile.email_verified === true,
       };
     }
 
