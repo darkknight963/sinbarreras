@@ -8,9 +8,9 @@ export class RegisterDto {
   @MinLength(8)
   password!: string;
 
-  @IsOptional()
   @IsString()
-  fullName?: string;
+  @MinLength(2)
+  fullName!: string;
 
   @IsOptional()
   @IsString()

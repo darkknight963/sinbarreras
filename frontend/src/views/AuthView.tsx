@@ -456,9 +456,11 @@ export function AuthView({
                 {authFormMode === 'register' && (
                   <div className="auth-field-grid">
                     <label className="auth-field grid gap-2">
-                      <span className="auth-field-label">Nombre completo <span className="auth-field-optional">(opcional)</span></span>
+                      <span className="auth-field-label">Nombre completo</span>
                       <input
                         type="text"
+                        required
+                        minLength={2}
                         autoComplete="name"
                         value={authFullName}
                         onChange={(e) => onFullNameChange(e.target.value)}
