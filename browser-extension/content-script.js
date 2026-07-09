@@ -475,6 +475,89 @@
       });
     }
 
+    // --- Calidad de textos alternativos y de enlaces (gap vs axe/ARC) --------
+    // axe solo verifica PRESENCIA de alt/texto; estos checks evalúan si el
+    // texto realmente sirve. Patrones conservadores para evitar falsos positivos.
+    const fileLikeAlt = /\.(jpe?g|png|gif|webp|svg|bmp|ico|tiff?)\s*$/i;
+    const fileNameAlt = /^(dsc|img|image|photo|foto|captura|screenshot|whatsapp image)[-_ ]?\d+/i;
+    const genericAltWords = /^(imagen?|image|img|photo|foto|picture|pic|icono?|icon|banner|untitled|sin titulo)[-_ ]?\d*$/i;
+    const altCounts = new Map();
+    for (const img of Array.from(document.querySelectorAll('img[alt]'))) {
+      if (!isVisible(img)) continue;
+      const altText = (img.getAttribute('alt') || '').trim();
+      if (!altText) continue; // alt vacío = imagen decorativa, uso válido
+      if (fileLikeAlt.test(altText) || fileNameAlt.test(altText)) {
+        push({
+          ruleId: 'suspicious-alt-text',
+          category: 'violation',
+          criterion: '1.1.1',
+          level: 'A',
+          nameEs: 'Texto alternativo no descriptivo',
+          description: 'El texto alternativo "' + altText.slice(0, 60) + '" parece un nombre de archivo y no describe la imagen para el lector de pantalla.',
+          element: img,
+          severity: 'alto',
+          role: 'Redactor UX',
+          suggestedFix: 'Reemplazar el alt por una descripción breve del contenido o función de la imagen; un nombre de archivo no comunica nada al lector de pantalla.',
+        });
+      } else if (genericAltWords.test(altText)) {
+        push({
+          ruleId: 'suspicious-alt-text',
+          category: 'alert',
+          criterion: '1.1.1',
+          level: 'A',
+          nameEs: 'Texto alternativo no descriptivo',
+          description: 'El texto alternativo "' + altText.slice(0, 60) + '" es genérico y probablemente no describe el contenido real de la imagen.',
+          element: img,
+          severity: 'medio',
+          role: 'Redactor UX',
+          suggestedFix: 'Reemplazar el alt genérico por una descripción del contenido específico de la imagen.',
+        });
+      }
+      const altKey = altText.toLowerCase();
+      const altEntry = altCounts.get(altKey) || { srcs: new Set(), first: img, count: 0 };
+      altEntry.count += 1;
+      altEntry.srcs.add(img.getAttribute('src') || '');
+      altCounts.set(altKey, altEntry);
+    }
+
+    // 3+ imágenes con contenido distinto y el mismo alt: indistinguibles.
+    for (const [altKey, altEntry] of altCounts.entries()) {
+      if (altEntry.count < 3 || altEntry.srcs.size < 2) continue;
+      push({
+        ruleId: 'duplicate-alt-text',
+        category: 'alert',
+        criterion: '1.1.1',
+        level: 'A',
+        nameEs: 'Textos alternativos duplicados',
+        description: altEntry.count + ' imágenes distintas comparten el texto alternativo "' + altKey.slice(0, 60) + '"; un usuario de lector de pantalla no puede distinguirlas.',
+        element: altEntry.first,
+        severity: 'medio',
+        role: 'Redactor UX',
+        suggestedFix: 'Dar a cada imagen un alt que describa su contenido específico para que sean distinguibles.',
+      });
+    }
+
+    // Texto de enlace genérico (2.4.4) — solo coincidencia EXACTA, nunca "contiene".
+    const stripAccents = (value) => value.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const genericLinkPhrases = new Set(['click aqui', 'clic aqui', 'haz clic aqui', 'haga clic aqui', 'pincha aqui', 'presione aqui', 'aqui', 'click here', 'here', 'leer mas', 'ver mas', 'mas informacion', 'more', 'read more', 'learn more', 'more info', 'saber mas', 'ver detalle', 'ver detalles', 'detalle', 'detalles', 'link', 'enlace', 'click']);
+    for (const link of Array.from(document.querySelectorAll('a[href]'))) {
+      if (!isVisible(link)) continue;
+      const linkName = stripAccents(accessibleName(link).toLowerCase().trim());
+      if (!linkName || !genericLinkPhrases.has(linkName)) continue;
+      push({
+        ruleId: 'generic-link-text',
+        category: 'alert',
+        criterion: '2.4.4',
+        level: 'A',
+        nameEs: 'Texto de enlace genérico',
+        description: 'El texto del enlace "' + linkName + '" no indica su destino ni propósito fuera de contexto.',
+        element: link,
+        severity: 'medio',
+        role: 'Redactor UX',
+        suggestedFix: 'Reemplazar el texto genérico por el propósito real del enlace, por ejemplo "Descargar reporte anual (PDF)".',
+      });
+    }
+
     // Encabezados duplicados (2.4.6) — regla que axe no tiene (paridad con ARC
     // Toolkit): mismo nivel + mismo texto accesible confunde la navegación por
     // encabezados. Los VACÍOS los detecta axe (empty-heading, confirmada).

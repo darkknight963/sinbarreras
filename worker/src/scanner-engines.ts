@@ -844,6 +844,81 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
       });
     }
 
+    // --- Calidad de textos alternativos y de enlaces (gap vs axe/ARC) --------
+    // axe solo verifica PRESENCIA de alt/texto; estos checks evalúan si el
+    // texto realmente sirve. Patrones conservadores para evitar falsos positivos.
+
+    const fileLikeAlt = /\\.(jpe?g|png|gif|webp|svg|bmp|ico|tiff?)\\s*$/i;
+    const fileNameAlt = /^(dsc|img|image|photo|foto|captura|screenshot|whatsapp image)[-_ ]?\\d+/i;
+    const genericAltWords = /^(imagen?|image|img|photo|foto|picture|pic|icono?|icon|banner|untitled|sin titulo)[-_ ]?\\d*$/i;
+    const altCounts = new Map();
+    for (const img of Array.from(document.querySelectorAll('img[alt]'))) {
+      if (!isVisible(img)) continue;
+      const altText = (img.getAttribute('alt') || '').trim();
+      if (!altText) continue; // alt vacío = imagen decorativa, uso válido
+      if (fileLikeAlt.test(altText) || fileNameAlt.test(altText)) {
+        findings.push({
+          ruleId: 'suspicious-alt-text',
+          description: 'El texto alternativo "' + altText.slice(0, 60) + '" parece un nombre de archivo y no describe la imagen para el lector de pantalla.',
+          selector: getSelector(img),
+          html: img.outerHTML.slice(0, 300),
+          wcagCriterion: '1.1.1',
+          wcagLevel: 'A',
+          category: 'violation',
+        });
+      } else if (genericAltWords.test(altText)) {
+        findings.push({
+          ruleId: 'suspicious-alt-text',
+          description: 'El texto alternativo "' + altText.slice(0, 60) + '" es genérico y probablemente no describe el contenido real de la imagen.',
+          selector: getSelector(img),
+          html: img.outerHTML.slice(0, 300),
+          wcagCriterion: '1.1.1',
+          wcagLevel: 'A',
+          category: 'alert',
+        });
+      }
+      const altKey = altText.toLowerCase();
+      const altEntry = altCounts.get(altKey) || { srcs: new Set(), first: img, count: 0 };
+      altEntry.count += 1;
+      altEntry.srcs.add(img.getAttribute('src') || '');
+      altCounts.set(altKey, altEntry);
+    }
+
+    // 3+ imágenes con contenido distinto y el mismo alt: indistinguibles para
+    // el lector de pantalla. Umbral 3 para no penalizar logos repetidos.
+    for (const [altKey, altEntry] of altCounts.entries()) {
+      if (altEntry.count < 3 || altEntry.srcs.size < 2) continue;
+      findings.push({
+        ruleId: 'duplicate-alt-text',
+        description: altEntry.count + ' imágenes distintas comparten el texto alternativo "' + altKey.slice(0, 60) + '"; un usuario de lector de pantalla no puede distinguirlas.',
+        selector: getSelector(altEntry.first),
+        html: altEntry.first.outerHTML.slice(0, 300),
+        wcagCriterion: '1.1.1',
+        wcagLevel: 'A',
+        category: 'alert',
+      });
+    }
+
+    // Texto de enlace genérico (2.4.4): axe solo exige que el enlace TENGA
+    // nombre; esto detecta nombres que no comunican destino fuera de contexto.
+    // Solo coincidencia EXACTA con frases inequívocas — nunca "contiene".
+    const stripAccents = (value) => value.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
+    const genericLinkPhrases = new Set(['click aqui', 'clic aqui', 'haz clic aqui', 'haga clic aqui', 'pincha aqui', 'presione aqui', 'aqui', 'click here', 'here', 'leer mas', 'ver mas', 'mas informacion', 'more', 'read more', 'learn more', 'more info', 'saber mas', 'ver detalle', 'ver detalles', 'detalle', 'detalles', 'link', 'enlace', 'click']);
+    for (const link of Array.from(document.querySelectorAll('a[href]'))) {
+      if (!isVisible(link)) continue;
+      const linkName = stripAccents(accessibleName(link).toLowerCase().trim());
+      if (!linkName || !genericLinkPhrases.has(linkName)) continue;
+      findings.push({
+        ruleId: 'generic-link-text',
+        description: 'El texto del enlace "' + linkName + '" no indica su destino ni propósito fuera de contexto.',
+        selector: getSelector(link),
+        html: link.outerHTML.slice(0, 300),
+        wcagCriterion: '2.4.4',
+        wcagLevel: 'A',
+        category: 'alert',
+      });
+    }
+
     for (const item of Array.from(document.querySelectorAll('li'))) {
       if (!isVisible(item) || item.getAttribute('aria-hidden') === 'true') continue;
       if (textOf(item) || item.querySelector(interactiveSelector)) continue;
@@ -1362,6 +1437,8 @@ export async function enrichAndCapture(page: Page, grouped: GroupedFinding[]) {
       selector,
       screenshotUrl,
       suggestedFix,
+      fixScope: ruleDetails.fixScope,
+      fixExample: ruleDetails.fixExample,
       resolutionArticle,
       wcagUrl: ruleDetails.wcagUrl,
       detectedBy: finding.tools,

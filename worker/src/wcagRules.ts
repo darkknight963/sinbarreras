@@ -284,6 +284,75 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
     suggestedFix: 'Asignar ids únicos en toda la página incluyendo componentes reutilizables. Actualizar todos los for, aria-labelledby, aria-controls, aria-describedby que referencian el id duplicado.'
   },
+  'focus-order-mismatch': {
+    criterion: '2.4.3',
+    nameEs: 'Orden del foco no coincide con el orden visual',
+    level: 'A',
+    disability: ['Fisica', 'Sensorial visual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 2.4.3',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'La secuencia de tabulación salta de forma incoherente respecto al orden visual de la página, desorientando a quien navega con teclado. Reordenar los elementos en el DOM para que sigan el orden visual, o eliminar tabindex positivos que alteran la secuencia natural.',
+    fixExample: `<!-- Antes: tabindex positivos fuerzan un orden artificial -->
+<input tabindex="3" ...>
+<input tabindex="1" ...>
+<input tabindex="2" ...>
+
+<!-- Después: orden natural del DOM = orden visual -->
+<input ...>
+<input ...>
+<input ...>`
+  },
+  'suspicious-alt-text': {
+    criterion: '1.1.1',
+    nameEs: 'Texto alternativo no descriptivo',
+    level: 'A',
+    disability: ['Sensorial visual'],
+    role: 'Redactor UX',
+    resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
+    suggestedFix: 'Reemplazar el texto alternativo por una descripción breve del contenido o función de la imagen. Un nombre de archivo o palabra genérica no comunica nada al lector de pantalla.',
+    fixExample: `<!-- Antes: alt inservible -->
+<img src="dsc_00123.jpg" alt="IMG_00123.jpg">
+
+<!-- Después: describe el contenido -->
+<img src="dsc_00123.jpg" alt="Equipo de atención al cliente en la oficina de Lima">`
+  },
+  'duplicate-alt-text': {
+    criterion: '1.1.1',
+    nameEs: 'Textos alternativos duplicados',
+    level: 'A',
+    disability: ['Sensorial visual'],
+    role: 'Redactor UX',
+    resolutionArticle: 'Anexo 1 - Criterio 1.1.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Varias imágenes distintas comparten el mismo texto alternativo: quien usa lector de pantalla no puede distinguirlas. Dar a cada imagen un alt que describa su contenido específico.',
+    fixExample: `<!-- Antes: indistinguibles -->
+<img src="prod-a.jpg" alt="producto">
+<img src="prod-b.jpg" alt="producto">
+
+<!-- Después -->
+<img src="prod-a.jpg" alt="Zapatilla urbana blanca talla 40">
+<img src="prod-b.jpg" alt="Mochila impermeable azul de 20 litros">`
+  },
+  'generic-link-text': {
+    criterion: '2.4.4',
+    nameEs: 'Texto de enlace genérico',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Redactor UX',
+    resolutionArticle: 'Anexo 1 - Criterio 2.4.4',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'El texto del enlace debe indicar su destino sin depender del texto circundante: los usuarios de lector de pantalla navegan por listas de enlaces fuera de contexto. Reemplazar "click aquí" / "ver más" por el propósito real.',
+    fixExample: `<!-- Antes -->
+<a href="/reporte-2026.pdf">Click aquí</a>
+
+<!-- Después -->
+<a href="/reporte-2026.pdf">Descargar reporte anual 2026 (PDF)</a>`
+  },
   'landmark-main-missing': {
     criterion: '2.4.1',
     nameEs: 'Evitar bloques (main landmark)',
@@ -903,6 +972,10 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id === 'landmark-main-missing') return 'landmark-main-missing';
   if (id === 'landmark-nav-missing') return 'landmark-nav-missing';
   if (id === 'bypass-missing') return 'bypass-missing';
+  if (id === 'suspicious-alt-text') return 'suspicious-alt-text';
+  if (id === 'duplicate-alt-text') return 'duplicate-alt-text';
+  if (id === 'generic-link-text') return 'generic-link-text';
+  if (id === 'focus-order-mismatch') return 'focus-order-mismatch';
   if (id === 'aria-allowed-attr' || id === 'aria-prohibited-attr') return 'aria-allowed-attr';
   if (id === 'aria-roles' || id === 'aria-required-attr' || id === 'aria-conditional-attr') return 'aria-roles';
   if (id === 'autocomplete-missing' || id === 'autocomplete-valid') return 'autocomplete-missing';

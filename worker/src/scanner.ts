@@ -23,6 +23,8 @@ import {
   groupFindings,
   isSpecificCriterion,
 } from './scanner-utils.js';
+import { getRuleDetails } from './wcagRules.js';
+import { resolveStatusLabel } from './scanner-utils.js';
 
 export * from './scanner-models.js';
 export * from './scanner-utils.js';
@@ -297,6 +299,49 @@ export async function scanUrl(url: string, options: {
     }
     const focusTraversal = await captureFocusTraversal(page);
     const semanticStructure = await captureSemanticStructure(page);
+
+    // Promover a hallazgo WCAG 2.4.3 los saltos visuales del tab-walk cuando
+    // forman un patrón (3+): 1-2 saltos pueden ser peculiaridades de layout,
+    // pero un patrón repetido indica orden de foco incoherente. Este check
+    // casi ninguna herramienta lo automatiza; el tab-walk ya trae los datos.
+    const focusJumpSteps = (focusTraversal?.steps || []).filter(
+      (step) => step.status === 'error' && step.issue.includes('salto visual'),
+    );
+    if (focusJumpSteps.length >= 3) {
+      const focusRule = getRuleDetails('focus-order-mismatch');
+      const focusStatus = focusRule.findingStatus || 'needs_review';
+      formattedViolations.push({
+        ruleId: 'focus-order-mismatch',
+        normalizedRuleId: 'focus-order-mismatch',
+        sourceCategory: 'alert',
+        wcagCriterion: focusRule.criterion,
+        wcagLevel: focusRule.level,
+        criterion: focusRule.criterion,
+        nameEs: focusRule.nameEs,
+        level: focusRule.level,
+        disability: focusRule.disability,
+        role: focusRule.role,
+        severity: 'alto',
+        findingStatus: focusStatus,
+        status: focusStatus,
+        statusLabel: resolveStatusLabel(focusStatus),
+        pageState: 'initial',
+        pageStateLabel: 'Estado inicial',
+        description: `El recorrido con Tab presenta ${focusJumpSteps.length} saltos visuales incoherentes (el foco retrocede o cruza la página de forma inesperada), desorientando a quien navega con teclado.`,
+        elementHtml: focusJumpSteps[0]?.elementHtml || '',
+        selector: focusJumpSteps[0]?.selector || 'body',
+        screenshotUrl: focusTraversal?.screenshotUrl || fallbackScreenshotUrl || '',
+        suggestedFix: focusRule.suggestedFix,
+        fixScope: focusRule.fixScope,
+        fixExample: focusRule.fixExample,
+        resolutionArticle: focusRule.resolutionArticle,
+        wcagUrl: focusRule.wcagUrl,
+        detectedBy: ['heuristic-dom'],
+        rootCauseKey: 'focus-order-mismatch',
+        affectedElements: focusJumpSteps.map((step) => step.selector),
+        affectedHtmlSamples: focusJumpSteps.map((step) => step.elementHtml).filter(Boolean),
+      });
+    }
 
     const failedCriterionIds = new Set(
       formattedViolations
