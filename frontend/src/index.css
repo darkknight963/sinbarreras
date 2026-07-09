@@ -4139,6 +4139,11 @@ html body .scan-launch-grid {
   font-weight: 800;
 }
 
+.auth-field-optional {
+  color: var(--sb-text-muted);
+  font-weight: 500;
+}
+
 .auth-input-shell {
   position: relative;
 }

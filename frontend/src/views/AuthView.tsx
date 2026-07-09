@@ -440,7 +440,7 @@ export function AuthView({
                       value={authPassword}
                       onChange={(e) => onPasswordChange(e.target.value)}
                       className="auth-input auth-input-password"
-                      placeholder="********"
+                      placeholder={authFormMode === 'register' ? 'Mínimo 8 caracteres' : '********'}
                     />
                     <button
                       type="button"
@@ -456,7 +456,7 @@ export function AuthView({
                 {authFormMode === 'register' && (
                   <div className="auth-field-grid">
                     <label className="auth-field grid gap-2">
-                      <span className="auth-field-label">Nombre completo</span>
+                      <span className="auth-field-label">Nombre completo <span className="auth-field-optional">(opcional)</span></span>
                       <input
                         type="text"
                         autoComplete="name"
@@ -467,7 +467,7 @@ export function AuthView({
                       />
                     </label>
                     <label className="auth-field grid gap-2">
-                      <span className="auth-field-label">Empresa</span>
+                      <span className="auth-field-label">Empresa <span className="auth-field-optional">(opcional)</span></span>
                       <input
                         type="text"
                         autoComplete="organization"
