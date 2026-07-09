@@ -1580,7 +1580,9 @@ export default function App() {
   const averageScore = completedScores.length > 0
     ? Math.round(completedScores.reduce((sum, score) => sum + score, 0) / completedScores.length)
     : 0;
-  const projectsAtRisk = latestScans.filter((scan) => (scan.globalScore ?? 0) < 50).length;
+  // Solo scans con score real: cancelados/fallidos/pendientes tienen globalScore
+  // null y no deben contarse como riesgo critico.
+  const projectsAtRisk = latestScans.filter((scan) => typeof scan.globalScore === 'number' && scan.globalScore < 50).length;
   const runningAnalyses = latestScans.filter(isScanInProgress).length;
   const parsedNewScanUrls = parseScanUrls(newScanUrls);
   const applicabilityRows = useMemo(
