@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useConfirm } from '../components/ConfirmDialog';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -109,6 +110,7 @@ const actionButtonClass =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60';
 
 export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
+  const { confirm, ConfirmDialogElement } = useConfirm();
   const pageSize = 10;
   const [activeTab, setActiveTab] = useState<'users' | 'complaints' | 'logs'>('users');
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -354,7 +356,12 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
   };
 
   const handleDeleteUser = async (user: AdminUser) => {
-    const confirmed = window.confirm(`Eliminar al usuario ${user.email}? Esta accion no se puede deshacer.`);
+    const confirmed = await confirm({
+      title: 'Eliminar usuario',
+      message: `¿Eliminar al usuario ${user.email}? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
     if (!confirmed) return;
 
     setSavingKey(`delete-user-${user.id}`);
@@ -401,7 +408,12 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
   };
 
   const handleDeleteComplaint = async (complaint: Complaint) => {
-    const confirmed = window.confirm(`Eliminar el reclamo de ${complaint.fullName}? Esta accion no se puede deshacer.`);
+    const confirmed = await confirm({
+      title: 'Eliminar reclamo',
+      message: `¿Eliminar el reclamo de ${complaint.fullName}? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
     if (!confirmed) return;
 
     setSavingKey(`delete-complaint-${complaint.id}`);
@@ -975,6 +987,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
           })}
         </div>
       )}
+      {ConfirmDialogElement}
     </div>
   );
 }

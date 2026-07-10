@@ -15,6 +15,7 @@ import type { BillingCurrency, BillingPlan, BillingState } from './billing';
 import { AuthView } from './views/AuthView';
 import { CulqiCheckoutModal } from './CulqiCheckoutModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
+import { useConfirm } from './components/ConfirmDialog';
 import { apiUrl, fetchWithFallback, readApiErrorMessage, normalizeApiErrorDetail, readApiJson } from './lib/api';
 import { parseScanUrls, canonicalizePlanUrl, isScanInProgress, getProjectReservedFreeUrl } from './lib/scanUtils';
 const BillingView = lazy(() => import('./BillingView').then(m => ({ default: m.BillingView })));
@@ -44,6 +45,7 @@ type AuthUser = {
 };
 
 export default function App() {
+  const { confirm, ConfirmDialogElement } = useConfirm();
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentScan, setCurrentScan] = useState<Scan | null>(null);
@@ -927,7 +929,12 @@ export default function App() {
 
   const handleDeleteProject = async (project: Project, event: React.MouseEvent) => {
     event.stopPropagation();
-    const confirmed = window.confirm(`¿Eliminar el proyecto "${project.name}" y todos sus análisis?`);
+    const confirmed = await confirm({
+      title: 'Eliminar proyecto',
+      message: `¿Eliminar el proyecto "${project.name}" y todos sus análisis? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
     if (!confirmed) return;
 
     try {
@@ -990,7 +997,12 @@ export default function App() {
         : scan.scanMode === 'profundo'
           ? 'análisis profundo de accesibilidad'
           : 'Escaneando sitio: Verificando estándares de accesibilidad...';
-    const confirmed = window.confirm(`¿Eliminar este ${scanModeLabel} del historial?`);
+    const confirmed = await confirm({
+      title: 'Eliminar análisis',
+      message: `¿Eliminar este ${scanModeLabel} del historial? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
     if (!confirmed) return;
 
     try {
@@ -1181,7 +1193,14 @@ export default function App() {
   };
 
   const handleBillingCancel = async () => {
-    if (!window.confirm('¿Seguro que deseas cancelar tu suscripción? Mantendrás el acceso hasta el final del período actual.')) return;
+    const confirmed = await confirm({
+      title: 'Cancelar suscripción',
+      message: 'Mantendrás el acceso hasta el final del período actual. Después de esa fecha volverás al plan Free.',
+      confirmLabel: 'Cancelar suscripción',
+      cancelLabel: 'Volver',
+      danger: true,
+    });
+    if (!confirmed) return;
     try {
       const res = await fetchWithFallback('/billing/cancel', { method: 'POST' });
       if (!res.ok) throw new Error(await readApiErrorMessage(res));
@@ -1975,6 +1994,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {ConfirmDialogElement}
     </div>
     </AppErrorBoundary>
   );

@@ -1098,6 +1098,70 @@ select {
   transition: all 150ms ease;
 }
 
+.confirm-dialog {
+  max-width: 420px;
+  padding: 24px;
+}
+
+.confirm-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.confirm-dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.confirm-dialog-icon-danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.confirm-dialog-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--sb-text-strong, #0f172a);
+}
+
+.confirm-dialog-message {
+  margin: 0 0 20px;
+  color: var(--sb-text-muted, #64748b);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-dialog-danger-btn {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.confirm-dialog-danger-btn:hover {
+  background: #b91c1c;
+}
+
 .report-modal-close:hover {
   border-color: #002C76;
   color: #002C76;
