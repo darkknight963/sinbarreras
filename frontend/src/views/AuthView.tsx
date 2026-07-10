@@ -239,7 +239,7 @@ export function AuthView({
                 <div><span>Aplican</span><strong>55</strong></div>
                 <div><span>Cumplen</span><strong className="auth-preview-good">43</strong></div>
                 <div><span>Fallan</span><strong className="auth-preview-bad">8</strong></div>
-                <div><span>Revision</span><strong className="auth-preview-warn">4</strong></div>
+                <div><span>Revisión</span><strong className="auth-preview-warn">4</strong></div>
               </section>
 
               <div className="auth-report-preview-section-title">Resultados agrupados por problema</div>

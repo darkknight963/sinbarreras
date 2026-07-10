@@ -828,7 +828,7 @@ const getFindingStatusSummaryItems = (findings: any[] = []) => {
 
 const getPrimaryFindingMessage = (finding: any, fallback?: string) => {
   const parts = splitReportText(finding?.description || finding?.nameEs || finding?.ruleId || fallback);
-  return parts[0] || finding?.nameEs || finding?.ruleId || fallback || 'Hallazgo sin descripcion';
+  return parts[0] || finding?.nameEs || finding?.ruleId || fallback || 'Hallazgo sin descripción';
 };
 
 const stripFindingStatePrefix = (value: string) =>

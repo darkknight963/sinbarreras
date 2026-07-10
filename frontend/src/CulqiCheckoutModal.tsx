@@ -60,6 +60,18 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
     };
   }, [onToken]);
 
+  // Cierre con Escape (paridad con el click en el overlay). No se permite
+  // mientras el pago está procesándose para no interrumpir la suscripción.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && status !== 'processing') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [status, onClose]);
+
   const openCulqiForm = () => {
     if (!window.Culqi) {
       setStatus('error');
@@ -95,6 +107,9 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="culqi-checkout-title"
         style={{
           background: '#fff', borderRadius: 16, padding: '2rem',
           width: '100%', maxWidth: 420, position: 'relative',
@@ -114,7 +129,7 @@ export function CulqiCheckoutModal({ plan, userEmail, onToken, onClose }: Props)
           <X className="h-5 w-5" />
         </button>
 
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.25rem', color: '#0f172a' }}>
+        <h2 id="culqi-checkout-title" style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.25rem', color: '#0f172a' }}>
           Activar Plan Pro
         </h2>
         <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1.5rem' }}>

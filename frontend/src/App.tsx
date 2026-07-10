@@ -334,6 +334,21 @@ export default function App() {
   // sin ingresar la actual (la sesión activa ya acredita al titular).
   const needsPasswordSetup = currentUser?.hasPassword === false;
 
+  // Cerrar el modal de contraseña con Escape (criterio 2.1.2).
+  useEffect(() => {
+    if (!showPasswordModal) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setShowPasswordModal(false);
+      setPasswordMessage(null);
+      setCurrentPassword('');
+      setNextPassword('');
+      setConfirmPassword('');
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showPasswordModal]);
+
   const handleChangePasswordSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setPasswordMessage(null);

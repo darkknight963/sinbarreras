@@ -120,6 +120,21 @@ export function ProjectsView({
     setNewProjectDescription('');
   }, [showCreateProject]);
 
+  // Cerrar con Escape los modales de crear/editar proyecto (criterio 2.1.2).
+  useEffect(() => {
+    if (!showCreateProject && !editingProject) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (editingProject) {
+        onCloseEditProject();
+      } else {
+        onCloseCreateProject();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showCreateProject, editingProject, onCloseCreateProject, onCloseEditProject]);
+
   const closeCreateProject = () => {
     onCloseCreateProject();
   };
