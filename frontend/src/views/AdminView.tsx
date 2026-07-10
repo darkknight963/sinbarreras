@@ -467,9 +467,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
     <div className="report-surface project-overview-surface page-entrance">
       <div className="project-overview-header">
         <div>
-          <span className="project-overview-kicker">Administracion</span>
+          <span className="project-overview-kicker">Administración</span>
           <h2 className="text-2xl font-bold text-white">Panel maestro</h2>
-          <p className="text-slate-800 text-sm">Usuarios, libro de reclamaciones y bitacora de acciones sensibles.</p>
+          <p className="text-slate-800 text-sm">Usuarios, libro de reclamaciones y bitácora de acciones sensibles.</p>
         </div>
         <button type="button" className="report-ghost-btn" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
@@ -484,7 +484,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
           </div>
           <span>Usuarios</span>
           <strong>{usersTotal}</strong>
-          <small>activos e inactivos</small>
+          <small>cuentas registradas</small>
         </div>
         <div className="project-summary-card">
           <div className="project-summary-icon project-summary-icon-risk" aria-hidden="true">
@@ -512,7 +512,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
 
       <div className="project-list-toolbar admin-toolbar-stack">
         <div className="min-w-0 admin-toolbar-copy-block">
-          <h3>Operacion</h3>
+          <h3>Operación</h3>
           <p className="admin-toolbar-copy">Los roles administrativos son internos de plataforma o de cuenta; no equivalen al plan Pro del cliente.</p>
         </div>
         <div className="project-filter-tabs" role="group" aria-label="Secciones de administracion">
@@ -548,7 +548,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 </div>
                 <div className="project-card-main-copy">
                   <h3 className="font-bold text-lg text-gob-dark">Usuarios registrados</h3>
-                  <p className="text-slate-500 text-sm">El listado es el centro operativo. Edita solo cuando detectes un cambio real.</p>
+                  <p className="text-slate-500 text-sm">Administra las cuentas de la plataforma: rol, estado y plan de cada usuario.</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -818,7 +818,7 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               </div>
               <div className="project-card-main-copy">
                 <h3 className="font-bold text-lg text-gob-dark">Libro de reclamaciones</h3>
-                <p className="text-slate-500 text-sm">Los cambios de estado siguen siendo visibles, pero la accion destructiva queda claramente separada.</p>
+                <p className="text-slate-500 text-sm">Gestiona los reclamos y quejas registrados por los usuarios de la plataforma.</p>
               </div>
             </div>
             <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -826,6 +826,13 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
             </div>
           </div>
 
+          {complaints.length === 0 ? (
+            <div className="mt-6 flex flex-col items-center gap-2 py-10 text-center">
+              <AlertTriangle className="h-8 w-8 text-slate-300" aria-hidden="true" />
+              <p className="font-semibold text-slate-600">Sin reclamos registrados</p>
+              <p className="text-sm text-slate-500">Cuando un usuario registre un reclamo o queja en el Libro de Reclamaciones, aparecerá aquí.</p>
+            </div>
+          ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="auth-report-preview-table">
               <thead>
@@ -876,8 +883,9 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
               </tbody>
             </table>
           </div>
+          )}
 
-          {renderPagination('reclamos', complaintsPage, complaintsTotalPages, complaintsTotal, (page) => {
+          {complaints.length > 0 && renderPagination('reclamos', complaintsPage, complaintsTotalPages, complaintsTotal, (page) => {
             void loadData({ users: usersPage, complaints: page, logs: logsPage });
           })}
 
@@ -927,8 +935,8 @@ export function AdminView({ onBack, fetchWithAuth }: AdminViewProps) {
                 <Clock3 className="h-6 w-6 text-gob-blue" />
               </div>
               <div className="project-card-main-copy">
-                <h3 className="font-bold text-lg text-gob-dark">Bitacora de acciones</h3>
-                <p className="text-slate-500 text-sm">Trazabilidad de cambios sensibles con menos ruido visual y foco en lectura rapida.</p>
+                <h3 className="font-bold text-lg text-gob-dark">Bitácora de acciones</h3>
+                <p className="text-slate-500 text-sm">Registro de las acciones administrativas sensibles: quién hizo qué y cuándo.</p>
               </div>
             </div>
             <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">

@@ -264,7 +264,8 @@ describe('App project creation experience', () => {
     expect(screen.getByText('Total de proyectos')).toBeInTheDocument()
     expect(screen.getByText('Cumplimiento global')).toBeInTheDocument()
     expect(screen.getByText('En riesgo')).toBeInTheDocument()
-    expect(screen.getByText('Completando análisis')).toBeInTheDocument()
+    // Sin escaneos corriendo, el tile muestra el último análisis realizado.
+    expect(screen.getByText('Último análisis')).toBeInTheDocument()
     expect(screen.getAllByText('82/100').length).toBeGreaterThanOrEqual(1)
   })
 

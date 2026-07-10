@@ -183,7 +183,8 @@ export function ProjectsView({
           <small>{projectsAtRisk === 0 ? 'sin alertas críticas' : 'errores críticos'}</small>
         </div>
         <div className="project-summary-card project-summary-running">
-          <span>Completando análisis</span>
+          {/* "Completando" solo cuando hay escaneos corriendo; si no, es el último realizado. */}
+          <span>{runningAnalyses > 0 ? 'Completando análisis' : 'Último análisis'}</span>
           <div className="project-summary-icon project-summary-icon-running" aria-hidden="true">
             <Clock3 className="h-5 w-5" />
           </div>

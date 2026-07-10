@@ -3,6 +3,8 @@ import {
   CheckCircle,
   X,
   ChevronDown,
+  Eye,
+  EyeOff,
   KeyRound,
   LogOut,
   UserRound,
@@ -58,6 +60,7 @@ export default function App() {
   const [guestSubmitting, setGuestSubmitting] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPasswordText, setShowPasswordText] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1622,6 +1625,7 @@ export default function App() {
                         onClick={() => {
                           setShowAccountMenu(false);
                           setPasswordMessage(null);
+                          setShowPasswordText(false);
                           setShowPasswordModal(true);
                         }}
                       >
@@ -1895,21 +1899,31 @@ export default function App() {
                   </label>
                 )}
                 <label className="account-modal-field">
-                  <span>Nueva contraseña</span>
-                  <input
-                    type="password"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    className="create-project-control"
-                    value={nextPassword}
-                    onChange={(event) => setNextPassword(event.target.value)}
-                  />
+                  <span>Nueva contraseña (mínimo 8 caracteres)</span>
+                  <div className="auth-input-shell relative">
+                    <input
+                      type={showPasswordText ? 'text' : 'password'}
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      className="create-project-control auth-input-password"
+                      value={nextPassword}
+                      onChange={(event) => setNextPassword(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="auth-input-icon hover:text-slate-900 transition-colors"
+                      onClick={() => setShowPasswordText(!showPasswordText)}
+                      aria-label={showPasswordText ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    >
+                      {showPasswordText ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                    </button>
+                  </div>
                 </label>
                 <label className="account-modal-field">
                   <span>Confirmar contraseña</span>
                   <input
-                    type="password"
+                    type={showPasswordText ? 'text' : 'password'}
                     required
                     minLength={8}
                     autoComplete="new-password"

@@ -906,8 +906,9 @@ select {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  /* 44px: objetivo tactil minimo (mismo criterio target-size que audita el scanner) */
+  width: 44px;
+  height: 44px;
   border: 1px solid #fecaca;
   border-radius: 9px;
   background: #fff5f5;
@@ -922,8 +923,9 @@ select {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  /* 44px: objetivo tactil minimo (mismo criterio target-size que audita el scanner) */
+  width: 44px;
+  height: 44px;
   border: 1px solid #cbd5e1;
   border-radius: 9px;
   background: #ffffff;
