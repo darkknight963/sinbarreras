@@ -23,6 +23,8 @@ interface PdfFinding {
   description?: string;
   selector?: string;
   suggestedFix?: string;
+  fixScope?: string;
+  fixExample?: string;
   resolutionArticle?: string;
   elementHtml?: string;
   findingStatus?: string;
@@ -398,11 +400,18 @@ export class PdfService {
     const selectorText = `Selector CSS: ${finding.selector ?? '-'}`;
     const htmlSample = finding.elementHtml ? String(finding.elementHtml).slice(0, 300) : null;
     const htmlText = htmlSample ? `HTML afectado: ${htmlSample}` : null;
-    const fixText = `Solución: ${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`;
+    // Alineado con el reporte web: nota de corrección única para reglas
+    // page-level y ejemplo genérico cuando no hay snippet sobre el HTML real.
+    const pageScopeNote = finding.fixScope === 'page'
+      ? 'Corrección única a nivel de página (un solo cambio resuelve todos los elementos de este grupo). '
+      : '';
+    const fixText = `Solución: ${pageScopeNote}${finding.suggestedFix ?? 'Revisar y corregir según el criterio WCAG indicado.'}`;
     const snippet = buildCorrectedSnippet(finding);
     const snippetText = snippet
       ? `Código sugerido: ${snippet.code.slice(0, 300)}${snippet.note ? ` — ${snippet.note}` : ''}`
-      : null;
+      : finding.fixExample
+        ? `Ejemplo de corrección (adaptar a su código): ${String(finding.fixExample).slice(0, 300)}`
+        : null;
     const refText = `Referencia: ${finding.resolutionArticle ?? '-'}`;
 
     doc.fontSize(10).font('Helvetica-Bold');

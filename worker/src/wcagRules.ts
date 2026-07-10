@@ -114,7 +114,13 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.1.1',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-page.html',
+    fixScope: 'page',
+    fixExample: `<!-- Antes -->
+<html>
+
+<!-- Después -->
+<html lang="es-PE">`
   },
   'valid-lang': {
     criterion: '3.1.2',
@@ -123,7 +129,9 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Compartido',
     resolutionArticle: 'Anexo 1 - Criterio 3.1.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-parts.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/language-of-parts.html',
+    fixExample: `<!-- Fragmento en otro idioma marcado con su lang propio -->
+<p>El plazo vence el viernes. <span lang="en">Deadline: Friday</span>.</p>`
   },
   'bypass': {
     criterion: '2.4.1',
@@ -260,7 +268,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    findingStatus: 'confirmed'
+    findingStatus: 'confirmed',
+    fixExample: `<!-- Antes: botón solo con icono, sin nombre -->
+<button><svg>...</svg></button>
+
+<!-- Después -->
+<button aria-label="Buscar expediente"><svg aria-hidden="true">...</svg></button>`
   },
   'input-name-missing': {
     criterion: '4.1.2',
@@ -270,7 +283,13 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    findingStatus: 'confirmed'
+    findingStatus: 'confirmed',
+    fixExample: `<!-- Antes -->
+<input type="text" name="dni" placeholder="DNI">
+
+<!-- Después: el placeholder no reemplaza al label -->
+<label for="dni">Número de DNI</label>
+<input type="text" id="dni" name="dni">`
   },
   'link-name-missing': {
     criterion: '2.4.4',
@@ -280,7 +299,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Redactor UX',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.4',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html',
-    findingStatus: 'confirmed'
+    findingStatus: 'confirmed',
+    fixExample: `<!-- Antes: enlace sin texto perceptible -->
+<a href="/descargar"><img src="pdf.png" alt=""></a>
+
+<!-- Después -->
+<a href="/descargar"><img src="pdf.png" alt="Descargar formulario en PDF"></a>`
   },
   'link-href-missing': {
     criterion: '2.1.1',
@@ -290,7 +314,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.1.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html',
-    findingStatus: 'needs_review'
+    findingStatus: 'needs_review',
+    fixExample: `<!-- Antes: parece interactivo pero no navega ni es operable -->
+<a onclick="guardar()">Guardar</a>
+
+<!-- Después: acción sin navegación = button -->
+<button type="button" onclick="guardar()">Guardar</button>`
   },
   'target-size': {
     criterion: '2.5.8',
@@ -449,7 +478,16 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.3.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html',
+    fixExample: `<!-- Antes: dos labels compiten por el mismo campo -->
+<label for="tel">Teléfono</label>
+<label for="tel">Celular de contacto</label>
+<input id="tel">
+
+<!-- Después: un label; el texto extra pasa a aria-describedby -->
+<label for="tel">Teléfono</label>
+<input id="tel" aria-describedby="tel-ayuda">
+<span id="tel-ayuda">Celular de contacto, 9 dígitos</span>`
   },
   'label-empty-text': {
     criterion: '3.3.2',
@@ -458,7 +496,14 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 3.3.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html',
+    fixExample: `<!-- Antes: label vacío asociado al campo -->
+<label for="obs"></label>
+<textarea id="obs"></textarea>
+
+<!-- Después -->
+<label for="obs">Observaciones</label>
+<textarea id="obs"></textarea>`
   },
   'autocomplete-missing': {
     criterion: '1.3.5',
@@ -467,7 +512,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Sensorial visual', 'Intelectual'],
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.5',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/identify-input-purpose.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/identify-input-purpose.html',
+    fixExample: `<!-- Tokens autocomplete según el dato solicitado -->
+<input name="nombre" autocomplete="given-name">
+<input name="apellidos" autocomplete="family-name">
+<input name="correo" type="email" autocomplete="email">
+<input name="telefono" type="tel" autocomplete="tel">`
   },
   'required-html5-indicator': {
     criterion: '3.3.2',
@@ -476,7 +526,11 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     disability: ['Intelectual', 'Sensorial visual'],
     role: 'Compartido',
     resolutionArticle: 'Anexo 1 - Criterio 3.3.2',
-    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html'
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html',
+    fixExample: `<!-- Indicación visible + programática de campo obligatorio -->
+<label for="correo">Correo electrónico <span aria-hidden="true">*</span></label>
+<input id="correo" type="email" required aria-required="true">
+<p>Los campos marcados con * son obligatorios.</p>`
   },
   'contrast-image-background-undetermined': {
     criterion: '1.4.3',
@@ -486,7 +540,13 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Diseñador UX/UI',
     resolutionArticle: 'Anexo 1 - Criterio 1.4.3',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html',
-    findingStatus: 'needs_review'
+    findingStatus: 'needs_review',
+    fixExample: `/* Texto sobre imagen: agregar capa que garantice el contraste */
+.hero-texto {
+  background: rgba(0, 0, 0, 0.6); /* velo oscuro bajo el texto */
+  color: #ffffff;
+  padding: 12px 16px;
+}`
   },
   'h1-in-header': {
     criterion: '2.4.1',
@@ -496,7 +556,15 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 2.4.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks.html',
-    findingStatus: 'needs_review'
+    findingStatus: 'needs_review',
+    fixScope: 'page',
+    fixExample: `<!-- Antes: la marca repetida usa el h1 -->
+<header><h1>Sin Barreras</h1></header>
+<main><h2>Mesa de partes digital</h2></main>
+
+<!-- Después: el h1 describe el contenido único de la página -->
+<header><p class="logo">Sin Barreras</p></header>
+<main><h1>Mesa de partes digital</h1></main>`
   },
   'empty-heading': {
     criterion: '2.4.6',
@@ -537,7 +605,18 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/meaningful-sequence.html',
-    findingStatus: 'confirmed'
+    findingStatus: 'confirmed',
+    fixExample: `<!-- Mientras el modal esté abierto, el fondo debe quedar inerte -->
+<main id="contenido" inert>
+  ...página de fondo (inalcanzable con Tab y lector de pantalla)...
+</main>
+<div role="dialog" aria-modal="true" aria-labelledby="titulo-modal">
+  <h2 id="titulo-modal">Mesa de Partes</h2>
+  ...
+</div>
+
+// Al abrir:  document.getElementById('contenido').setAttribute('inert', '');
+// Al cerrar: document.getElementById('contenido').removeAttribute('inert');`
   },
   'empty-list-item': {
     criterion: '1.3.1',
@@ -547,7 +626,19 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
-    findingStatus: 'needs_review'
+    findingStatus: 'needs_review',
+    fixExample: `<!-- Antes: li vacío usado como separador -->
+<ul>
+  <li>Inicio</li>
+  <li></li>
+  <li>Contacto</li>
+</ul>
+
+<!-- Después: la separación se hace con CSS, no con elementos vacíos -->
+<ul>
+  <li>Inicio</li>
+  <li class="con-separador">Contacto</li>
+</ul>`
   },
   'aria-required-owned-element': {
     criterion: '4.1.2',
@@ -557,7 +648,16 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    findingStatus: 'confirmed'
+    findingStatus: 'confirmed',
+    fixExample: `<!-- Antes: rol compuesto sin los hijos que exige -->
+<div role="listbox">
+  <div>Opción A</div>
+</div>
+
+<!-- Después -->
+<div role="listbox" aria-label="Departamentos">
+  <div role="option">Opción A</div>
+</div>`
   },
   'aria-widget-name-missing': {
     criterion: '4.1.2',
@@ -567,7 +667,12 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 4.1.2',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
-    findingStatus: 'confirmed'
+    findingStatus: 'confirmed',
+    fixExample: `<!-- Antes: widget sin nombre accesible -->
+<div role="tablist">...</div>
+
+<!-- Después -->
+<div role="tablist" aria-label="Secciones del expediente">...</div>`
   },
   'table-purpose-review': {
     criterion: '1.3.1',
@@ -577,7 +682,16 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
     role: 'Desarrollador',
     resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
     wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
-    findingStatus: 'needs_review'
+    findingStatus: 'needs_review',
+    fixExample: `<!-- Tabla de DATOS: estructura semántica completa -->
+<table>
+  <caption>Documentos presentados</caption>
+  <tr><th scope="col">Documento</th><th scope="col">Fecha</th></tr>
+  <tr><td>Solicitud</td><td>10/07/2026</td></tr>
+</table>
+
+<!-- Tabla de MAQUETACIÓN: marcarla como presentacional o migrar a CSS -->
+<table role="presentation">...</table>`
   },
   'title-non-interactive': {
     criterion: '3.3.2',

@@ -210,6 +210,12 @@ export class ExcelService {
       const status = this.findingStatus(v);
       const result = status === 'confirmed' ? 'Falla' : this.isReviewFinding(v) ? 'Requiere revision' : 'Cumple';
       const snippet = buildCorrectedSnippet(v);
+      // Alineado con el reporte web: nota page-level y ejemplo genérico como
+      // respaldo cuando no hay snippet construido sobre el HTML real.
+      const pageScopeNote = (v as Record<string, unknown>).fixScope === 'page'
+        ? 'Corrección única a nivel de página (un solo cambio resuelve todos los elementos). '
+        : '';
+      const fixExample = (v as Record<string, unknown>).fixExample;
       const vRow = sheet.addRow({
         url: v.url,
         criterion: v.criterion,
@@ -223,8 +229,12 @@ export class ExcelService {
         description: this.cleanDescription(v.description),
         elementHtml: v.elementHtml,
         selector: v.selector,
-        suggestedFix: v.suggestedFix,
-        correctedSnippet: snippet ? `${snippet.code}${snippet.note ? `\n${snippet.note}` : ''}` : '',
+        suggestedFix: `${pageScopeNote}${v.suggestedFix ?? ''}`,
+        correctedSnippet: snippet
+          ? `${snippet.code}${snippet.note ? `\n${snippet.note}` : ''}`
+          : fixExample
+            ? `Ejemplo (adaptar a su código):\n${String(fixExample)}`
+            : '',
       });
       this.colorRow(vRow, result);
     }
