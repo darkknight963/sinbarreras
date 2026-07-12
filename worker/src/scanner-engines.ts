@@ -696,10 +696,26 @@ async function runHeuristicDomChecks(page: Page): Promise<RawFinding[]> {
     const findings = [];
 
     const getSelector = (el) => {
+      if (!el || el.nodeType !== 1) return 'document';
       if (el.id) return '#' + el.id;
-      const name = el.getAttribute('name');
+      const name = el.getAttribute && el.getAttribute('name');
       if (name) return el.tagName.toLowerCase() + '[name="' + name + '"]';
-      return el.tagName.toLowerCase();
+      // Ruta única con nth-of-type: un selector ambiguo ("li", "a") hacía que
+      // la captura de evidencia y el marcador del mapa visual señalaran OTRO
+      // elemento (el primero de la página) en vez del realmente hallado.
+      const parts = [];
+      let current = el;
+      while (current && current.nodeType === 1 && parts.length < 6) {
+        const tag = current.tagName.toLowerCase();
+        const parent = current.parentElement;
+        if (!parent) { parts.unshift(tag); break; }
+        const siblings = Array.prototype.filter.call(parent.children, (c) => c.tagName === current.tagName);
+        const idx = siblings.indexOf(current) + 1;
+        parts.unshift(siblings.length > 1 ? tag + ':nth-of-type(' + idx + ')' : tag);
+        if (parent.id) { parts.unshift('#' + parent.id); break; }
+        current = parent;
+      }
+      return parts.join(' > ');
     };
 
     const isVisible = (el) => {

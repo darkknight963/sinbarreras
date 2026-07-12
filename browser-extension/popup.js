@@ -207,7 +207,14 @@ const scanCurrentState = async () => {
 
     const pending = await loadPendingAudit(scanId);
     const states = pending.audit ? pending.states + 1 : 1;
-    const merged = pending.audit ? mergeAudits(pending.audit, audit, states) : audit;
+    let merged = pending.audit ? mergeAudits(pending.audit, audit, states) : audit;
+    // La captura de evidencia se toma AQUÍ (estado 1), no al enviar: los
+    // marcadores visuales se calculan en este momento y si el usuario abre
+    // menús o hace scroll antes de enviar, la foto ya no coincidiría.
+    if (states === 1) {
+      const screenshot = await captureVisibleScreenshot();
+      merged = attachScreenshot(merged, screenshot);
+    }
     await savePendingAudit(scanId, merged, states);
 
     const totalFindings = (merged.violations?.length || 0) + (merged.manualVerifications?.length || 0);
@@ -237,14 +244,14 @@ const sendResults = async () => {
   setStatus('Enviando resultados al sistema...');
 
   try {
-    const screenshot = await captureVisibleScreenshot();
-    const auditWithScreenshot = attachScreenshot(pending.audit, screenshot);
+    // La evidencia visual ya viene adjunta desde el escaneo del estado 1
+    // (coincide con el momento en que se calcularon los marcadores).
     try {
-      await postAudit(auditWithScreenshot);
+      await postAudit(pending.audit);
     } catch (error) {
       if (error instanceof Error && error.message.includes('HTTP 413')) {
         setStatus('La captura visual era muy pesada. Reintentando sin imagen...');
-        await postAudit(removeScreenshot(auditWithScreenshot));
+        await postAudit(removeScreenshot(pending.audit));
       } else {
         throw error;
       }
