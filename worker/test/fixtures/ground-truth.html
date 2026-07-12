@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!-- Página de verdad conocida: cada bloque siembra UNA violación específica
+     a propósito. El test ground-truth.test.ts verifica que el escáner las
+     detecte todas. NO corregir estos errores: son intencionales.
+     Violación 1: <html> sin atributo lang (html-has-lang). -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Violación 2: sin <title> (document-title). -->
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #ffffff; }
+    .low-contrast { color: #a8a8a8; background: #ffffff; } /* ~2.3:1 */
+    section { margin-bottom: 16px; }
+  </style>
+</head>
+<!-- Violación 3: contenido fuera de landmarks, sin <main> (region + landmark-main-missing). -->
+<!-- Violación 4: sin enlace "saltar al contenido" (bypass-missing). -->
+<body>
+  <section>
+    <!-- Violación 5: imagen informativa sin alt (image-alt). -->
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" width="40" height="40">
+
+    <!-- Violación 6: alt tipo nombre de archivo (suspicious-alt-text). -->
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="IMG_20240101.jpg" width="40" height="40">
+
+    <!-- Violación 7: tres imágenes distintas con el mismo alt (duplicate-alt-text). -->
+    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAP8AAP///yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="producto" width="40" height="40">
+    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAD/AP///yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="producto" width="40" height="40">
+    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAA/////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="producto" width="40" height="40">
+  </section>
+
+  <section>
+    <!-- Violación 8: texto con contraste insuficiente (color-contrast). -->
+    <p class="low-contrast">Este texto gris claro sobre blanco no alcanza 4.5:1 de contraste.</p>
+  </section>
+
+  <section>
+    <!-- Violación 9: enlace con texto genérico exacto (generic-link-text). -->
+    <a href="/reporte.pdf">Click aquí</a>
+
+    <!-- Violación 10: enlace sin nombre accesible (link-name). -->
+    <a href="/destino"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" width="20" height="20"></a>
+
+    <!-- Violación 11: elemento <a> interactivo sin href (link-href-missing). -->
+    <a onclick="console.log('guardar')" style="cursor:pointer">Guardar cambios</a>
+  </section>
+
+  <section>
+    <!-- Violación 12: botón sin nombre accesible (button-name). -->
+    <button type="button"></button>
+
+    <!-- Violación 13: campo de formulario sin etiqueta (label). -->
+    <input type="text" name="dni" placeholder="DNI">
+
+    <!-- Violación 14: select sin nombre accesible (select-name). -->
+    <select name="region"><option>Lima</option></select>
+  </section>
+
+  <section>
+    <!-- Violación 15: encabezado vacío (empty-heading). -->
+    <h2></h2>
+
+    <!-- Violación 16: dos encabezados del mismo nivel con texto idéntico (duplicate-headings). -->
+    <h2>Servicios</h2>
+    <p>Contenido de la primera sección.</p>
+    <h2>Servicios</h2>
+    <p>Contenido de la segunda sección.</p>
+  </section>
+
+  <section>
+    <!-- Violación 17: <li> vacío usado como separador (empty-list-item). -->
+    <ul>
+      <li>Inicio</li>
+      <li></li>
+      <li>Contacto</li>
+    </ul>
+  </section>
+
+  <section>
+    <!-- Violación 18: aria-labelledby apunta a un id inexistente (aria-valid-attr-value). -->
+    <div role="button" tabindex="0" aria-labelledby="id-que-no-existe">Acción</div>
+
+    <!-- Violación 19: ids duplicados referenciados por ARIA (duplicate-id). -->
+    <span id="etiqueta-dup">Etiqueta A</span>
+    <span id="etiqueta-dup">Etiqueta B</span>
+    <input type="checkbox" aria-labelledby="etiqueta-dup">
+  </section>
+</body>
+</html>

@@ -1416,7 +1416,7 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id === 'f55') return 'link-href-missing';
   if (id === 'f68' || id === 'h71.3') return 'form-field-label-missing';
   if (id === 'f77') return 'duplicate-id';
-  if (id === 'g1.1' || id.includes('skip_link') || id === 'bypass') return 'bypass-missing';
+  if (id === 'g1.1' || id.includes('skip_link') || id === 'bypass' || id === 'missing-bypass-method') return 'bypass-missing';
 
   // IBM Equal Access — ruleIds exactos con entrada propia en ruleMapping
   if (id === 'aria_keyboard_handler_exists') return 'aria_keyboard_handler_exists';

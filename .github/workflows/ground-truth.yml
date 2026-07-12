@@ -1,0 +1,54 @@
+# Prueba de verdad conocida del escáner.
+#
+# Corre EXCLUSIVAMENTE en los servidores gratuitos de GitHub Actions:
+# - No toca Railway, Vercel ni ningún servicio del sistema.
+# - No requiere instalar nada en las PCs de desarrollo.
+# - La máquina de GitHub se crea, corre el test (~3 min) y se destruye.
+#
+# Se dispara solo cuando un push modifica el escáner (worker/) o los fixtures.
+name: Escáner — verdad conocida
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/ground-truth.yml'
+  pull_request:
+    paths:
+      - 'worker/**'
+
+jobs:
+  ground-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar tipos
+        run: npx tsc --noEmit
+
+      - name: Instalar Chromium (solo en la máquina temporal de GitHub)
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests unitarios del worker
+        run: |
+          for f in test/peruvianChecks.test.ts test/scanner-engines.test.ts test/scanner-helpers.test.ts test/wcagRules.test.ts; do
+            echo "== $f =="
+            npx tsx "$f"
+          done
+
+      - name: Verdad conocida (violaciones sembradas detectadas)
+        run: npx tsx test/ground-truth.test.ts
