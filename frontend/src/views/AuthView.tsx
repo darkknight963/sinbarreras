@@ -223,7 +223,7 @@ export function AuthView({
               <div className="auth-report-preview-head">
                 <div>
                   <h2>Reporte de accesibilidad &mdash; miecommerce.com.pe</h2>
-                  <p>Resultados agrupados por problema &middot; WCAG 2.0 o superior</p>
+                  <p>Resultados agrupados por problema &middot; WCAG 2.2 (ISO/IEC 40500:2025)</p>
                 </div>
                 <section className="auth-report-preview-badges" aria-labelledby="auth-report-preview-badges-title">
                   <h3 id="auth-report-preview-badges-title" className="visually-hidden">Resumen de hallazgos</h3>
@@ -293,9 +293,9 @@ export function AuthView({
               <article className="auth-standard-card auth-standard-card-technical">
                 <span><Cog className="h-4 w-4" aria-hidden="true" /></span>
                 <small>Norma t&eacute;cnica</small>
-                <strong>ISO/IEC 40500</strong>
+                <strong>ISO/IEC 40500:2025</strong>
                 <p>
-                  Equivalente internacional de WCAG 2.0. Criterio de calidad reconocido en auditor&iacute;as corporativas.
+                  Adopta WCAG 2.2 como norma internacional. Criterio de calidad reconocido en auditor&iacute;as corporativas.
                 </p>
                 <em>Incluido</em>
               </article>
