@@ -59,6 +59,9 @@ export class ExcelService {
       { metric: 'Normativa Aplicada', value: scan.normativeVersion },
       { metric: 'Estándar WCAG', value: scan.wcagVersion },
       { metric: 'Versión de Reglas', value: scan.ruleSetVersion },
+      // Componentes de declaración de conformidad (ISO/IEC 40500:2025 §5.3.1).
+      { metric: 'Guías evaluadas', value: 'Web Content Accessibility Guidelines 2.2 — https://www.w3.org/TR/WCAG22/' },
+      { metric: 'Norma internacional', value: 'ISO/IEC 40500:2025 (adopta WCAG 2.2)' },
     ]);
 
     // ── Hoja: Por dónde empezar (victorias rápidas, misma fórmula que la web) ──

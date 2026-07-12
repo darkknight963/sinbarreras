@@ -198,7 +198,9 @@ export class PdfService {
       ['Dominio', scan.project?.domain ?? '-'],
       ['Fecha', this.formatDate(scan.createdAt)],
       ['Modo', scan.scanMode ?? '-'],
-      ['Estándar', scan.wcagVersion ?? 'WCAG 2.2'],
+      // Componentes de declaración de conformidad (ISO/IEC 40500:2025 §5.3.1):
+      // título, versión y URI de las guías evaluadas.
+      ['Estándar', 'WCAG 2.2 (ISO/IEC 40500:2025) — www.w3.org/TR/WCAG22/'],
     ]);
 
     doc.moveDown(1.2);
