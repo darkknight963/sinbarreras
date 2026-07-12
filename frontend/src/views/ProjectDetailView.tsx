@@ -6,11 +6,8 @@ import {
   Download,
   FileSearch,
   Link as LinkIcon,
-  Minus,
   RefreshCw,
   Trash2,
-  TrendingDown,
-  TrendingUp,
   X,
   Zap,
   Copy,
@@ -46,116 +43,6 @@ interface ProjectDetailViewProps {
   loadingMoreScans?: boolean;
   onLoadMoreScans?: () => void;
 }
-
-const trendDateLabel = (value: string) =>
-  new Date(value).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
-
-// Clave de comparación: mismas URLs (sin importar orden ni mayúsculas).
-// Solo tiene sentido comparar scores entre escaneos del MISMO objetivo:
-// dentro de un proyecto pueden convivir escaneos de URLs distintas.
-const scanTargetKey = (scan: any) =>
-  JSON.stringify(
-    [...(Array.isArray(scan.scanUrls) ? scan.scanUrls : [])]
-      .map((url: any) => String(url).trim().toLowerCase().replace(/\/+$/, ''))
-      .sort(),
-  );
-
-// Línea de tendencia del score (serie única, 0-100). Los datos ya vienen en
-// currentProject.scans — cero requests adicionales. La lista de historial
-// debajo actúa como vista de tabla accesible de la misma serie.
-function ScoreTrend({ scans }: { scans: any[] }) {
-  const completed = [...scans]
-    .filter((scan) => scan.status === 'completed' && typeof scan.globalScore === 'number')
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-  if (completed.length < 2) return null;
-
-  // La serie sigue al objetivo del análisis más reciente: solo scans de esas
-  // mismas URLs. Comparar sitios distintos produciría "caídas" falsas.
-  const latest = completed[completed.length - 1];
-  const targetKey = scanTargetKey(latest);
-  const points = completed.filter((scan) => scanTargetKey(scan) === targetKey).slice(-12);
-
-  if (points.length < 2) return null;
-
-  const targetUrls: string[] = Array.isArray(latest.scanUrls) ? latest.scanUrls : [];
-  const targetLabel = targetUrls.length > 0
-    ? `${targetUrls[0].replace(/^https?:\/\//, '')}${targetUrls.length > 1 ? ` +${targetUrls.length - 1} más` : ''}`
-    : '';
-
-  const width = 560;
-  const height = 132;
-  const pad = { top: 18, right: 18, bottom: 24, left: 34 };
-  const innerW = width - pad.left - pad.right;
-  const innerH = height - pad.top - pad.bottom;
-  const xFor = (index: number) => pad.left + (points.length === 1 ? innerW / 2 : (index / (points.length - 1)) * innerW);
-  const yFor = (score: number) => pad.top + (1 - Math.max(0, Math.min(100, score)) / 100) * innerH;
-
-  const last = points[points.length - 1];
-  const prev = points[points.length - 2];
-  const delta = (last.globalScore ?? 0) - (prev.globalScore ?? 0);
-  const deltaTone = delta > 0 ? '#15803d' : delta < 0 ? '#b91c1c' : '#64748b';
-  const DeltaIcon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-  const deltaLabel = delta === 0
-    ? 'Sin cambios vs. análisis anterior'
-    : `${delta > 0 ? '+' : ''}${delta} pts vs. análisis anterior`;
-
-  const path = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)} ${yFor(p.globalScore).toFixed(1)}`)
-    .join(' ');
-
-  return (
-    <div className="score-trend" style={{ marginBottom: '0.5rem' }}>
-      <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div>
-          <h4 className="font-semibold text-sm text-gob-dark" style={{ margin: 0 }}>Evolución del cumplimiento</h4>
-          {targetLabel && (
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>{targetLabel} · {points.length} análisis comparables</span>
-          )}
-        </div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: deltaTone }}>
-          <DeltaIcon className="h-4 w-4" aria-hidden="true" />
-          {deltaLabel}
-        </span>
-      </div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
-        role="img"
-        aria-label={`Evolución del score de cumplimiento en los últimos ${points.length} análisis. Último: ${last.globalScore} de 100. ${deltaLabel}.`}
-      >
-        {[0, 50, 100].map((tick) => (
-          <g key={tick}>
-            <line x1={pad.left} x2={width - pad.right} y1={yFor(tick)} y2={yFor(tick)} stroke="#e2e8f0" strokeWidth="1" />
-            <text x={pad.left - 8} y={yFor(tick) + 3.5} textAnchor="end" fontSize="10" fill="#94a3b8">{tick}</text>
-          </g>
-        ))}
-        <path d={path} fill="none" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {points.map((p, i) => {
-          const isLast = i === points.length - 1;
-          return (
-            <circle key={p.id} cx={xFor(i)} cy={yFor(p.globalScore)} r={isLast ? 5 : 4} fill="#2563eb" stroke="#ffffff" strokeWidth="2">
-              <title>{`${p.globalScore}/100 · ${trendDateLabel(p.createdAt)}`}</title>
-            </circle>
-          );
-        })}
-        <text
-          x={Math.min(xFor(points.length - 1), width - pad.right - 4)}
-          y={Math.max(yFor(last.globalScore) - 10, 12)}
-          textAnchor="end"
-          fontSize="12"
-          fontWeight="700"
-          fill="#0f172a"
-        >
-          {last.globalScore}
-        </text>
-        <text x={pad.left} y={height - 6} fontSize="10" fill="#94a3b8">{trendDateLabel(points[0].createdAt)}</text>
-        <text x={width - pad.right} y={height - 6} textAnchor="end" fontSize="10" fill="#94a3b8">{trendDateLabel(last.createdAt)}</text>
-      </svg>
-    </div>
-  );
-}
-
 
 export function ProjectDetailView({
   currentProject,
@@ -525,8 +412,6 @@ export function ProjectDetailView({
               <h3 className="font-bold text-lg text-gob-dark">Historial de análisis</h3>
               <div className="text-xs text-slate-500">Total: {currentProject.scans?.length || 0} análisis</div>
             </div>
-
-            <ScoreTrend scans={currentProject.scans || []} />
 
             {!hasScans && (
               <div className="project-history-empty-state">
