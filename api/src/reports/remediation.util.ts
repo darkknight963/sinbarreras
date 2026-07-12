@@ -242,8 +242,15 @@ export const computeQuickWins = (scan: { urlResults?: Array<Record<string, any>>
 
   const den = applicable.length;
   const passed = Math.max(0, den - failedRows.length - reviewCount);
-  const scoreFor = (p: number) => Math.max(0, Math.min(100, Math.round((p / den) * 100)));
-  const currentScore = scoreFor(passed);
+  const rawScoreFor = (p: number) => Math.max(0, Math.min(100, Math.round((p / den) * 100)));
+
+  // Anclar al score REAL del escaneo: los scans de extensión calculan su
+  // puntaje con otra fórmula y el recomputo por criterios difería de la
+  // cifra mostrada en el resto del reporte ("de 93 a 100" con score 86).
+  const storedScore = typeof urlResult.score === 'number' ? urlResult.score : rawScoreFor(passed);
+  const scoreDelta = storedScore - rawScoreFor(passed);
+  const scoreFor = (p: number) => Math.max(0, Math.min(100, rawScoreFor(p) + scoreDelta));
+  const currentScore = storedScore;
 
   const ranked = [...failedRows].sort((a, b) => {
     const ea = failedEffort.get(String(a.id)) || 1;

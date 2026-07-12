@@ -1598,8 +1598,9 @@ export default function App() {
   return (
     <AppErrorBoundary>
     <div className="min-h-screen text-slate-900 font-sans">
-      <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
+      {/* Dentro del header (landmark banner) y primero en el orden de foco. */}
       <header className="sticky top-0 z-50 px-8 py-5 min-h-20 flex items-center justify-between">
+        <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
         <div className="header-brand-block">
           <div className="header-brand-mark" aria-hidden="true">
             <img src="/sin-barreras-icon.png" alt="" className="h-8 w-8 object-contain" />

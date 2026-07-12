@@ -386,7 +386,7 @@ const getVerificationSteps = (wcagRefs: string[] = []): { criterion: string; ste
 // menos elementos afectados dan la misma subida de nota con menos trabajo.
 const severityOrder: Record<string, number> = { critico: 4, alto: 3, medio: 2, bajo: 1 };
 
-const getQuickWins = (rows: any[]) => {
+const getQuickWins = (rows: any[], actualScore?: number | null) => {
   const applicable = rows.filter((row) => row.estado === 'aplica');
   if (applicable.length === 0) return null;
 
@@ -396,7 +396,12 @@ const getQuickWins = (rows: any[]) => {
   const reviewCount = applicable.filter((row) => row.uiStatus === 'revision').length;
   const den = applicable.length;
   const passed = den - failedRows.length - reviewCount;
-  const scoreFor = (passedCount: number) => Math.max(0, Math.round((passedCount / den) * 100));
+  const rawScoreFor = (passedCount: number) => Math.max(0, Math.round((passedCount / den) * 100));
+  // Anclar al score REAL del escaneo: los scans de extensión usan otra
+  // fórmula y el recomputo por criterios mostraba una base distinta a la
+  // cifra del resto del reporte ("de 93 a 100" con score global 86).
+  const scoreDelta = typeof actualScore === 'number' ? actualScore - rawScoreFor(passed) : 0;
+  const scoreFor = (passedCount: number) => Math.max(0, Math.min(100, rawScoreFor(passedCount) + scoreDelta));
   const currentScore = scoreFor(passed);
 
   const effortOf = (row: any) =>
@@ -428,8 +433,8 @@ const getQuickWins = (rows: any[]) => {
   };
 };
 
-function QuickWinsPanel({ rows }: { rows: any[] }) {
-  const wins = getQuickWins(rows);
+function QuickWinsPanel({ rows, actualScore }: { rows: any[]; actualScore?: number | null }) {
+  const wins = getQuickWins(rows, actualScore);
   if (!wins) return null;
   const gain = wins.projectedScore - wins.currentScore;
 
@@ -1307,7 +1312,7 @@ export function ScanReportView({
           </div>
         </section>
 
-        <QuickWinsPanel rows={applicabilityRows} />
+        <QuickWinsPanel rows={applicabilityRows} actualScore={currentScan.globalScore} />
 
         <section className="report-panel report-panel-spacious finding-message-dashboard" aria-labelledby="finding-message-dashboard-title">
           <div className="finding-message-dashboard-header">

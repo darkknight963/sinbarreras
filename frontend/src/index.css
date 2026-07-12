@@ -17334,7 +17334,8 @@ html body .auth-flow-copy small {
   border-radius: 999px !important;
   padding: 0 10px !important;
   background: #eef2ff !important;
-  color: #4f46e5 !important;
+  /* Indigo-700: contraste >7:1 sobre #eef2ff (1.4.3 AA con margen AAA). */
+  color: #3730a3 !important;
   font-size: 0.72rem !important;
   font-weight: 850 !important;
 }

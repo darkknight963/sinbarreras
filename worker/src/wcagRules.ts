@@ -351,6 +351,71 @@ export const ruleMapping: Record<string, WcagRuleInfo> = {
 <!-- Después: ids únicos -->
 <input id="email-contacto"> ... <input id="email-facturacion">`
   },
+  'text-block-heading-review': {
+    criterion: '1.3.1',
+    nameEs: 'Texto con apariencia de encabezado',
+    level: 'A',
+    disability: ['Sensorial visual', 'Intelectual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Si el texto funciona visualmente como título de sección, usar el elemento h1-h6 correspondiente en lugar de estilos sobre div/p; si es solo texto destacado, no requiere cambio.',
+    fixExample: `<!-- Antes: parece encabezado pero es un div con estilos -->
+<div class="titulo-seccion">Nuestros servicios</div>
+
+<!-- Después: encabezado semántico real -->
+<h2 class="titulo-seccion">Nuestros servicios</h2>`
+  },
+  'style-color-misuse-review': {
+    criterion: '1.4.1',
+    nameEs: 'Posible uso del color como único medio',
+    level: 'A',
+    disability: ['Sensorial visual (Daltonismo)'],
+    role: 'Diseñador UX/UI',
+    resolutionArticle: 'Anexo 1 - Criterio 1.4.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Verificar que la información transmitida por color (estados, errores, enlaces) también se comunique con texto, icono o subrayado; el color no debe ser el único indicador.',
+    fixExample: `<!-- Antes: solo el color distingue el error -->
+<input style="border-color: red">
+
+<!-- Después: color + texto explícito -->
+<input style="border-color: red" aria-describedby="err-email">
+<p id="err-email">El correo no es válido.</p>`
+  },
+  'style-viewport-resizable-review': {
+    criterion: '1.4.4',
+    nameEs: 'Escalado de texto restringido',
+    level: 'AA',
+    disability: ['Sensorial visual (Baja visión)'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.4.4',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Verificar que el usuario pueda ampliar el texto hasta 200% sin pérdida de contenido: no usar user-scalable=no ni maximum-scale en el meta viewport, y preferir unidades relativas (rem/em).',
+    fixExample: `<!-- Antes: bloquea el zoom del usuario -->
+<meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1">
+
+<!-- Después -->
+<meta name="viewport" content="width=device-width, initial-scale=1">`
+  },
+  'landmark-complementary-labelled': {
+    criterion: '1.3.1',
+    nameEs: 'Landmark complementario sin nombre o mal ubicado',
+    level: 'A',
+    disability: ['Sensorial visual'],
+    role: 'Desarrollador',
+    resolutionArticle: 'Anexo 1 - Criterio 1.3.1',
+    wcagUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html',
+    findingStatus: 'needs_review',
+    suggestedFix: 'Dar nombre accesible al <aside> con aria-label o aria-labelledby, y ubicarlo como landmark de nivel superior (no anidado dentro de main) cuando su contenido sea complementario a toda la página.',
+    fixExample: `<!-- Antes -->
+<aside>...</aside>
+
+<!-- Después -->
+<aside aria-label="Recursos relacionados">...</aside>`
+  },
   'focus-order-mismatch': {
     criterion: '2.4.3',
     nameEs: 'Orden del foco no coincide con el orden visual',
@@ -1337,6 +1402,11 @@ function normalizeRuleLookupKey(ruleId: string): string {
   if (id === 'landmark-nav-missing') return 'landmark-nav-missing';
   if (id === 'bypass-missing') return 'bypass-missing';
   if (id === 'suspicious-alt-text') return 'suspicious-alt-text';
+  // IBM Equal Access — reglas de estilo/estructura vistas en scans reales
+  if (id === 'text_block_heading') return 'text-block-heading-review';
+  if (id === 'style_color_misuse') return 'style-color-misuse-review';
+  if (id === 'style_viewport_resizable') return 'style-viewport-resizable-review';
+  if (id === 'aria_complementary_labelled' || id === 'aria_complementary_label_unique' || id === 'landmark-complementary-is-top-level') return 'landmark-complementary-labelled';
   if (id === 'duplicate-alt-text') return 'duplicate-alt-text';
   if (id === 'generic-link-text') return 'generic-link-text';
   if (id === 'focus-order-mismatch') return 'focus-order-mismatch';

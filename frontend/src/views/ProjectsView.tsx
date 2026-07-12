@@ -274,7 +274,8 @@ export function ProjectsView({
           const scanCount = p.scans?.length || 0;
           const projectStatusClass = lastScan ? `project-card-${scoreMeta.tone}` : 'project-card-pending';
           return (
-            <article
+            // div (no article): role="button" no es válido sobre article (4.1.2).
+            <div
               key={p.id}
               className={`report-card-entity project-card-clickable ${projectStatusClass}`}
               aria-labelledby={`project-title-${p.id}`}
@@ -348,7 +349,7 @@ export function ProjectsView({
                   </span>
                 </div>
               </div>
-            </article>
+            </div>
           );
         })}
       </div>
