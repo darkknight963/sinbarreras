@@ -2,11 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-<<<<<<< Updated upstream
       "destination": "https://api.gzakgroup.com/:path*"
-=======
-      "destination": "destination": "https://api.gzakgroup.com/:path*"
->>>>>>> Stashed changes
     }
   ],
   "headers": [
