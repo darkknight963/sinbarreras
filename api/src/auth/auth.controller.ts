@@ -15,15 +15,25 @@ const COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 function setSessionCookie(res: Response, token: string) {
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    //secure: process.env.NODE_ENV === 'production',
+    secure: true,    
+    //sameSite: 'lax',
+    sameSite: 'none',
+    domain: '.gzakgroup.com',
     maxAge: COOKIE_MAX_AGE_MS,
     path: '/',
   });
 }
 
 function clearSessionCookie(res: Response) {
-  res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
+  //res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
+  res.clearCookie(SESSION_COOKIE, { 
+    httpOnly: true, 
+    secure: true, 
+    sameSite: 'none', 
+    domain: '.gzakgroup.com', 
+    path: '/' 
+  });
 }
 
 @Controller('auth')

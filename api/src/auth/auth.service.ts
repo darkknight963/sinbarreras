@@ -543,10 +543,27 @@ export class AuthService {
   }
 
   private verifyOAuthState(provider: OAuthProvider, state: string): OAuthStatePayload {
+
+
+
+
+	 // 👇 INICIO DEL PARCHE SALVAVIDAS 👇
+    if (!state) {
+      throw new UnauthorizedException('Estado OAuth no proporcionado o bloqueado por el navegador');
+    }
+    // 👆 FIN DEL PARCHE 👆
+
     const [encodedPayload, signature] = state.split('.');
     if (!encodedPayload || !signature) {
       throw new UnauthorizedException('Estado OAuth invalido');
     }
+
+
+
+
+
+
+
 
     const secret = this.getOAuthStateSecret();
     const expectedSignature = createHmac('sha256', secret).update(encodedPayload).digest('hex');
