@@ -8,10 +8,10 @@
 // Railway explícitamente en vez de tomar "el primero que no sea localhost".
 const getApiBase = () => {
   const hosts = chrome.runtime.getManifest().host_permissions || [];
-  const railwayHost = hosts.find(h => h.includes('.up.railway.app'));
-  if (railwayHost) return railwayHost.replace(/\/\*$/, '');
+  const apiHost = hosts.find(h => h.includes('api.gzakgroup.com'));
+  if (apiHost) return apiHost.replace(/\/\*$/, '');
   const prodHost = hosts.find(h => !h.includes('localhost') && !h.includes('127.0.0.1'));
-  return prodHost ? prodHost.replace(/\/\*$/, '') : 'https://sinbarreras-production.up.railway.app';
+  return prodHost ? prodHost.replace(/\/\*$/, '') : 'https://api.gzakgroup.com';
 };
 const API_BASE = getApiBase();
 
